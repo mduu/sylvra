@@ -29,4 +29,7 @@ line_length:
   ignores_comments: true
 
 identifier_name:
-  excluded: [id, x, y, i]
+  min_length: 1          # short names like `id`, `xs`, `x` are fine when clear
+
+nesting:
+  type_level: 3          # GraphQL response DTOs mirror nested JSON

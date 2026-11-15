@@ -3,22 +3,27 @@ import FeatureDiff
 import FeatureInbox
 import FeaturePullRequest
 import SwiftUI
+import SylvraCore
 
 /// Main window layout: inbox · pull request · diff, with the AI inspector on the right.
 /// Composes feature slices — slices themselves never import each other.
 struct RootScreen: View {
+    let environment: AppEnvironment
+    @State private var selection: PullRequestSummary?
     @State private var isInspectorPresented = true
 
     var body: some View {
         NavigationSplitView {
-            InboxScreen()
-                .navigationSplitViewColumnWidth(min: 220, ideal: 260)
+            InboxScreen(model: environment.inbox, selection: $selection)
+                .navigationSplitViewColumnWidth(min: 240, ideal: 290)
         } content: {
             PullRequestScreen()
                 .navigationSplitViewColumnWidth(min: 260, ideal: 300)
         } detail: {
             DiffScreen()
         }
+        .navigationTitle(selection.map { "\($0.id.repository) #\($0.id.number)" } ?? "Sylvra")
+        .navigationSubtitle(selection?.title ?? "")
         .inspector(isPresented: $isInspectorPresented) {
             FindingsInspectorScreen()
                 .inspectorColumnWidth(min: 260, ideal: 300)
@@ -36,5 +41,5 @@ struct RootScreen: View {
 }
 
 #Preview {
-    RootScreen()
+    RootScreen(environment: AppEnvironment(arguments: ["--demo"]))
 }
