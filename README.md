@@ -15,13 +15,15 @@ Sylvra is **not a Git client**. It is a specialized PR review client.
 ## Features
 
 - **PR inbox** — open PRs that need your attention, including team requests and watched repos/paths, not only PRs assigned to you.
-- **Change essence** — AI summary and a change map of namespaces/folders, so you see where a PR changed before reading a single line.
-- **Modern diff** — side-by-side or inline, focused hunks with configurable context or full files, syntax and intra-line highlighting, "changes since my last review".
-- **One-click AI review** — runs your local Claude Code with selectable model and effort; large PRs are reviewed by multiple agents in parallel.
+- **Complete PR view** — description, author, refs, reviewers, merge status, checks and commits (with copyable SHAs); one click to GitHub, e.g. for a failing build.
+- **Change essence** — AI summary, a change map of namespaces/folders and *"What patterns are used or missed?"*.
+- **A diff with a wow effect** — side-by-side or inline, focused hunks or full files, commit-by-commit review, "changes since my last review".
+- **One-click AI review** — runs your local Claude Code (more agents later) with selectable models and effort, in parallel for large PRs, with your repo's `AGENTS.md`/`CLAUDE.md`/specs as context.
 - **Linked findings** — AI findings are highlighted inline (Xcode-style gradients); one click jumps to the code.
-- **AI chat** — ask questions about the PR with full code base context.
-- **Review comments** — inline comments with GitHub code suggestions, turn AI findings into comments, submit reviews.
-- **Open in IDE** — one click opens the PR in JetBrains Rider, Visual Studio Code or Xcode, using an isolated Git worktree.
+- **AI chat** — ask questions about the PR in your preferred language.
+- **Review comments** — inline comments with code suggestions, replies, resolve threads, submit reviews.
+- **Open in IDE** — Rider, VS Code, Xcode or the default app, in a worktree or your main clone.
+- **Terminal and custom tools** — terminal panel with tabs and your own commands on files and folders.
 
 ## Requirements
 
@@ -30,7 +32,7 @@ Sylvra is **not a Git client**. It is a specialized PR review client.
 - `git` installed
 - A GitHub account (github.com)
 - Optional: [GitHub CLI](https://cli.github.com) (`gh`) for sign-in
-- Optional: [Claude Code](https://docs.claude.com/en/docs/claude-code) installed and logged in, for AI features
+- Optional: [Claude Code](https://docs.claude.com/en/docs/claude-code) installed and logged in, for AI features (other agents planned)
 
 ## Getting started
 
@@ -47,14 +49,15 @@ open Sylvra.xcodeproj
 | Document | Content |
 |---|---|
 | [specs/projectidea.md](specs/projectidea.md) | Vision, problem, features, non-goals |
-| [specs/architecture.md](specs/architecture.md) | Modules, integrations (GitHub, git, Claude Code, IDEs), data flow |
-| [specs/ux.md](specs/ux.md) | Layout, interactions, visual language, shortcuts |
+| [specs/architecture.md](specs/architecture.md) | Feature slices, integrations (GitHub, git, AI agents, IDEs), CI and release |
+| [specs/ux.md](specs/ux.md) | Layout, interactions, color system, motion, shortcuts |
 | [AGENTS.md](AGENTS.md) | Guidelines for AI coding agents working on this repo |
+| [CONTRIBUTING.md](CONTRIBUTING.md) | How to contribute: issues, pull requests, workflow |
 
 ## Privacy
 
-Sylvra has no backend and no telemetry. Code is only sent to an AI model through your own Claude Code installation, and only when you start an AI review or chat. GitHub tokens are stored in the macOS Keychain.
+Sylvra has no backend and no telemetry. Code is only sent to an AI model through your own locally installed AI agent (e.g. Claude Code), and only when you start an AI review or chat. GitHub tokens are stored in the macOS Keychain.
 
 ## License
 
-TBD
+[MIT](LICENSE) © Marc Dürst

@@ -2,29 +2,83 @@
 
 ## 1. Design intent
 
-**A quiet place for focused work.** Like a clearing in a forest: calm, spacious, natural light. The interface steps back so the code and its essence come forward.
+**A quiet place for focused work — and reviews that are fun again.**
 
-- **Calm**: generous spacing, restrained color, motion only to explain state changes.
-- **Clarity**: every screen answers one question first ("What changed?", "Where is the risk?", "What did the AI find?").
+The interface steps back so the code and its essence come forward. Sylvra should feel beautiful and practical every single day, not only on first launch. Every design decision is checked against one question: *does this make reviewing lighter and more enjoyable?*
+
+- **Calm**: generous spacing, restrained color, no visual noise.
+- **Clarity**: every screen answers one question first ("What changed?", "Where is the risk?", "What did the AI find?", "What patterns are used or missed?").
 - **Precision**: crisp typography, monospaced code, exact alignment in diffs.
-- **Native**: macOS conventions — sidebar, toolbar, inspector, menus, keyboard shortcuts, system materials (Liquid Glass), Dark and Light mode, accessibility.
+- **Wow where it matters**: the diff view is the showpiece (§6).
+- **Alive, not busy**: micro-animations that explain state changes (§3).
+- **Native**: follows Apple's Human Interface Guidelines (§2).
 
-## 2. Visual language
+## 2. Apple HIG and deviations
 
-| Element | Direction |
+Sylvra follows the **Human Interface Guidelines** by default: sidebar / content / inspector layout, toolbar, menus and keyboard shortcuts, system materials (Liquid Glass), SF Symbols, standard controls, Settings window, notifications.
+
+We deviate **only with a clearly documented reason**. Every deviation is listed here:
+
+| Deviation | Why |
 |---|---|
-| Palette | Deep violet neutrals (near-black aubergine, slate), soft off-white in light mode. Primary accent: a calm **deep violet**; secondary accent: a fine **gold** for highlights and focus (as in the app icon). Severity colors are muted, never neon. |
-| Diff colors | Low-saturation green/red backgrounds, stronger tint only for intra-line changes. Color-blind safe alternative palette (blue/orange) in settings. |
-| AI accent | A subtle multi-hue gradient (violet → indigo → teal) reserved **exclusively** for AI-generated content, so AI output is always recognizable. |
-| Typography | SF Pro for UI, SF Mono (configurable) for code. Clear hierarchy, few sizes. |
-| Iconography | SF Symbols, consistent weight. |
-| Motion | Short, eased transitions; animated gradient shimmer only while an AI agent is running. Respects "Reduce Motion". |
+| Custom-rendered diff view instead of standard text views | Core differentiator: performance on huge diffs, gradient AI highlights, connector ribbons and animations are impossible with standard controls. |
+| Brand colors (violet / gold) beyond the system accent color | Recognizability and the calm, premium mood derived from the app icon. The user's system accent color is still respected for standard controls (selection, focus rings) where possible. |
+| Multi-hue AI gradient | AI-generated content must be instantly recognizable and never confused with human content. |
 
-## 3. Window layout
+## 3. Visual language
 
-A three-column `NavigationSplitView` plus an optional inspector:
+### 3.1 Color system (derived from the app icon)
 
-Toolbar: `◀ ▶  owner/repo #1234 Title   [Open in ▾] [✦ AI Review ▾] [Submit]`
+Hex values are sRGB approximations of the Display P3 values used in `assets/AppIcon.icon`.
+
+| Token | Role | Light | Dark | Icon source |
+|---|---|---|---|---|
+| `brandPrimary` | Primary brand color: key actions, active states, brand surfaces | `#6C48C6` Sylvra Violet | `#B39AF2` Lavender | Leaf gradient (deep / mid) |
+| `brandSecondary` | Secondary surfaces, selected rows, subtle fills, charts | `#B39AF2` Lavender | `#4B2A8A` Royal Violet | Leaf mid / background top |
+| `brandTint` | Very light tints, hover backgrounds, empty states | `#EADFFF` Lavender Mist | `#2D1857` Deep Violet | Leaf highlight / dark background top |
+| `accentGold` | Accent: focus of attention — selected finding border, primary call to action highlight, "new" markers | `#E2B44F` Gold | `#F7DC86` Light Gold | Veins |
+| `accentGoldSoft` | Gold glow, specular highlights in animations | `#FFF1BF` Champagne | `#FFF1BF` Champagne | Vein tip |
+| `canvasDeep` | Brand backgrounds (splash, empty states, onboarding), dark window tint | `#170A33` Aubergine | `#0B051A` Night Violet | Icon background bottom (light / dark) |
+
+Rules:
+
+- **Neutrals** (window, text, separators) come from the system semantic colors; the brand colors are used sparingly on top.
+- **Gold is precious**: at most one gold-accented element in focus at a time.
+- **Diff colors** are *not* brand colors: low-saturation green/red backgrounds, stronger tint only for intra-line changes. A color-blind-safe alternative (blue/orange) is available in settings.
+- **Severity colors** are muted, never neon.
+- **AI accent**: a subtle multi-hue gradient (violet → indigo → teal), reserved **exclusively** for AI-generated content.
+- All tokens live in `DesignSystem` (asset catalog color sets with light/dark variants). Feature code never uses hardcoded colors.
+
+### 3.2 Appearance
+
+- **Auto / Light / Dark**: follows the system appearance by default; can be overridden in settings.
+- Both appearances are designed with equal care; the dark appearance is not just "inverted".
+
+### 3.3 Typography and iconography
+
+- SF Pro for UI, SF Mono (configurable) for code. Clear hierarchy, few sizes.
+- SF Symbols, consistent weight.
+- **Avatars**: user avatars from GitHub wherever a person appears (inbox rows, PR header, commits, reviewers, comments), circular, with initials as fallback.
+
+### 3.4 Motion and micro-animations
+
+Animations are used where they **help to understand** what happens — never as decoration. Short, spring-based, interruptible; respect "Reduce Motion".
+
+Examples:
+
+- Selecting a folder in the change map: the treemap tile zooms smoothly into the file list.
+- Expanding hidden context in the diff: lines unfold from the separator.
+- A new AI finding appears: its gradient highlight fades in on the code, the gutter marker pops gently.
+- Marking a file as viewed: the checkmark draws itself, the review progress bar advances.
+- Resolving a thread: it collapses into a slim "resolved" line.
+- AI review running: a soft shimmer travels along the activity indicator and the files being reviewed.
+- Copying a SHA: a brief "Copied" morph of the button.
+
+## 4. Window layout
+
+A three-column `NavigationSplitView` plus an optional inspector and a bottom terminal panel.
+
+Toolbar: `◀ ▶  owner/repo #1234 Title   [Open in ▾] [✦ AI Review ▾] [⟳ activity] [Open on GitHub] [Submit]`
 
 ```mermaid
 flowchart LR
@@ -32,9 +86,9 @@ flowchart LR
         direction TB
         i1["Requested from me"] ~~~ i2["My teams"] ~~~ i3["Watched"] ~~~ i4["Involved"] ~~~ i5["My PRs"]
     end
-    subgraph Essence
+    subgraph Essence["PR (content column)"]
         direction TB
-        e1["AI summary"] ~~~ e2["Change map"] ~~~ e3["Files by namespace"] ~~~ e4["Review progress"]
+        e0["Header: title, author, refs, merge + CI state"] ~~~ e1["Tabs: Overview · Commits · Checks · Conversation"] ~~~ e2["Change map + patterns"] ~~~ e3["Files by namespace"]
     end
     subgraph Diff
         direction TB
@@ -42,123 +96,136 @@ flowchart LR
     end
     subgraph Inspector
         direction TB
-        n1["Findings"] ~~~ n2["Chat"] ~~~ n3["PR details"]
+        n1["Findings"] ~~~ n2["Patterns"] ~~~ n3["Chat"]
     end
-    Inbox -- "select PR" --> Essence -- "select file / folder" --> Diff <-- "jump to finding" --> Inspector
+    Terminal["Terminal panel (tabs, toggle)"]
+    Inbox -- "select PR" --> Essence -- "select file / folder / commit" --> Diff <-- "jump to finding" --> Inspector
+    Diff ~~~ Terminal
 ```
 
 - **Sidebar (Inbox)** — which PRs need my attention.
-- **Essence column** — what this PR is about and where it changed.
+- **PR column** — everything about the PR and where it changed.
 - **Diff** — the code.
-- **Inspector** — AI findings, chat, PR details (description, checks, reviewers, conversation).
+- **Inspector** — AI findings, patterns, chat.
+- **Terminal panel** — bottom panel, toggle with ⌃\`.
 
-Columns are collapsible. A *Focus mode* (⌃⌘F) hides sidebar and essence for maximum diff space.
+Columns are collapsible. *Focus mode* (⌃⌘F) hides sidebar and PR column for maximum diff space.
 
-## 4. Inbox (sidebar)
+### 4.1 View naming (implementation)
 
-**Sections** (each collapsible, with count):
+Screens follow the container / presentational split described in `architecture.md` §3.3: `InboxScreen`, `PullRequestScreen`, `DiffScreen`, `SettingsScreen`; regions as `FindingsInspector`, `TerminalPanel`, `SubmitReviewSheet`; pure building blocks as `*View`, `*Row`, `*Badge`.
+
+## 5. Inbox (sidebar)
+
+**Sections** (collapsible, with count):
 
 1. *Requested from me* — direct review requests.
-2. *My teams* — team review requests and CODEOWNERS matches (the most important section, since most reviews are not assigned to me personally).
+2. *My teams* — team review requests and CODEOWNERS matches (most reviews are not assigned personally).
 3. *Watched* — open PRs in watched repositories / paths.
 4. *Involved* — mentioned, commented, previously reviewed.
-5. *My PRs* — my own open PRs (for following up on feedback).
+5. *My PRs* — my own open PRs.
 6. *Recently closed* — last 7 days.
 
-**PR row** (two lines, compact):
+**PR row**:
 
 ```
- ◉  Add invoice export                          2h
-    owner/repo #1234 · @alice · +340 −52 · ✓ CI · ⟳ updated
+ (avatar) ◉  Add invoice export                          2h
+             owner/repo #1234 · +340 −52 · ✓ CI · ⇄ mergeable · ⟳ updated
 ```
 
 - Status dot: unread / updated since my last review / reviewed.
-- Size indicator: subtle bar or label (XS–XL).
-- Badges only for meaningful states: draft, conflicts, CI failing, *AI-authored*, *changes since my review*.
+- Badges only for meaningful states: draft, conflicts, CI failing, blocked, *AI-authored*, *changes since my review*.
+- Search (title, number, author, branch) and filter chips (repo, author, size, CI, draft). Saved filters become custom sections.
 
-**Filtering & search**: search field (title, number, author, branch); filter chips for repo, author, size, CI state, draft. Saved filters appear as custom sections.
+## 6. PR column
 
-## 5. Essence column
+### 6.1 Header
 
-The first thing visible when a PR is selected. Goal: **understand the PR in < 30 seconds.**
+Title, author avatar and name, `head → base` refs (with fork owner), merge state chip, CI chip, review decision, age. Actions: *Open on GitHub*, *Copy link*, *Open in IDE*.
 
-1. **Header** — title, author, branch `head → base`, CI status, review state, age.
-2. **AI summary** (if available) — 2–4 sentences: intent, scope, risk areas. Marked with the AI accent. Button *Generate summary* if none exists.
-3. **Change map** — structural visualization of namespaces/folders:
-   - default: compact **treemap**, area = changed lines, color intensity = additions vs. deletions ratio, a soft AI glow on areas with findings;
-   - alternative: **sunburst** or **indented tree with sparkline bars**.
-   - Hover shows folder stats; click filters the file list and diff to that folder.
-4. **Files by namespace** — tree grouped by folder/namespace (collapsing single-child folders), each file with +/−, kind icon, viewed checkmark, finding/comment counts.
-   - Noise group (*Generated, lockfiles, snapshots*) collapsed at the bottom.
-   - Optional *Suggested reading order* (AI) instead of alphabetical.
-5. **Review progress** — "12 of 18 files viewed" as a slim progress bar.
+### 6.2 Tabs
 
-## 6. Diff view
+| Tab | Content |
+|---|---|
+| **Overview** | AI summary · rendered description · labels, assignees, milestone, linked issues · reviewers with state and avatars · **merge status** in plain words ("Blocked: 1 approving review required, `build` failing") · change map · patterns · files by namespace |
+| **Commits** | Commit list: avatar, subject, short SHA (click = copy, ⌥-click = copy full SHA), author / committer, date, verified badge, CI state. Expand for full message body. Select a commit (or range) to review it in the diff. *Open commit on GitHub*. |
+| **Checks** | All checks with status, duration and result; failing ones on top. **One click opens the run on GitHub** (build logs). Re-run is done on GitHub. |
+| **Conversation** | PR comments, reviews and timeline events; reply, react, edit own comments. |
 
-### 6.1 Modes
+### 6.3 Change essence
 
-Toolbar segmented controls above the diff:
+1. **AI summary** — 2–4 sentences: intent, scope, risk areas, relation to earlier changes. Marked with the AI accent.
+2. **Change map** — treemap of namespaces/folders (area = changed lines, color intensity = add/delete ratio, soft AI glow where findings are). Alternatives: sunburst, indented tree with sparkline bars. Click filters files and diff.
+3. **Patterns — "What patterns are used or missed?"** — compact list: pattern name, verdict chip (*followed* · *violated* · *introduced*), one-line rationale; click highlights the evidence in the diff.
+4. **Files by namespace** — tree grouped by folder, with +/−, kind icon, viewed checkmark, finding/comment counts. Noise group collapsed at the bottom. Optional AI reading order.
+5. **Review progress** — "12 of 18 files viewed".
+
+## 7. Diff view — the *wow* view
+
+The diff must feel like the best diff one has ever used: fast, beautiful and instantly understandable.
+
+### 7.1 Modes
 
 - **Layout**: `Side by side` | `Inline` (⌘⌥1 / ⌘⌥2)
 - **Scope**: `Focused` (changed hunks + N context lines, N ∈ {3, 5, 10, custom}) | `Full file`
-- **Range**: `All changes` | `Since my last review` | custom commit range
+- **Range**: `All changes` | `Since my last review` | `Commit…` (commit-by-commit, with ◀ ▶ to step through commits) | custom range
 - Toggles: hide whitespace, wrap lines, show moved code.
 
-Focused mode shows expandable separators ("⋯ 24 unchanged lines ⋯") — click to expand up/down/all.
+### 7.2 Wow elements
 
-### 6.2 Reading experience
+- **Connector ribbons** (side by side): smooth, softly tinted curves connect each changed region on the left with its counterpart on the right, flowing while scrolling.
+- **Intra-line highlights** with a gentle glow on the changed tokens.
+- **Animated context expansion**: "⋯ 24 unchanged lines ⋯" unfolds smoothly.
+- **Focus lens**: unchanged code is slightly dimmed in focused mode; the change is in the light.
+- **Moved code** shown with a neutral tint and an animated link to its origin.
+- **Overview ruler / minimap** with a heat strip of changes, comments and AI findings; click to jump.
+- **Sticky file and scope headers** (current type / function).
+- **120 fps** scrolling, even on huge files.
 
-- Sticky file headers with path, +/−, *Viewed* checkbox, *Open in IDE at this line*.
-- Sticky scope header (current function/type) when scrolling inside long hunks.
-- Intra-line highlights for changed tokens.
-- Moved code shown with a distinct neutral tint and a link to its origin.
-- Minimap/overview ruler on the right with markers for changes, comments and AI findings.
+### 7.3 AI highlights (Xcode-style)
 
-### 6.3 AI highlights (Xcode-style)
-
-AI findings are rendered like AI-generated lines in Xcode:
-
-- **Gradient background**: a soft horizontal gradient in the AI accent colors across the affected line range, fading out to the right. Opacity scales with severity.
-- **Gradient border**: a thin rounded gradient stroke around the range for the *selected* finding.
-- **Gutter marker**: a small ✦ icon in severity tint; hover shows the title, click opens the inline finding card.
-- **Inline finding card** (below the range, collapsible): title, severity, category, rationale (markdown), optional suggested code shown as a mini-diff, actions: *Turn into comment*, *Dismiss*, *Ask in chat*, *Open in IDE*.
-- While an AI review is running, affected files show a gentle animated shimmer in the file list; no shimmer in the code itself.
+- **Gradient background**: soft horizontal gradient in the AI accent colors across the affected lines, fading out to the right; opacity scales with severity.
+- **Gradient border**: thin rounded gradient stroke (with a touch of gold) around the *selected* finding.
+- **Gutter marker** ✦ in severity tint; hover shows the title, click opens the inline finding card.
+- **Inline finding card**: title, severity, category, models that found it, rationale, suggested code as mini-diff; actions *Turn into comment*, *Dismiss*, *Ask in chat*, *Open in IDE*.
+- **Pattern evidence**: a subtle dotted underline in the AI accent; hover shows the pattern name and verdict.
 - Setting: *Background*, *Border*, or *Both*.
 
-### 6.4 Existing comments
+### 7.4 Threads in the diff
 
-Existing review threads are shown inline (collapsible), with reply, resolve/unresolve and reaction actions. Outdated threads are marked and collapsed.
+Existing threads inline (collapsible) with reply, resolve / unresolve, reactions, edit / delete own comments, *Open on GitHub*. Outdated threads are marked and collapsed.
 
-## 7. Commenting
+## 8. Commenting
 
-- Hover a line → `+` button in the gutter; drag in the gutter to select a range. Shortcut: `C` on the selected line.
-- **Composer** (inline, below the line range):
-  - Markdown editor with preview.
-  - **Insert suggestion** (⌘⇧S): inserts a ```` ```suggestion ```` block pre-filled with the selected lines, edited with syntax highlighting; a live mini-diff shows the result.
-  - Actions: *Add to review* (default, pending) and *Comment now* (single comment).
-- **From AI finding**: *Turn into comment* prefills title + rationale (editable, with a tone that fits a human reviewer) and the AI's suggestion as a suggestion block. The AI origin is never auto-labeled publicly; the reviewer owns the comment.
-- **Pending review** indicator in the toolbar shows the number of pending comments. *Submit* opens a sheet: summary text, choice of *Comment / Approve / Request changes*, list of pending comments to review before sending.
+- Hover a line → `+` in the gutter; drag for a range; or `C`.
+- **Composer**: Markdown with preview; **Insert suggestion** (⌘⇧S) pre-fills a ```` ```suggestion ```` block with the selected lines and shows a live mini-diff; *Add to review* (pending) or *Comment now*.
+- **From AI finding**: *Turn into comment* prefills title, rationale and suggestion in the **comment language** (default English), editable. The reviewer owns the comment; no automatic "AI" label.
+- **Pending review** counter in the toolbar. *Submit* opens a sheet: summary, *Comment / Approve / Request changes*, list of pending comments.
 
-## 8. AI review flow
+## 9. AI review flow
 
-**Toolbar button** `✦ AI Review` with a menu chevron:
+**Toolbar button** `✦ AI Review` with a menu:
 
 ```
 ✦ AI Review  ▾
-  ─────────────────────────────
-  Model:   [ Opus ▾ ]
+  ─────────────────────────────────────
+  Agent:   [ Claude Code ▾ ]
+  Models:  [✓ Opus] [  Fable] [  …]       (multi-select)
   Effort:  [ Low | Medium | High ]
   Agents:  [ Auto (3) ▾ ]
-  Scope:   ( ) Whole PR  ( ) Since last review  ( ) Selected files
-  ─────────────────────────────
-  Review guidelines: repo AGENTS.md ✓, custom prompt ✓
+  Scope:   ( ) Whole PR  ( ) Since last review  ( ) Commit…  ( ) Selected files
+  ─────────────────────────────────────
+  Context: AGENTS.md ✓ · CLAUDE.md ✓ · specs/ ✓ · history ✓
+  [ Save as default for this PR ]
 ```
 
-- Single click = run with last-used settings.
-- **Progress** in the inspector: one row per agent/shard ("Billing — reading 4 files…"), streaming status, elapsed time, cancel button.
-- Findings appear **live** as shards complete and are immediately visible in the diff.
-- **Findings list** (inspector): grouped by severity or by file; filter by category; keyboard navigation (`J`/`K` next/previous finding, `↩` jump, `D` dismiss, `C` turn into comment).
-- Each finding has a state: *new*, *commented*, *dismissed*, *outdated*.
+- Single click runs with the PR's settings (or the global defaults).
+- **Progress** in the inspector: one row per agent / shard / model, streaming status, elapsed time, cancel. The toolbar activity indicator is active.
+- Findings and patterns appear **live** as shards complete.
+- **Findings list**: grouped by severity or file; filter by category or model; `J`/`K` next/previous, `↩` jump, `D` dismiss, `C` turn into comment.
+- **Patterns list**: followed / violated / introduced, with evidence links.
+- **History**: references to earlier commits / PRs the AI related the change to (clickable, open on GitHub).
+- Previous runs selectable (models, effort, SHA, duration).
 
 ```mermaid
 stateDiagram-v2
@@ -170,30 +237,40 @@ stateDiagram-v2
     Commented --> Outdated: new push changes lines
     Outdated --> New: re-run review
 ```
-- Review history: previous runs selectable (model, effort, SHA, duration).
 
-## 9. Chat
+## 10. Chat
 
-- Inspector tab *Chat*, or a floating panel (⌘⇧K).
-- Context chips above the input: PR, current file, selected lines, selected finding — removable.
-- Answers render markdown; code references (`path:line`) are clickable and jump into the diff.
-- Quick prompts: *Explain this change*, *Is this tested?*, *What could break?*, *Summarize discussion*.
-- Uses the same model/effort picker as the review (independent defaults possible).
+- Inspector tab *Chat* or floating panel (⌘⇧K).
+- Context chips: PR, current file, selected lines, selected finding, current commit — removable.
+- Answers in the configured **agent language** (e.g. German), rendered Markdown, clickable `path:line` references.
+- Quick prompts: *Explain this change*, *Is this tested?*, *What could break?*, *Which patterns does this follow?*, *Summarize discussion*.
 
-## 10. Open in IDE
+## 11. Open in IDE
 
-- Toolbar button `Open in ▾` with the default IDE as primary action and the others in the menu: **Rider**, **Visual Studio Code**, **Xcode**.
-- Per repository default IDE (e.g. .NET repo → Rider, iOS repo → Xcode).
+- Toolbar `Open in ▾`: primary action = repo default; menu = all detected IDEs (Rider, VS Code, Xcode, default app) — e.g. open a VS Code project in Rider.
+- Second menu level / modifier: **Worktree** (default) or **Main clone**. Choice can be remembered per repo.
 - Context menu on files and lines: *Open in Rider at line 42*.
-- Feedback: brief toast "Preparing worktree…" → "Opened in Rider".
+- Feedback: activity indicator "Preparing worktree…" → toast "Opened in Rider".
+- If the main clone has uncommitted changes: a sheet explains the situation and offers *Stash and continue* / *Cancel*.
 
-## 11. Keyboard
+## 12. Terminal and custom tools
+
+- **Terminal panel** at the bottom (⌃\`), tabs with one or more sessions, starting in the PR worktree / clone; *New tab*, *Open in external terminal*.
+- **Custom tools** in the context menu of files, folders and the PR ("Tools ▸ Run tests", "Tools ▸ Open in Fork") and in the command palette; output in a terminal tab or as a background job.
+
+## 13. Background activity and notifications
+
+- **Activity indicator** in the toolbar whenever something runs in the background; click opens a popover with all jobs (progress, cancel).
+- **macOS notification** when a job finishes while Sylvra is not focused, e.g. "AI review of #1234 finished — 2 major, 5 minor". Configurable per job type in settings.
+
+## 14. Keyboard
 
 | Action | Shortcut |
 |---|---|
 | Next / previous PR | `⌘↓` / `⌘↑` |
 | Next / previous file | `]` / `[` |
 | Next / previous hunk | `N` / `P` |
+| Next / previous commit (commit mode) | `⌥]` / `⌥[` |
 | Next / previous AI finding | `J` / `K` |
 | Toggle viewed | `V` |
 | Comment on line | `C` |
@@ -201,34 +278,36 @@ stateDiagram-v2
 | Run AI review | `⌘⇧R` |
 | Open chat | `⌘⇧K` |
 | Open in default IDE | `⌘⇧O` |
+| Open on GitHub | `⌘⇧G` |
+| Toggle terminal | ``⌃` `` |
 | Side-by-side / inline | `⌘⌥1` / `⌘⌥2` |
 | Focused / full file | `⌘⌥F` |
 | Submit review | `⌘↩` |
 | Quick open (PR or file) | `⌘P` |
+| Command palette | `⌘K` |
 
-A command palette (`⌘K`) exposes all actions.
+## 15. Settings
 
-## 12. Settings
+- **General** — appearance (Auto / Light / Dark), agent language, comment language.
+- **Accounts** — GitHub sign-in, organizations, teams.
+- **Repositories** — watched repos, path rules, local clone mapping, default IDE, default checkout target, file classification overrides, custom review prompt.
+- **IDEs** — detected IDEs, paths, default IDE, Rider recent-projects cleanup.
+- **AI** — agent providers (detected path and version), default provider / models / effort, multi-model reviews, max parallel agents, sharding threshold, cross-cutting pass, history context on/off, highlight style.
+- **Diff** — default layout, scope, context lines, font, whitespace, color-blind palette.
+- **Terminal & Tools** — shell, external terminal app, custom tools editor.
+- **Worktrees** — location, stable review worktree per repo, retention, cleanup now.
+- **Notifications** — per job type; new review requests; updates on reviewed PRs.
 
-- **Accounts** — GitHub sign-in (gh CLI token or device flow), organizations, teams.
-- **Repositories** — watched repos, path watch rules, local clone mapping, default IDE per repo, file classification overrides.
-- **IDEs** — detected IDEs, paths, default IDE.
-- **AI** — Claude Code path and detected version, default model, default effort, max parallel agents, sharding threshold, cross-cutting pass on/off, custom review prompt (global and per repo), highlight style (background/border/both).
-- **Diff** — default layout, default scope, context lines, font, whitespace, color-blind palette.
-- **Worktrees** — location, retention, cleanup now.
-- **Notifications** — new review requests, updates on reviewed PRs.
+## 16. States
 
-## 13. States
-
-- **Empty inbox**: a calm illustration (a clearing), "Nothing to review. Enjoy the quiet."
+- **Empty inbox**: a calm illustration (a violet clearing with a golden leaf), "Nothing to review. Enjoy the quiet."
 - **Loading**: skeletons, never spinners in the middle of content.
 - **Offline / rate-limited**: subtle banner, cached data stays usable.
-- **Claude Code missing / not logged in**: inline guidance with a link to installation docs; AI features disabled, everything else works.
+- **Agent missing / not logged in**: inline guidance; AI features disabled, everything else works.
 - **Errors**: human-readable message, details expandable, retry action.
 
-## 14. Accessibility
+## 17. Accessibility
 
-- Full VoiceOver support including diff lines ("added line 42: …") and findings.
-- Dynamic type for UI, adjustable code font size.
-- No information by color alone: +/− symbols, severity icons, patterns for AI highlights.
-- Reduce Motion and Increase Contrast honored.
+Accessibility is **welcome but not a priority right now**. When a choice has to be made between functionality / ease of use / review workflow and accessibility, **functionality wins**.
+
+Cheap wins we still take: standard controls with proper labels, keyboard navigation, Dynamic Type for UI chrome, +/− symbols in addition to diff colors, Reduce Motion and Increase Contrast where the system provides them for free.
