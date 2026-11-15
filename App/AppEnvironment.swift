@@ -15,12 +15,12 @@ import SylvraCore
 ///
 /// Launch arguments (used for demos and screenshots):
 /// - `--demo`: fixture data instead of GitHub
-/// - `--select owner/repo#number`: select that PR once the inbox is loaded
-/// - `--tab overview|commits|checks`: initial tab of the PR column
-/// - `--layout inline`: inline instead of side-by-side diff
+/// - `--select=owner/repo#number`: select that PR once the inbox is loaded
+/// - `--tab=overview|commits|checks`: initial tab of the PR column
+/// - `--layout=inline`: inline instead of side-by-side diff
 /// - `--focus`: hide the inbox sidebar; `--no-inspector`: hide the AI inspector
 /// - `--run-ai-review`: start an AI review as soon as a PR is selected
-/// - `--submit-review`: open the submit review sheet; `--compose path:line`: open the comment composer
+/// - `--submit-review`: open the submit review sheet; `--compose=path:line`: open the comment composer
 /// - `--terminal`: show the terminal panel with one tab
 @MainActor
 final class AppEnvironment {
@@ -90,7 +90,12 @@ final class AppEnvironment {
         }
     }
 
+    /// `--flag=value` (preferred: a separate bare value would be opened as a document by AppKit, and the
+    /// main window would not appear) or `--flag value`.
     private static func value(of flag: String, in arguments: [String]) -> String? {
+        if let inline = arguments.first(where: { $0.hasPrefix(flag + "=") }) {
+            return String(inline.dropFirst(flag.count + 1))
+        }
         guard let index = arguments.firstIndex(of: flag), arguments.indices.contains(index + 1) else { return nil }
         return arguments[index + 1]
     }

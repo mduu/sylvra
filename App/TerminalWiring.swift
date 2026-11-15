@@ -1,3 +1,4 @@
+import AppKit
 import FeatureActivity
 import FeatureCustomTools
 import FeatureDiff
@@ -68,17 +69,33 @@ struct TerminalSplit<Content: View>: View {
     let selection: PullRequestSummary?
     @ViewBuilder let content: Content
 
+    @State private var terminalHeight: CGFloat = 260
+
+    // A plain VStack with a drag handle instead of `VSplitView`: an AppKit split view inside the
+    // NavigationSplitView detail made the window's constraint pass loop and crash with all columns visible.
     var body: some View {
-        VSplitView {
+        VStack(spacing: 0) {
             content
-                .frame(minHeight: 240)
+                .frame(maxHeight: .infinity)
             if environment.terminal.isPresented {
+                Rectangle()
+                    .fill(.separator)
+                    .frame(height: 1)
+                    .padding(.vertical, 2)
+                    .contentShape(Rectangle())
+                    .onHover { inside in if inside { NSCursor.resizeUpDown.push() } else { NSCursor.pop() } }
+                    .gesture(
+                        DragGesture().onChanged { value in
+                            terminalHeight = min(max(terminalHeight - value.translation.height, 120), 600)
+                        })
                 TerminalPanel(model: environment.terminal) {
                     PullRequestToolsMenu(environment: environment, pullRequest: selection?.id)
                 }
-                .frame(minHeight: 120, idealHeight: 260)
+                .frame(height: terminalHeight)
+                .transition(.move(edge: .bottom).combined(with: .opacity))
             }
         }
+        .animation(.snappy, value: environment.terminal.isPresented)
         // Errors while the panel is hidden (e.g. a tool from a context menu); the panel shows its own otherwise.
         .alert(
             "Terminal",

@@ -64,13 +64,10 @@ public struct OpenInIDEToolbarPanel: View {
         return false
     }
 
+    /// Constant width (see AIReviewToolbarPanel): progress and results are shown in the toast.
     private var title: String {
-        switch model.status {
-        case .working(let message): message
-        default:
-            pullRequestID.map { String(localized: "Open in \(model.preferredIDE(for: $0).name)") }
-                ?? String(localized: "Open in IDE")
-        }
+        pullRequestID.map { String(localized: "Open in \(model.preferredIDE(for: $0).name)") }
+            ?? String(localized: "Open in IDE")
     }
 
     private var symbol: String {

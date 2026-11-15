@@ -52,13 +52,40 @@ struct DiffFileBodyView<Accessory: View>: View {
     var highlight: (Int) -> LineHighlight? = { _ in nil }
     var onComment: CommentRequest?
 
+    /// One lazily built row; unique string IDs (nested offset-based IDs collided and dropped rows).
+    private enum Row: Identifiable {
+        case header(Int, Hunk)
+        case inline(Int, Int, DiffLine)
+        case sideBySide(Int, Int, SideBySideRow)
+
+        var id: String {
+            switch self {
+            case .header(let hunk, _): "h\(hunk)"
+            case .inline(let hunk, let index, _): "i\(hunk)-\(index)"
+            case .sideBySide(let hunk, let index, _): "s\(hunk)-\(index)"
+            }
+        }
+    }
+
+    private var rows: [Row] {
+        hunks.enumerated().flatMap { hunkIndex, hunk -> [Row] in
+            let lines: [Row] =
+                switch layout {
+                case .inline: hunk.lines.enumerated().map { .inline(hunkIndex, $0, $1) }
+                case .sideBySide: SideBySideRow.rows(for: hunk).enumerated().map { .sideBySide(hunkIndex, $0, $1) }
+                }
+            return [.header(hunkIndex, hunk)] + lines
+        }
+    }
+
     var body: some View {
         LazyVStack(spacing: 0) {  // lazy: only visible lines are built, even for 10k-line files
-            ForEach(Array(hunks.enumerated()), id: \.offset) { _, hunk in
-                HunkHeaderView(hunk: hunk)
-                switch layout {
-                case .inline:
-                    ForEach(Array(hunk.lines.enumerated()), id: \.offset) { _, line in
+            ForEach(rows) { row in
+                switch row {
+                case .header(_, let hunk):
+                    HunkHeaderView(hunk: hunk)
+                case .inline(_, _, let line):
+                    VStack(spacing: 0) {
                         InlineLineView(line: line, onComment: onComment)
                             .overlay {
                                 AIHighlightOverlay(
@@ -66,8 +93,8 @@ struct DiffFileBodyView<Accessory: View>: View {
                             }
                         inlineAccessories(line)
                     }
-                case .sideBySide:
-                    ForEach(Array(SideBySideRow.rows(for: hunk).enumerated()), id: \.offset) { _, row in
+                case .sideBySide(_, _, let row):
+                    VStack(spacing: 0) {
                         SideBySideRowView(row: row, onComment: onComment)
                             .overlay(alignment: .trailing) {
                                 GeometryReader { geometry in

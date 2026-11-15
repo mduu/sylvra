@@ -29,14 +29,14 @@ struct RootScreen: View {
     var body: some View {
         NavigationSplitView(columnVisibility: $columnVisibility) {
             InboxScreen(model: environment.inbox, selection: $selectedID)
-                .navigationSplitViewColumnWidth(min: 240, ideal: 290)
+                .navigationSplitViewColumnWidth(min: 220, ideal: 280, max: 360)
         } content: {
             PullRequestScreen(model: environment.pullRequest, pullRequest: selection) {
                 DiffFileNavigatorPanel(model: environment.diff) { item in
                     NavigatorToolsMenu(environment: environment, item: item, pullRequest: selection?.id)
                 }
             }
-            .navigationSplitViewColumnWidth(min: 300, ideal: 360)
+            .navigationSplitViewColumnWidth(min: 280, ideal: 340, max: 460)
         } detail: {
             ReviewScreen(model: environment.review, pullRequestID: selection?.id) {
                 DiffScreen(
@@ -63,7 +63,7 @@ struct RootScreen: View {
                 chat: environment.chat,
                 jumpToLocation: { path, _ in environment.diff.selectedPath = path }
             )
-            .inspectorColumnWidth(min: 260, ideal: 300)
+            .inspectorColumnWidth(min: 240, ideal: 300, max: 420)
         }
         .task(id: selection?.id) {
             guard environment.autoRunsAIReview, let selection else { return }

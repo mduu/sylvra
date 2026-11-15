@@ -55,7 +55,9 @@ public struct AIReviewToolbarPanel: View {
                 Button("Save as default for all PRs") { model.defaultSettings = settings }
             }
         } label: {
-            Label(isRunning ? "Reviewing…" : "AI Review", systemImage: isRunning ? "sparkles" : "sparkles")
+            // Constant title: toolbar items that change width while the window is full can make AppKit's
+            // constraint pass loop. Progress is shown by the pulse and the inspector.
+            Label("AI Review", systemImage: "sparkles")
                 .symbolEffect(.pulse, isActive: isRunning)
         } primaryAction: {
             guard let pullRequest else { return }

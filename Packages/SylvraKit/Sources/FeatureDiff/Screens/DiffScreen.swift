@@ -48,20 +48,26 @@ public struct DiffScreen<LineAccessory: View>: View {
             }
             .toolbar {
                 ToolbarItemGroup {
+                    // Icons keep the toolbar narrow: a toolbar wider than the window makes AppKit's
+                    // constraint pass loop (crash) when all columns are visible.
                     Picker("Layout", selection: $model.layout) {
-                        Text("Side by side").tag(DiffScreenModel.Layout.sideBySide)
-                        Text("Inline").tag(DiffScreenModel.Layout.inline)
+                        Label("Side by side", systemImage: "rectangle.split.2x1").tag(DiffScreenModel.Layout.sideBySide)
+                        Label("Inline", systemImage: "rectangle.split.1x2").tag(DiffScreenModel.Layout.inline)
                     }
                     .pickerStyle(.segmented)
-                    .help("Diff layout (⌘⌥1 / ⌘⌥2)")
+                    .labelStyle(.iconOnly)
+                    .help("Diff layout: side by side or inline (⌘⌥1 / ⌘⌥2)")
                     Picker(
                         "Scope",
                         selection: Binding(get: { model.scope }, set: { scope in Task { await model.setScope(scope) } })
                     ) {
-                        Text("Focused").tag(DiffScreenModel.Scope.focused)
-                        Text("Full file").tag(DiffScreenModel.Scope.fullFile)
+                        Label("Focused", systemImage: "text.line.first.and.arrowtriangle.forward").tag(
+                            DiffScreenModel.Scope.focused)
+                        Label("Full file", systemImage: "doc.plaintext").tag(DiffScreenModel.Scope.fullFile)
                     }
                     .pickerStyle(.segmented)
+                    .labelStyle(.iconOnly)
+                    .help("Changed lines only, or the full file")
                 }
             }
     }

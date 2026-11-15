@@ -20,21 +20,26 @@ WINDOW_ID_TOOL=".build/window-id"
 # Windows are only created on an awake display: wake it and keep it on for the capture only.
 caffeinate -d -u -t 45 &
 CAFFEINATE_PID=$!
-trap 'kill $CAFFEINATE_PID 2>/dev/null || true' EXIT
 /bin/sleep 2
 
-# The window occasionally does not appear on the first launch — retry a few times.
+# Launch our own instance and only ever terminate that one (never a Sylvra the user runs, e.g. from Xcode).
 WINDOW_ID=""
+APP_PID=""
+cleanup() {
+  [ -n "$APP_PID" ] && kill "$APP_PID" 2>/dev/null || true
+  kill "$CAFFEINATE_PID" 2>/dev/null || true
+}
+trap cleanup EXIT
 for attempt in 1 2 3; do
-  pkill -x Sylvra 2>/dev/null || true
-  /bin/sleep 1
-  open -n "$APP" --args -ApplePersistenceIgnoreState YES "$@"
+  "$APP/Contents/MacOS/Sylvra" -ApplePersistenceIgnoreState YES "$@" >/dev/null 2>&1 &
+  APP_PID=$!
   for _ in $(seq 1 20); do
     /bin/sleep 0.5
-    WINDOW_ID=$("$WINDOW_ID_TOOL" Sylvra 2>/dev/null | head -1 || true)
+    WINDOW_ID=$("$WINDOW_ID_TOOL" "$APP_PID" 2>/dev/null | head -1 || true)
     [ -n "$WINDOW_ID" ] && break
   done
   [ -n "$WINDOW_ID" ] && break
+  kill "$APP_PID" 2>/dev/null || true
   echo "Window not found (attempt $attempt), retrying…" >&2
 done
 [ -n "$WINDOW_ID" ] || { echo "Sylvra window not found — is the Mac locked? Window screenshots need an unlocked screen." >&2; exit 1; }
@@ -42,5 +47,4 @@ done
 
 mkdir -p docs/screenshots
 screencapture -x -o -l "$WINDOW_ID" "docs/screenshots/$NAME.png"
-pkill -x Sylvra 2>/dev/null || true
 echo "docs/screenshots/$NAME.png"
