@@ -80,17 +80,11 @@ struct DiffFileBodyView<Accessory: View>: View {
         }
     }
 
-    private func sideBySideAccessories(_ row: SideBySideRow) -> some View {
-        HStack(alignment: .top, spacing: 0) {
-            Group {
-                if let old = row.left?.oldNumber { accessory(CodeLocation(path: path, line: old, side: .left)) }
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            Group {
-                if let new = row.right?.newNumber { accessory(CodeLocation(path: path, line: new, side: .right)) }
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-        }
+    /// Accessories span the full width below the row (left side first): thread cards stay readable
+    /// in narrow windows.
+    @ViewBuilder private func sideBySideAccessories(_ row: SideBySideRow) -> some View {
+        if let old = row.left?.oldNumber { accessory(CodeLocation(path: path, line: old, side: .left)) }
+        if let new = row.right?.newNumber { accessory(CodeLocation(path: path, line: new, side: .right)) }
     }
 }
 
