@@ -31,12 +31,13 @@ Sylvra is **not a Git client**. It is a specialized PR review client.
 - Xcode (latest release) to build
 - `git` installed
 - A GitHub account (github.com)
-- Optional: [GitHub CLI](https://cli.github.com) (`gh`) for sign-in
+- [GitHub CLI](https://cli.github.com) (`gh`), logged in — Sylvra uses its token
 - Optional: [Claude Code](https://docs.claude.com/en/docs/claude-code) installed and logged in, for AI features (other agents planned)
 
 ## Getting started
 
-> Early stage: the project skeleton exists, features are being built.
+> Status: the MVP features are implemented (see [`specs/roadmap.md`](specs/roadmap.md)); visual polish is ongoing.
+> Launch with the argument `--demo` to explore the app with sample data, without a GitHub account.
 
 ```bash
 git clone git@github.com:mduu/sylvra.git
