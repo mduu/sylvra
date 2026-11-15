@@ -70,7 +70,8 @@ struct RootScreen: View {
                 jump: { finding in environment.diff.focus(path: finding.path, line: finding.startLine) },
                 turnIntoComment: { finding in startComment(from: finding) },
                 chat: environment.chat,
-                jumpToLocation: { path, line in environment.diff.focus(path: path, line: line) }
+                jumpToLocation: { path, line in environment.diff.focus(path: path, line: line) },
+                useAsComment: { answer, location in useAsComment(answer, at: location) }
             )
             .inspectorColumnWidth(min: 240, ideal: 300, max: 420)
         }
@@ -91,6 +92,11 @@ struct RootScreen: View {
             environment.chat.context.finding =
                 environment.aiReview.findings(for: selection?.id)
                 .first { $0.id == id }?.title
+        }
+        .onAppear {
+            environment.review.discussHandler = { location, code, question in
+                discuss(location, code: code, question: question)
+            }
         }
         .onChange(of: aiReadingOrder, initial: true) { _, order in
             withAnimation(.snappy) { environment.diff.readingOrder = order }
@@ -218,6 +224,13 @@ struct RootScreen: View {
     private func lineAccessory(at location: CodeLocation) -> some View {
         VStack(alignment: .leading, spacing: 0) {
             ReviewThreadsPanel(model: environment.review, location: location)
+            if environment.chat.discussedLocations(for: selection?.id).contains(where: {
+                $0.path == location.path && $0.side == location.side && $0.line == location.line
+            }) {
+                DiscussionMarkerView(open: openChat)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 6)
+            }
             if let finding = selectedFinding, location.side == .right, location.path == finding.path,
                 location.line == finding.endLine
             {
@@ -255,6 +268,33 @@ struct RootScreen: View {
 
     private var selectedFinding: ReviewFinding? {
         environment.aiReview.findings(for: selection?.id).first { $0.id == environment.aiReview.selectedFindingID }
+    }
+}
+
+// MARK: - AI discussion
+
+extension RootScreen {
+    private func openChat() {
+        environment.aiReview.tab = .chat
+        isInspectorPresented = true
+    }
+
+    /// Composer → private AI discussion about the selected lines.
+    private func discuss(_ location: CodeLocation, code: String, question: String) {
+        guard let id = selection?.id else { return }
+        openChat()
+        Task {
+            await environment.chat.discuss(
+                AIChatModel.CodeSnippet(location: location, text: code), question: question, for: id)
+        }
+    }
+
+    /// Chat answer → short, factual draft comment on the discussed code (edited before posting).
+    private func useAsComment(_ answer: String, at location: CodeLocation) {
+        environment.review.draft = CommentDraft(
+            location: location, lineText: environment.diff.text(at: location), body: answer)
+        if location.side == .right { environment.diff.focus(path: location.path, line: location.line) }
+        Task { await environment.review.rewriteDraft(.shorten) }
     }
 }
 

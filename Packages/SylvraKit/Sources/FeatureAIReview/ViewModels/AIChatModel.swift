@@ -11,12 +11,33 @@ public final class AIChatModel {
         public let id = UUID()
         public let role: Role
         public let text: String
+        /// Code the question was about (Discuss on a diff selection).
+        public var location: CodeLocation?
+    }
+
+    /// Code selected in the diff to discuss privately with the agent.
+    public struct CodeSnippet: Equatable, Sendable {
+        public let location: CodeLocation
+        public let text: String
+
+        public init(location: CodeLocation, text: String) {
+            self.location = location
+            self.text = text
+        }
+
+        /// `InvoiceService.swift:8–9`
+        public var label: String {
+            let file = (location.path as NSString).lastPathComponent
+            let lines = location.lines
+            return lines.count > 1 ? "\(file):\(lines.lowerBound)–\(lines.upperBound)" : "\(file):\(location.line)"
+        }
     }
 
     /// Context chips shown above the input; removable by the reviewer.
     public struct Context: Equatable, Sendable {
         public var file: String?
         public var finding: String?
+        public var code: CodeSnippet?
     }
 
     public typealias ContextProvider = @MainActor @Sendable (PullRequestID) -> String
@@ -58,7 +79,7 @@ public final class AIChatModel {
         let question = (text ?? draft).trimmingCharacters(in: .whitespacesAndNewlines)
         guard !question.isEmpty, !isSending else { return }
         if text == nil { draft = "" }
-        conversations[id, default: []].append(Message(role: .user, text: question))
+        conversations[id, default: []].append(Message(role: .user, text: question, location: context.code?.location))
         isSending = true
         defer { isSending = false }
 
@@ -66,6 +87,10 @@ public final class AIChatModel {
         var prompt = question
         if let file = context.file { prompt += "\n\n(Current file: \(file))" }
         if let finding = context.finding { prompt += "\n\n(Selected finding: \(finding))" }
+        if let code = context.code {
+            let side = code.location.side == .left ? "old version" : "new version"
+            prompt += "\n\n(About this code, \(code.label), \(side):\n```\n\(code.text)\n```)"
+        }
         if sessions[id] == nil { prompt = prContext(id) + "\n\n---\n\n" + prompt }
         let directory = try? await workspace(id)
         do {
@@ -78,6 +103,29 @@ public final class AIChatModel {
         } catch {
             conversations[id, default: []].append(Message(role: .error, text: String(describing: error)))
         }
+    }
+
+    /// Starts a private discussion about selected code; nothing is posted to GitHub.
+    public func discuss(_ snippet: CodeSnippet, question: String, for id: PullRequestID) async {
+        context.code = snippet
+        let trimmed = question.trimmingCharacters(in: .whitespacesAndNewlines)
+        await send(trimmed.isEmpty ? String(localized: "Explain this code and what could go wrong.") : trimmed, for: id)
+    }
+
+    /// Locations discussed in a PR's chat (for markers in the diff).
+    public func discussedLocations(for id: PullRequestID?) -> [CodeLocation] {
+        var seen: [CodeLocation] = []
+        for location in messages(for: id).compactMap(\.location) where !seen.contains(location) {
+            seen.append(location)
+        }
+        return seen
+    }
+
+    /// The code location an answer is about: the latest question with code before it.
+    public func location(answering message: Message, in id: PullRequestID?) -> CodeLocation? {
+        let messages = messages(for: id)
+        guard let index = messages.firstIndex(where: { $0.id == message.id }) else { return nil }
+        return messages[..<index].last { $0.location != nil }?.location
     }
 
     public func reset(_ id: PullRequestID) {

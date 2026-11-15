@@ -195,6 +195,21 @@ struct AIChatModelTests {
         #expect(chat.messages(for: id).isEmpty)
     }
 
+    @Test func discussesSelectedCodePrivately() async throws {
+        let chat = AIChatModel(
+            provider: DemoAgentProvider(delay: .zero), settings: { _ in ReviewSettings() },
+            prContext: { _ in "PR context" }, workspace: { _ in nil })
+        let location = CodeLocation(path: "Sources/Billing/InvoiceService.swift", line: 9, side: .right, startLine: 8)
+        await chat.discuss(.init(location: location, text: "sum + x"), question: "  ", for: id)
+        let messages = chat.messages(for: id)
+        #expect(messages.first?.location == location)
+        #expect(messages.first?.text.isEmpty == false)
+        #expect(chat.discussedLocations(for: id) == [location])
+        let answer = try #require(messages.last)
+        #expect(chat.location(answering: answer, in: id) == location)
+        #expect(chat.context.code?.label == "InvoiceService.swift:8–9")
+    }
+
     @Test func findsCodeReferences() {
         let refs = AIChatModel.codeReferences(in: "See Sources/Billing/InvoiceService.swift:9 and Package.swift:3.")
         #expect(refs.map(\.path) == ["Sources/Billing/InvoiceService.swift", "Package.swift"])

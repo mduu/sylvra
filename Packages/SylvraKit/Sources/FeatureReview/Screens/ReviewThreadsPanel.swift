@@ -55,6 +55,7 @@ public struct ReviewThreadsPanel: View {
                 }, set: { model.draftLanguage = $0 }),
             isRewriting: model.isRewriting,
             rewrite: model.rewriter == nil ? nil : { style in Task { await model.rewriteDraft(style) } },
+            discuss: model.discussHandler == nil ? nil : { withAnimation(.snappy) { model.discussDraft() } },
             undoRewrite: model.textBeforeRewrite == nil ? nil : { model.undoRewrite() }
         )
     }

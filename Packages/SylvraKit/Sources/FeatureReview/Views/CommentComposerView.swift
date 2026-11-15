@@ -18,6 +18,8 @@ struct CommentComposerView: View {
     var isRewriting = false
     /// Rewrites the draft personally in the selected language; `nil` hides the button.
     var rewrite: ((CommentRewriteStyle) -> Void)?
+    /// Discusses the selected lines privately with the agent (the draft text becomes the question).
+    var discuss: (() -> Void)?
     /// Restores the text before the last rewrite; `nil` when there is nothing to undo.
     var undoRewrite: (() -> Void)?
 
@@ -74,6 +76,15 @@ struct CommentComposerView: View {
                     .foregroundStyle(SylvraColor.accentGold)
                     .disabled(isRewriting || isEmpty)
                     .help("Rephrase factually and concisely (⌘⇧E). Menu: shorter (⌘⇧K), undo")
+                }
+                if let discuss {
+                    Button(action: discuss) {
+                        Label("Discuss with Claude", systemImage: "bubble.left.and.text.bubble.right").labelStyle(
+                            .iconOnly)
+                    }
+                    .help(
+                        "Discuss these lines privately with the agent — your text becomes the question, nothing is posted"
+                    )
                 }
                 Button(action: insertSuggestion) {
                     Label("Insert suggestion", systemImage: "plus.forwardslash.minus").labelStyle(.iconOnly)

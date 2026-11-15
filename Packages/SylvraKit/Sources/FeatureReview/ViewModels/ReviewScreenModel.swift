@@ -124,6 +124,8 @@ public final class ReviewScreenModel {
         @Sendable (_ text: String, _ language: String, _ style: CommentRewriteStyle) async throws -> String
 
     public var rewriter: Rewriter?
+    /// Hands the draft's lines and text to a private AI discussion (wired by the app).
+    public var discussHandler: ((_ location: CodeLocation, _ code: String, _ question: String) -> Void)?
     public private(set) var isRewriting = false
     /// The draft text before the last AI rewrite, for *Undo rewrite*.
     public private(set) var textBeforeRewrite: String?
@@ -322,6 +324,13 @@ public final class ReviewScreenModel {
 // MARK: - AI writing help
 
 extension ReviewScreenModel {
+    /// Moves the draft into a private discussion with the agent instead of commenting.
+    public func discussDraft() {
+        guard let draft, let discussHandler else { return }
+        discussHandler(draft.location, draft.lineText, draft.body)
+        cancelDraft()
+    }
+
     /// Rewrites the draft in `draftLanguage`; suggestion blocks are kept verbatim by the rewriter.
     public func rewriteDraft(_ style: CommentRewriteStyle = .improve) async {
         guard let rewriter, let draft, !draft.body.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,

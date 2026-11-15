@@ -7,18 +7,29 @@ public struct AIChatPanel: View {
     @Bindable private var model: AIChatModel
     private let pullRequestID: PullRequestID?
     private let jump: (String, Int) -> Void
+    private let useAsComment: ((String, CodeLocation) -> Void)?
 
-    /// - Parameter jump: shows `path:line` in the diff (wired by the app).
-    public init(model: AIChatModel, pullRequestID: PullRequestID?, jump: @escaping (String, Int) -> Void) {
+    /// - Parameters:
+    ///   - jump: shows `path:line` in the diff (wired by the app).
+    ///   - useAsComment: turns an answer into a draft comment at the discussed code (wired by the app).
+    public init(
+        model: AIChatModel, pullRequestID: PullRequestID?, jump: @escaping (String, Int) -> Void,
+        useAsComment: ((String, CodeLocation) -> Void)? = nil
+    ) {
         self.model = model
         self.pullRequestID = pullRequestID
         self.jump = jump
+        self.useAsComment = useAsComment
     }
 
     public var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             ForEach(model.messages(for: pullRequestID)) { message in
-                ChatMessageView(message: message)
+                ChatMessageView(
+                    message: message,
+                    showCode: message.location.map { location in { jump(location.path, location.line) } },
+                    useAsComment: commentAction(for: message)
+                )
             }
             if model.isSending {
                 HStack(spacing: 6) {
@@ -53,9 +64,12 @@ public struct AIChatPanel: View {
     }
 
     @ViewBuilder private var contextChips: some View {
-        let chips = [model.context.file, model.context.finding].compactMap { $0 }
+        let chips = [model.context.file, model.context.finding, model.context.code?.label].compactMap { $0 }
         if !chips.isEmpty {
             HStack(spacing: 6) {
+                if let code = model.context.code {
+                    chip(code.label) { model.context.code = nil }
+                }
                 if let file = model.context.file {
                     chip((file as NSString).lastPathComponent) { model.context.file = nil }
                 }
@@ -77,6 +91,14 @@ public struct AIChatPanel: View {
         .background(SylvraColor.brandPrimary.opacity(0.14), in: Capsule())
     }
 
+    /// Answers about discussed code can become a draft comment on that code.
+    private func commentAction(for message: AIChatModel.Message) -> (() -> Void)? {
+        guard message.role == .assistant, let useAsComment,
+            let location = model.location(answering: message, in: pullRequestID)
+        else { return nil }
+        return { useAsComment(message.text, location) }
+    }
+
     private func send() {
         guard let id = pullRequestID else { return }
         Task { await model.send(for: id) }
@@ -86,15 +108,35 @@ public struct AIChatPanel: View {
 /// One chat bubble with markdown and clickable `path:line` references (pure).
 struct ChatMessageView: View {
     let message: AIChatModel.Message
+    var showCode: (() -> Void)?
+    var useAsComment: (() -> Void)?
 
     var body: some View {
-        Text(Self.render(message.text))
-            .font(.callout)
-            .textSelection(.enabled)
-            .padding(10)
-            .frame(maxWidth: .infinity, alignment: message.role == .user ? .trailing : .leading)
-            .background(background, in: RoundedRectangle(cornerRadius: 12))
-            .foregroundStyle(message.role == .error ? AnyShapeStyle(.red) : AnyShapeStyle(.primary))
+        VStack(alignment: message.role == .user ? .trailing : .leading, spacing: 4) {
+            if let location = message.location, let showCode {
+                Button(action: showCode) {
+                    Label(
+                        AIChatModel.CodeSnippet(location: location, text: "").label,
+                        systemImage: "text.bubble")
+                }
+                .buttonStyle(.borderless)
+                .font(.caption.monospaced())
+                .help("Show the discussed code")
+            }
+            Text(Self.render(message.text))
+                .font(.callout)
+                .textSelection(.enabled)
+                .padding(10)
+                .frame(maxWidth: .infinity, alignment: message.role == .user ? .trailing : .leading)
+                .background(background, in: RoundedRectangle(cornerRadius: 12))
+                .foregroundStyle(message.role == .error ? AnyShapeStyle(.red) : AnyShapeStyle(.primary))
+            if let useAsComment {
+                Button("Use as comment", systemImage: "text.bubble.badge.plus", action: useAsComment)
+                    .buttonStyle(.borderless)
+                    .font(.caption)
+                    .help("Draft a short, factual review comment from this answer — you edit it before posting")
+            }
+        }
     }
 
     private var background: AnyShapeStyle {

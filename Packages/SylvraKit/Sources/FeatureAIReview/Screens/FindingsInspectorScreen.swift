@@ -11,6 +11,7 @@ public struct FindingsInspectorScreen: View {
     private let turnIntoComment: ((ReviewFinding) -> Void)?
     private let chat: AIChatModel?
     private let jumpToLocation: (String, Int) -> Void
+    private let useAsComment: ((String, CodeLocation) -> Void)?
 
     /// - Parameters:
     ///   - jump: shows the finding's location in the diff (wired by the app).
@@ -18,8 +19,10 @@ public struct FindingsInspectorScreen: View {
     public init(
         model: AIReviewModel, pullRequest: PullRequestSummary?, pullRequestBody: String,
         jump: @escaping (ReviewFinding) -> Void, turnIntoComment: ((ReviewFinding) -> Void)? = nil,
-        chat: AIChatModel? = nil, jumpToLocation: @escaping (String, Int) -> Void = { _, _ in }
+        chat: AIChatModel? = nil, jumpToLocation: @escaping (String, Int) -> Void = { _, _ in },
+        useAsComment: ((String, CodeLocation) -> Void)? = nil
     ) {
+        self.useAsComment = useAsComment
         self.chat = chat
         self.jumpToLocation = jumpToLocation
         self.model = model
@@ -130,7 +133,9 @@ public struct FindingsInspectorScreen: View {
         case .patterns:
             ForEach(model.results[id]?.patterns ?? []) { PatternRowView(pattern: $0) }
         case .chat:
-            if let chat { AIChatPanel(model: chat, pullRequestID: id, jump: jumpToLocation) }
+            if let chat {
+                AIChatPanel(model: chat, pullRequestID: id, jump: jumpToLocation, useAsComment: useAsComment)
+            }
         case .summary:
             Text(model.results[id]?.summary ?? "").font(.callout).textSelection(.enabled)
             if let order = model.results[id]?.readingOrder, !order.isEmpty {
