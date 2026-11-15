@@ -1,0 +1,77 @@
+{
+  "fill-specializations": [
+    {
+      "value": {
+        "linear-gradient": [
+          "display-p3:0.29412,0.16471,0.54118,1.00000",
+          "display-p3:0.09020,0.03922,0.20000,1.00000"
+        ]
+      }
+    },
+    {
+      "appearance": "dark",
+      "value": {
+        "linear-gradient": [
+          "display-p3:0.17647,0.09412,0.34118,1.00000",
+          "display-p3:0.04314,0.01961,0.10196,1.00000"
+        ]
+      }
+    }
+  ],
+  "groups": [
+    {
+      "layers": [
+        {
+          "glass": true,
+          "image-name": "vein.svg",
+          "name": "Vein"
+        }
+      ],
+      "lighting": "individual",
+      "name": "Vein",
+      "shadow": {
+        "kind": "layer-color",
+        "opacity": 0.6
+      },
+      "specular": true,
+      "translucency": {
+        "enabled": false,
+        "value": 0
+      }
+    },
+    {
+      "blur-material": 0.4,
+      "layers": [
+        {
+          "glass": true,
+          "image-name": "leaf.svg",
+          "name": "Leaf",
+          "opacity": 0.9,
+          "position": {
+            "scale": 1,
+            "translation-in-points": [
+              -7,
+              2
+            ]
+          }
+        }
+      ],
+      "lighting": "combined",
+      "name": "Leaf",
+      "shadow": {
+        "kind": "neutral",
+        "opacity": 0.5
+      },
+      "specular": true,
+      "translucency": {
+        "enabled": true,
+        "value": 0.35
+      }
+    }
+  ],
+  "supported-platforms": {
+    "squares": [
+      "macOS"
+    ]
+  }
+}
