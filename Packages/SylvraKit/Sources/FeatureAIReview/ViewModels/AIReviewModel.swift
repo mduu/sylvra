@@ -25,6 +25,9 @@ public final class AIReviewModel {
     public private(set) var runState: RunState = .idle
     public private(set) var runningPullRequest: PullRequestID?
     public private(set) var agentVersion: String?
+    /// Set when the checkout for repository context failed — the review then only sees the diff.
+    public private(set) var workspaceWarning: String?
+    private var runTask: Task<Void, Never>?
     public var selectedFindingID: UUID?
     public var tab: Tab = .findings
     public private(set) var dismissed: Set<UUID> = []
@@ -86,26 +89,49 @@ public final class AIReviewModel {
         runningPullRequest = id
         runState = .running
         progress = []
+        workspaceWarning = nil
         tab = .findings
+        let task = Task { await perform(id, title: title, body: body) }
+        runTask = task
+        await task.value
+        runTask = nil
+    }
+
+    /// Stops a running review; agent processes are terminated.
+    public func cancel() {
+        runTask?.cancel()
+    }
+
+    private func perform(_ id: PullRequestID, title: String, body: String) async {
         do {
             async let filesToReview = files(id)
             async let checkout = workspace(id)
             let reviewable = try await filesToReview
-            let directory = try? await checkout
-            let context = directory.map { RepoContextDiscovery().documents(in: $0) } ?? []
+            var directory: URL?
+            do {
+                directory = try await checkout
+            } catch {
+                workspaceWarning = String(
+                    localized: "Reviewing the diff only — checkout failed: \(error.localizedDescription)")
+            }
+            let root = directory
+            let context = await Task.detached { root.map { RepoContextDiscovery().documents(in: $0) } ?? [] }.value
             let input = ReviewEngine.Input(
                 files: reviewable, title: title, body: body, context: context, history: [], settings: settings(for: id),
                 workingDirectory: directory)
             let result = await engine.run(input) { [weak self] update in
                 self?.apply(update)
             }
+            if Task.isCancelled {
+                runState = .failed(String(localized: "Cancelled"))
+                return
+            }
             results[id] = result
-            dismissed = []
             let failures = progress.filter { if case .failed = $0.state { true } else { false } }
             runState =
                 failures.count == progress.count && !progress.isEmpty ? .failed(Self.failureText(failures)) : .done
         } catch {
-            runState = .failed(String(describing: error))
+            runState = .failed(error.localizedDescription)
         }
     }
 

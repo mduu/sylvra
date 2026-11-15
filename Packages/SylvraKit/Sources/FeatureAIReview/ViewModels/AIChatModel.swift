@@ -28,7 +28,7 @@ public final class AIChatModel {
 
     private var sessions: [PullRequestID: String] = [:]
     private let provider: any AgentProvider
-    private let settings: @MainActor () -> ReviewSettings
+    private let settings: @MainActor (PullRequestID) -> ReviewSettings
     private let prContext: ContextProvider
     private let workspace: AIReviewModel.WorkspaceProvider
 
@@ -41,7 +41,7 @@ public final class AIChatModel {
 
     /// - Parameter prContext: PR title, description, findings… sent with the first message.
     public init(
-        provider: any AgentProvider, settings: @escaping @MainActor () -> ReviewSettings,
+        provider: any AgentProvider, settings: @escaping @MainActor (PullRequestID) -> ReviewSettings,
         prContext: @escaping ContextProvider, workspace: @escaping AIReviewModel.WorkspaceProvider
     ) {
         self.provider = provider
@@ -62,7 +62,7 @@ public final class AIChatModel {
         isSending = true
         defer { isSending = false }
 
-        let current = settings()
+        let current = settings(id)
         var prompt = question
         if let file = context.file { prompt += "\n\n(Current file: \(file))" }
         if let finding = context.finding { prompt += "\n\n(Selected finding: \(finding))" }

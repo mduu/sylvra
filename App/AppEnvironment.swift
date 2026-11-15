@@ -59,22 +59,21 @@ final class AppEnvironment {
             : OpenInIDEModel(checkout: CheckoutService(), opener: IDELauncher())
         let diffLoader: any DiffLoading = isDemo ? DemoDiffLoader() : GitHubDiffLoader(client: gitHub)
         diff = DiffScreenModel(loader: diffLoader)
-        let checkout: (any CheckoutPreparing)? = isDemo ? nil : CheckoutService()
+        // AI agents read a per-PR worktree (never the shared IDE worktree, which may switch PRs meanwhile).
+        let checkout: CheckoutService? = isDemo ? nil : CheckoutService()
         let agent: any AgentProvider = isDemo ? DemoAgentProvider() : ClaudeCodeProvider()
         aiReview = AIReviewModel(
             engine: ReviewEngine(provider: agent),
             files: { id in ReviewableFiles.make(from: try await diffLoader.loadDiff(for: id).files) },
-            workspace: { id in try await checkout?.prepareWorktree(for: id) }
+            workspace: { id in try await checkout?.prepareWorktree(for: id, purpose: .agent) }
         )
         let reviews = aiReview
         let details = pullRequest
         chat = AIChatModel(
             provider: agent,
-            settings: {
-                reviews.settings(for: details.detail?.summary.id ?? PullRequestID(owner: "", repository: "", number: 0))
-            },
+            settings: { id in reviews.settings(for: id) },
             prContext: { id in ChatContext.describe(id, detail: details.detail, review: reviews.results[id]) },
-            workspace: { id in try await checkout?.prepareWorktree(for: id) }
+            workspace: { id in try await checkout?.prepareWorktree(for: id, purpose: .agent) }
         )
         review = ReviewScreenModel(service: isDemo ? DemoReviewService() : GitHubReviewService(client: gitHub))
         review.isSubmitSheetPresented = arguments.contains("--submit-review")

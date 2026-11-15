@@ -30,11 +30,16 @@ public final class DiffScreenModel {
     public private(set) var expandedPaths: Set<String> = []
     public private(set) var fullFileHunks: [String: Hunk] = [:]
     /// AI highlights, set by the app from findings.
-    public var lineHighlights: [LineHighlight] = []
+    public var lineHighlights: [LineHighlight] = [] {
+        didSet { highlightIndex = Dictionary(grouping: lineHighlights, by: \.path) }
+    }
+    private var highlightIndex: [String: [LineHighlight]] = [:]
+    /// Last error of a background action (viewed sync, full-file loading), shown as a banner.
+    public var lastError: String?
 
     /// The strongest highlight covering a new-side line.
     public func highlight(path: String, newLine: Int) -> LineHighlight? {
-        lineHighlights.filter { $0.path == path && $0.lines.contains(newLine) }
+        (highlightIndex[path] ?? []).filter { $0.lines.contains(newLine) }
             .max { ($0.isSelected ? 2 : $0.intensity) < ($1.isSelected ? 2 : $1.intensity) }
     }
 
@@ -130,11 +135,14 @@ public final class DiffScreenModel {
         expandedPaths.remove(path)
         self.diff = diff
         guard let nodeID = diff.nodeID else { return }
+        let pullRequest = pullRequestID
         do {
             try await loader.setViewed(viewed, path: path, pullRequestNodeID: nodeID)
         } catch {
-            // Roll back on failure.
+            // Roll back on failure — only if the same PR is still shown.
+            guard pullRequestID == pullRequest else { return }
             if viewed { self.diff?.viewedPaths.remove(path) } else { self.diff?.viewedPaths.insert(path) }
+            lastError = String(localized: "Couldn't update “viewed” on GitHub: \(error.localizedDescription)")
         }
     }
 
@@ -153,11 +161,34 @@ public final class DiffScreenModel {
 
     private func loadFullFiles() async {
         guard let pullRequestID, let headSHA else { return }
-        for file in files where fullFileHunks[file.path] == nil && file.status != .deleted && !file.isBinary {
-            guard let content = try? await loader.loadFileContent(for: pullRequestID, path: file.path, ref: headSHA),
-                !content.isEmpty
-            else { continue }
-            fullFileHunks[file.path] = FullFileBuilder.hunk(newContent: content, diff: file)
+        let id = pullRequestID
+        let loader = loader
+        let pending = files.filter { fullFileHunks[$0.path] == nil && $0.status != .deleted && !$0.isBinary }
+        await withTaskGroup(of: (String, Result<String, any Error>).self) { group in
+            for file in pending {
+                group.addTask {
+                    do {
+                        return (
+                            file.path,
+                            .success(try await loader.loadFileContent(for: id, path: file.path, ref: headSHA))
+                        )
+                    } catch {
+                        return (file.path, .failure(error))
+                    }
+                }
+            }
+            for await (path, result) in group {
+                // Drop results of a PR the reviewer already left.
+                guard self.pullRequestID == id, let file = pending.first(where: { $0.path == path }) else { continue }
+                switch result {
+                case .success(let content) where !content.isEmpty:
+                    fullFileHunks[path] = FullFileBuilder.hunk(newContent: content, diff: file)
+                case .failure(let error):
+                    lastError = String(localized: "Couldn't load \(file.fileName): \(error.localizedDescription)")
+                default:
+                    break
+                }
+            }
         }
     }
 }

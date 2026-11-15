@@ -159,6 +159,7 @@ struct DetailNode: Decodable, Sendable {
             let statusCheckRollup: CheckRollup?
         }
         struct CheckRollup: Decodable, Sendable {
+            let state: String
             let contexts: Nodes<CheckContext>
         }
     }
@@ -209,7 +210,8 @@ struct DetailNode: Decodable, Sendable {
     // MARK: Mapping
 
     var detail: PullRequestDetail {
-        let checkState = commits.values.last?.commit.statusCheckRollup.flatMap {
+        // The head commit's rollup (`checks` = commits(last: 1)); `commits` is capped at the first 100.
+        let checkState = checks.values.last?.commit.statusCheckRollup.flatMap {
             CheckState(rawValue: $0.state.lowercased())
         }
         let review = reviewDecision.flatMap(ReviewDecision.init(rawValue:)) ?? .none

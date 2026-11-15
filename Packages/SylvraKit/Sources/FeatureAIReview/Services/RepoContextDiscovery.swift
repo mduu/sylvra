@@ -17,8 +17,12 @@ public struct RepoContextDiscovery: Sendable {
         func add(_ relativePath: String) {
             let normalized = (relativePath as NSString).standardizingPath
             guard !normalized.hasPrefix(".."), !seen.contains(normalized), budget > 0 else { return }
-            let url = root.appending(path: normalized)
-            guard let data = try? Data(contentsOf: url), let text = String(data: data, encoding: .utf8) else { return }
+            let url = root.appending(path: normalized).resolvingSymlinksInPath()
+            // Never follow links out of the checkout (a PR could point docs/x.md at ~/.ssh/config).
+            let rootPath = root.resolvingSymlinksInPath().path + "/"
+            guard url.path.hasPrefix(rootPath), let data = try? Data(contentsOf: url),
+                let text = String(data: data, encoding: .utf8)
+            else { return }
             seen.insert(normalized)
             let content = String(text.prefix(min(maxFileBytes, budget)))
             budget -= content.utf8.count

@@ -77,6 +77,12 @@ public struct FindingsInspectorScreen: View {
             }
             if model.runningPullRequest == pullRequest?.id {
                 ForEach(model.progress, id: \.id) { AgentProgressRowView(progress: $0) }
+                if model.runState == .running {
+                    Button("Cancel review", role: .cancel) { model.cancel() }.controlSize(.small)
+                }
+                if let warning = model.workspaceWarning {
+                    Label(warning, systemImage: "exclamationmark.triangle").font(.caption).foregroundStyle(.orange)
+                }
                 if case .failed(let message) = model.runState {
                     Text(message).font(.caption).foregroundStyle(.red).lineLimit(4)
                 }
@@ -95,7 +101,9 @@ public struct FindingsInspectorScreen: View {
                     FindingDetailView(
                         finding: finding,
                         actions: FindingActions(
-                            turnIntoComment: turnIntoComment.map { action in { action(finding) } },
+                            // Unanchored findings have no diff line a GitHub comment could attach to.
+                            turnIntoComment: finding.isAnchored
+                                ? turnIntoComment.map { action in { action(finding) } } : nil,
                             dismiss: { model.dismiss(finding) })
                     )
                     .onTapGesture { model.selectedFindingID = nil }

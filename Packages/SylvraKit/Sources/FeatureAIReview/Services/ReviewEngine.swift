@@ -42,8 +42,8 @@ public struct ReviewEngine: Sendable {
 
     /// Jobs (shard × model) in the order they will run.
     public static func jobs(shards: [ShardPlanner.Shard], models: [String]) -> [Job] {
-        shards.flatMap { shard in
-            models.map { model in Job(id: "\(shard.name)#\(model)", shard: shard, model: model) }
+        shards.enumerated().flatMap { index, shard in
+            models.map { model in Job(id: "\(index)#\(model)", shard: shard, model: model) }
         }
     }
 

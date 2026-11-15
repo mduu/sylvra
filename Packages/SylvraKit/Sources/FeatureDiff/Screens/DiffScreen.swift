@@ -31,6 +31,18 @@ public struct DiffScreen<LineAccessory: View>: View {
 
     public var body: some View {
         content
+            .safeAreaInset(edge: .top) {
+                if let error = model.lastError {
+                    HStack {
+                        Label(error, systemImage: "exclamationmark.triangle.fill").foregroundStyle(.red)
+                        Spacer()
+                        Button("Dismiss") { model.lastError = nil }.buttonStyle(.borderless)
+                    }
+                    .font(.callout)
+                    .padding(8)
+                    .background(.bar)
+                }
+            }
             .task(id: "\(pullRequestID?.description ?? "")@\(headSHA ?? "")") {
                 await model.load(pullRequestID, headSHA: headSHA)
             }

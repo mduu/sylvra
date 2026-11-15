@@ -164,7 +164,7 @@ struct AIChatModelTests {
 
     @Test func keepsConversationAndSessionPerPR() async {
         let chat = AIChatModel(
-            provider: DemoAgentProvider(delay: .zero), settings: { ReviewSettings(agentLanguage: "German") },
+            provider: DemoAgentProvider(delay: .zero), settings: { _ in ReviewSettings(agentLanguage: "German") },
             prContext: { _ in "PR context" }, workspace: { _ in nil })
         chat.draft = "Was ändert sich?"
         await chat.send(for: id)

@@ -15,7 +15,8 @@ struct SylvraApp: App {
     }
 
     var body: some Scene {
-        WindowGroup {
+        // One main window: the feature models are shared, so a second window would show mixed state.
+        Window("Sylvra", id: "main") {
             RootScreen(environment: environment)
                 .preferredColorScheme(AppearanceSetting(rawValue: appearance)?.colorScheme)
         }

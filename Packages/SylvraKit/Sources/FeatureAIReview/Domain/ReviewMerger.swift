@@ -46,7 +46,8 @@ public enum ReviewMerger {
         var end = raw.endLine ?? raw.startLine
         var anchored = false
         if let file {
-            if (start...max(start, end)).contains(where: file.visibleNewLines.contains) {
+            end = min(max(end, start), start + 500)  // never trust an agent-supplied range blindly
+            if file.visibleNewLines.contains(where: { (start...end).contains($0) }) {
                 anchored = true
             } else if let nearest = file.visibleNewLines.min(by: { abs($0 - start) < abs($1 - start) }),
                 abs(nearest - start) <= 5

@@ -16,7 +16,11 @@ public protocol IDEOpening {
     func open(_ ide: IDE, directory: URL, file: URL?, line: Int?) async throws
 }
 
-extension CheckoutService: CheckoutPreparing {}
+extension CheckoutService: CheckoutPreparing {
+    public func prepareWorktree(for id: PullRequestID) async throws -> URL {
+        try await prepareWorktree(for: id, purpose: .ide)
+    }
+}
 extension IDELauncher: IDEOpening {}
 
 /// Demo implementations: pretend to check out and open, without touching the system.

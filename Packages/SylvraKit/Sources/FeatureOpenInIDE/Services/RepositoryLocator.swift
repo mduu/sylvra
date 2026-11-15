@@ -52,6 +52,7 @@ public struct RepositoryLocator: Sendable {
         for root in roots where fileManager.fileExists(atPath: root.path) {
             visit(root, depth: 0)
         }
-        return found.sorted { lhs, _ in lhs.lastPathComponent.caseInsensitiveCompare(name) == .orderedSame }
+        let named = found.filter { $0.lastPathComponent.caseInsensitiveCompare(name) == .orderedSame }
+        return named + found.filter { $0.lastPathComponent.caseInsensitiveCompare(name) != .orderedSame }
     }
 }
