@@ -1,0 +1,64 @@
+#!/usr/bin/env bash
+# Builds a signed, notarized Sylvra.dmg for installing on other Macs (Developer ID, outside the App Store).
+#
+#   scripts/release.sh                 # archive, sign, notarize, staple → .build/release/Sylvra-<version>.dmg
+#   SKIP_NOTARIZE=1 scripts/release.sh # signed only (other Macs: right-click → Open the first time)
+#
+# One-time setup for notarization (stores an app-specific password in the Keychain):
+#   xcrun notarytool store-credentials sylvra-notary --apple-id <apple-id> --team-id UYT5K989XD
+set -euo pipefail
+cd "$(dirname "$0")/.."
+
+TEAM_ID="UYT5K989XD"
+PROFILE="${NOTARY_PROFILE:-sylvra-notary}"
+OUT=".build/release"
+ARCHIVE="$OUT/Sylvra.xcarchive"
+
+rm -rf "$OUT"
+mkdir -p "$OUT"
+
+echo "▸ Archiving (Release)…"
+xcodebuild -project Sylvra.xcodeproj -scheme Sylvra -configuration Release \
+  -destination 'generic/platform=macOS' -archivePath "$ARCHIVE" archive -quiet
+
+cat > "$OUT/ExportOptions.plist" <<PLIST
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>method</key><string>developer-id</string>
+  <key>teamID</key><string>$TEAM_ID</string>
+  <key>signingStyle</key><string>automatic</string>
+</dict>
+</plist>
+PLIST
+
+echo "▸ Exporting with Developer ID…"
+xcodebuild -exportArchive -archivePath "$ARCHIVE" -exportPath "$OUT/export" \
+  -exportOptionsPlist "$OUT/ExportOptions.plist" -quiet
+APP="$OUT/export/Sylvra.app"
+VERSION=$(/usr/libexec/PlistBuddy -c "Print CFBundleShortVersionString" "$APP/Contents/Info.plist")
+BUILD=$(/usr/libexec/PlistBuddy -c "Print CFBundleVersion" "$APP/Contents/Info.plist")
+DMG="$OUT/Sylvra-$VERSION.dmg"
+
+codesign --verify --deep --strict "$APP"
+echo "▸ Signed: $(codesign -dvv "$APP" 2>&1 | grep '^Authority=' | head -1)"
+
+echo "▸ Creating DMG…"
+STAGING="$OUT/dmg"
+mkdir -p "$STAGING"
+cp -R "$APP" "$STAGING/"
+ln -s /Applications "$STAGING/Applications"
+hdiutil create -volname "Sylvra $VERSION" -srcfolder "$STAGING" -ov -format UDZO "$DMG" -quiet
+codesign --sign "Developer ID Application" --timestamp "$DMG"
+
+if [[ "${SKIP_NOTARIZE:-0}" == "1" ]]; then
+  echo "⚠️  Not notarized (SKIP_NOTARIZE=1). On other Macs: right-click Sylvra → Open the first time."
+else
+  echo "▸ Notarizing (a few minutes)…"
+  xcrun notarytool submit "$DMG" --keychain-profile "$PROFILE" --wait
+  xcrun stapler staple "$DMG"
+  spctl --assess --type open --context context:primary-signature -v "$DMG"
+fi
+
+echo "✅ $DMG  (version $VERSION, build $BUILD)"

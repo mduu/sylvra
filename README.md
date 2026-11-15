@@ -82,6 +82,13 @@ open Sylvra.xcodeproj      # run the "Sylvra" scheme
 
 Launch with the argument `--demo` to try the app with sample data, without a GitHub account.
 
+To build an installable, signed and notarized `Sylvra-<version>.dmg` for another Mac (needs a Developer ID certificate):
+
+```bash
+xcrun notarytool store-credentials sylvra-notary --apple-id <apple-id> --team-id <team-id>   # once
+scripts/release.sh         # → .build/release/Sylvra-<version>.dmg
+```
+
 For development:
 
 ```bash
