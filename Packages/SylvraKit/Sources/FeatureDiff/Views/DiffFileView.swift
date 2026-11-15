@@ -124,6 +124,9 @@ struct DiffFileBodyView<Accessory: View>: View {
     let accessory: (CodeLocation) -> Accessory
     var highlight: (Int) -> LineHighlight? = { _ in nil }
     var onComment: CommentRequest?
+    /// Unchanged lines hidden above each hunk, and how to reveal them (`nil`: all).
+    var hiddenAbove: [Int] = []
+    var expand: ((_ hunk: Int, _ count: Int?) -> Void)?
     @Environment(\.diffSearchQuery) private var searchQuery
     @Environment(\.diffCurrentMatch) private var currentMatch
     @Environment(\.diffIsWide) private var diffIsWide
@@ -163,8 +166,11 @@ struct DiffFileBodyView<Accessory: View>: View {
         LazyVStack(spacing: 0) {  // lazy: only visible lines are built, even for 10k-line files
             ForEach(rows) { row in
                 switch row {
-                case .header(_, let hunk):
-                    HunkHeaderView(hunk: hunk)
+                case .header(let index, let hunk):
+                    HunkHeaderView(
+                        hunk: hunk,
+                        hiddenLines: hiddenAbove.indices.contains(index) ? hiddenAbove[index] : 0,
+                        expand: expand.map { expand in { count in expand(index, count) } })
                 case .inline(_, _, let line):
                     VStack(spacing: 0) {
                         InlineLineView(line: line, onComment: onComment)

@@ -160,3 +160,53 @@ struct DiffNavigationTests {
         #expect(model.searchMatches.isEmpty)
     }
 }
+
+struct ContextExpanderTests {
+    private let head = (1...40).map { "line \($0)" }
+
+    private var hunks: [Hunk] {
+        [
+            Hunk(
+                oldStart: 10, oldCount: 2, newStart: 12, newCount: 2,
+                lines: [
+                    DiffLine(kind: .context, oldNumber: 10, newNumber: 12, text: "line 12"),
+                    DiffLine(kind: .added, oldNumber: nil, newNumber: 13, text: "line 13"),
+                ]),
+            Hunk(
+                oldStart: 30, oldCount: 1, newStart: 33, newCount: 1,
+                lines: [
+                    DiffLine(kind: .context, oldNumber: 30, newNumber: 33, text: "line 33")
+                ]),
+        ]
+    }
+
+    @Test func countsHiddenLinesAboveEachHunk() {
+        #expect(ContextExpander.hiddenAbove(hunks) == [11, 19])
+    }
+
+    @Test func revealsLinesAboveWithMatchingOldNumbers() {
+        let expanded = ContextExpander.expand(hunks, revealed: [0: 3, 1: 50], headLines: head)
+        #expect(expanded[0].lines.prefix(3).map(\.newNumber) == [9, 10, 11])
+        #expect(expanded[0].lines.first?.oldNumber == 7)
+        #expect(expanded[0].lines.first?.text == "line 9")
+        #expect(expanded[0].newStart == 9)
+        #expect(expanded[1].lines.count == 20)  // clamped to the 19-line gap
+        #expect(ContextExpander.hiddenAbove(expanded) == [8, 0])
+    }
+}
+
+@MainActor
+struct ContextExpansionModelTests {
+    @Test func expandsStepByStepUsingTheHeadFile() async throws {
+        let model = DiffScreenModel(loader: DemoDiffLoader())
+        await model.load(PullRequestID(owner: "acme", repository: "billing", number: 1234), headSHA: "h")
+        let file = try #require(model.files.first { $0.path == "Sources/Billing/InvoiceService.swift" })
+        #expect(model.hiddenAbove(file) == [3])
+        await model.expandContext(file, hunk: 0, by: 2)
+        #expect(model.hiddenAbove(file) == [1])
+        #expect(model.hunks(for: file).first?.lines.first?.text == "")
+        await model.expandContext(file, hunk: 0, by: nil)
+        #expect(model.hiddenAbove(file) == [0])
+        #expect(model.hunks(for: file).first?.lines.first?.text == "import Foundation")
+    }
+}

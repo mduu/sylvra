@@ -139,7 +139,11 @@ public struct DiffScreen<LineAccessory: View>: View {
                                             ? nil
                                             : { side, line, extends in
                                                 startComment(path: file.path, side: side, line: line, extends: extends)
-                                            }
+                                            },
+                                        hiddenAbove: model.scope == .fullFile ? [] : model.hiddenAbove(file),
+                                        expand: { hunk, count in
+                                            Task { await model.expandContext(file, hunk: hunk, by: count) }
+                                        }
                                     )
                                     .transition(.opacity.combined(with: .move(edge: .top)))
                                 }
@@ -157,6 +161,7 @@ public struct DiffScreen<LineAccessory: View>: View {
                         }
                     }
                     .animation(.snappy, value: model.layout)
+                    .animation(.snappy, value: model.revealedContext)
                 }
                 .onGeometryChange(for: Bool.self) {
                     $0.size.width >= 760  // room for two thread lanes of ~320 pt

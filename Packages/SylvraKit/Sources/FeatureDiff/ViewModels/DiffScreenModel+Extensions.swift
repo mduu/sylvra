@@ -1,4 +1,70 @@
 import Foundation
+import SylvraCore
+
+// MARK: - Since last review / new pushes
+
+extension DiffScreenModel {
+    /// Checks GitHub for a new head commit (called periodically by the diff screen).
+    public func checkForNewCommits() async {
+        guard let id = pullRequestID, let loaded = progress,
+            let latest = try? await loader.loadReviewProgress(for: id), pullRequestID == id
+        else { return }
+        if latest.headSHA != loaded.headSHA { hasNewCommits = true }
+    }
+
+    func loadProgress(_ id: PullRequestID) async {
+        guard let loaded = try? await loader.loadReviewProgress(for: id), pullRequestID == id else { return }
+        progress = loaded
+        hasNewCommits = false
+    }
+
+    func loadSinceReview() async {
+        guard let id = pullRequestID, let progress, let base = progress.lastReviewedSHA else {
+            sinceReviewFiles = []
+            return
+        }
+        do {
+            let loaded = try await loader.loadDiff(for: id, from: base, to: progress.headSHA)
+            guard pullRequestID == id else { return }
+            sinceReviewFiles = loaded
+        } catch {
+            sinceReviewFiles = []
+            let reason = error.localizedDescription
+            lastError = String(
+                localized: "Couldn't load the changes since your last review (gone after a force push?): \(reason)")
+        }
+    }
+}
+
+// MARK: - Context expansion
+
+extension DiffScreenModel {
+    /// Lines still hidden above each hunk of a file.
+    public func hiddenAbove(_ file: FileDiff) -> [Int] {
+        let revealed = revealedContext[file.path] ?? [:]
+        return ContextExpander.hiddenAbove(file.hunks).enumerated().map { index, hidden in
+            max(hidden - (revealed[index] ?? 0), 0)
+        }
+    }
+
+    /// Reveals `count` more lines above a hunk (`nil`: the whole gap).
+    public func expandContext(_ file: FileDiff, hunk index: Int, by count: Int?) async {
+        if headLines[file.path] == nil {
+            guard let pullRequestID, let ref = progress?.headSHA ?? headSHA else { return }
+            do {
+                let content = try await loader.loadFileContent(for: pullRequestID, path: file.path, ref: ref)
+                guard self.pullRequestID == pullRequestID else { return }
+                headLines[file.path] = content.split(separator: "\n", omittingEmptySubsequences: false).map(String.init)
+            } catch {
+                lastError = String(localized: "Couldn't load \(file.fileName): \(error.localizedDescription)")
+                return
+            }
+        }
+        let gap = ContextExpander.hiddenAbove(file.hunks)[index]
+        let current = revealedContext[file.path]?[index] ?? 0
+        revealedContext[file.path, default: [:]][index] = min(count.map { current + $0 } ?? gap, gap)
+    }
+}
 
 // MARK: - Change navigation (n / p)
 

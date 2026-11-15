@@ -163,10 +163,34 @@ extension View {
 /// Hunk separator: a hairline with a capsule naming the enclosing scope and line range (pure).
 struct HunkHeaderView: View {
     let hunk: Hunk
+    /// Unchanged lines hidden above this hunk.
+    var hiddenLines = 0
+    /// Reveals more lines above (`nil`: all of them).
+    var expand: ((Int?) -> Void)?
+
+    static let step = 20
 
     var body: some View {
         HStack(spacing: 10) {
             hairline.frame(width: 24)
+            if hiddenLines > 0, let expand {
+                HStack(spacing: 2) {
+                    Button {
+                        expand(Self.step)
+                    } label: {
+                        Label("\(min(Self.step, hiddenLines))", systemImage: "arrow.up.to.line.compact")
+                    }
+                    .help("Show \(min(Self.step, hiddenLines)) more lines above (⌥-click: all \(hiddenLines))")
+                    .simultaneousGesture(TapGesture().modifiers(.option).onEnded { expand(nil) })
+                    if hiddenLines > Self.step {
+                        Button("All \(hiddenLines)") { expand(nil) }
+                            .help("Show all \(hiddenLines) hidden lines above")
+                    }
+                }
+                .buttonStyle(.borderless)
+                .font(.system(size: 10.5, weight: .medium).monospacedDigit())
+                .foregroundStyle(SylvraColor.brandPrimary)
+            }
             HStack(spacing: 6) {
                 Image(systemName: "ellipsis")
                     .font(.system(size: 10, weight: .bold))

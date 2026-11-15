@@ -45,9 +45,9 @@ public final class DiffScreenModel {
             .max { ($0.isSelected ? 2 : $0.intensity) < ($1.isSelected ? 2 : $1.intensity) }
     }
 
-    private let loader: any DiffLoading
-    private var pullRequestID: PullRequestID?
-    private var headSHA: String?
+    let loader: any DiffLoading
+    var pullRequestID: PullRequestID?
+    var headSHA: String?
 
     public init(loader: any DiffLoading, pollInterval: Duration = .seconds(60)) {
         self.loader = loader
@@ -61,44 +61,13 @@ public final class DiffScreenModel {
     // MARK: - Since last review / new pushes
 
     /// Head and last reviewed commit, refreshed when loading and while polling.
-    public private(set) var progress: ReviewProgress?
+    public internal(set) var progress: ReviewProgress?
     /// Files changed between the last reviewed commit and head (scope `.sinceLastReview`).
-    public private(set) var sinceReviewFiles: [FileDiff]?
+    public internal(set) var sinceReviewFiles: [FileDiff]?
     /// Someone pushed after the diff was loaded.
-    public private(set) var hasNewCommits = false
+    public internal(set) var hasNewCommits = false
     /// How often to check for new pushes.
     public let pollInterval: Duration
-
-    /// Checks GitHub for a new head commit (called periodically by the diff screen).
-    public func checkForNewCommits() async {
-        guard let id = pullRequestID, let loaded = progress,
-            let latest = try? await loader.loadReviewProgress(for: id), pullRequestID == id
-        else { return }
-        if latest.headSHA != loaded.headSHA { hasNewCommits = true }
-    }
-
-    private func loadProgress(_ id: PullRequestID) async {
-        guard let loaded = try? await loader.loadReviewProgress(for: id), pullRequestID == id else { return }
-        progress = loaded
-        hasNewCommits = false
-    }
-
-    private func loadSinceReview() async {
-        guard let id = pullRequestID, let progress, let base = progress.lastReviewedSHA else {
-            sinceReviewFiles = []
-            return
-        }
-        do {
-            let loaded = try await loader.loadDiff(for: id, from: base, to: progress.headSHA)
-            guard pullRequestID == id else { return }
-            sinceReviewFiles = loaded
-        } catch {
-            sinceReviewFiles = []
-            let reason = error.localizedDescription
-            lastError = String(
-                localized: "Couldn't load the changes since your last review (gone after a force push?): \(reason)")
-        }
-    }
 
     /// AI-suggested reading order, set by the app from the review result.
     public var readingOrder: [ReadingStep] = []
@@ -204,11 +173,19 @@ public final class DiffScreenModel {
         if expandedPaths.contains(path) { expandedPaths.remove(path) } else { expandedPaths.insert(path) }
     }
 
-    /// Hunks to show for a file in the current scope.
+    /// Hunks to show for a file in the current scope (with context the reviewer revealed).
     public func hunks(for file: FileDiff) -> [Hunk] {
         if scope == .fullFile, let full = fullFileHunks[file.path] { return [full] }
-        return file.hunks
+        guard let revealed = revealedContext[file.path], let lines = headLines[file.path] else { return file.hunks }
+        return ContextExpander.expand(file.hunks, revealed: revealed, headLines: lines)
     }
+
+    // MARK: - Context expansion
+
+    /// Context lines revealed above each hunk, per file.
+    public internal(set) var revealedContext: [String: [Int: Int]] = [:]
+    /// File contents at head, loaded on the first expansion.
+    var headLines: [String: [String]] = [:]
 
     /// Text of the lines at a location (joined with newlines), used to pre-fill code suggestions.
     public func text(at location: CodeLocation) -> String {
@@ -238,6 +215,8 @@ public final class DiffScreenModel {
             selectedPath = nil
             progress = nil
             sinceReviewFiles = nil
+            revealedContext = [:]
+            headLines = [:]
             if scope == .sinceLastReview { scope = .focused }
             loadState = .loading
         }
