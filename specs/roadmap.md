@@ -17,7 +17,17 @@ Status: ✅ done · 🚧 in progress · ⏳ open
 | M8 | AI review: Claude Code provider, repo context discovery, structured findings, sharding, patterns, highlights | ✅ |
 | M9 | AI chat, agent language, multi-model | ✅ |
 | M10 | Activity indicator, notifications, terminal panel, custom tools, settings | ✅ |
-| M11 | Polish: syntax highlighting, animations, wow diff details, persistence cache | 🚧 (syntax highlighting, shortcuts, persistence, performance done; visual polish needs an unlocked screen) |
+| M11 | Polish: syntax highlighting, animations, wow diff details, persistence cache | ✅ |
+
+## Next (after the MVP)
+
+- Pagination beyond 100 changed files / 100 review threads / 50 comments per thread.
+- Outdated and file-level review threads in a separate list.
+- Horizontal scrolling for long lines in the side-by-side diff (currently truncated).
+- Restore-stash helper after a main-clone checkout; cleanup of old per-PR agent worktrees.
+- Translate AI findings into the comment language when turning them into comments.
+- Watched repositories / path rules in the inbox, GitHub OAuth device flow as alternative to `gh`.
+- Release pipeline (Developer ID, notarization, Sparkle, Homebrew tap).
 
 ## Decisions taken autonomously
 
