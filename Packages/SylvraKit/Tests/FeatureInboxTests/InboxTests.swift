@@ -15,6 +15,13 @@ struct GitHubInboxLoaderTests {
         #expect(query.contains("fragment PR on PullRequest"))
     }
 
+    @Test func recentlyClosedUsesSevenDayWindow() throws {
+        let now = try Date("2026-11-15T12:00:00Z", strategy: .iso8601)
+        let query = InboxSection.recentlyClosed.searchQuery(now: now)
+        #expect(query.contains("is:closed closed:>=2026-11-08"))
+        #expect(InboxSection.myTeams.searchQuery().hasPrefix("is:pr is:open"))
+    }
+
     @Test func decodesPullRequestNode() throws {
         let json = """
             {"number": 7, "title": "Fix it", "url": "https://github.com/o/r/pull/7", "isDraft": false,

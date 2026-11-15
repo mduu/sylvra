@@ -35,6 +35,9 @@ public struct DemoInboxLoader: InboxLoading {
                 "billing", 1240, "Feature flags for exports", "mduu", "Marc Dürst", hoursAgo: 8, 96, 20, .success,
                 .changesRequested)
         ],
+        .recentlyClosed: [
+            pr("billing", 812, "Fix VAT rounding", "lkeller", "Lena Keller", hoursAgo: 120, 34, 12, .success, .approved)
+        ],
     ]
 
     // swiftlint:disable:next function_parameter_count

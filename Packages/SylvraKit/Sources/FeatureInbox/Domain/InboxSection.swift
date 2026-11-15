@@ -7,6 +7,7 @@ public enum InboxSection: String, CaseIterable, Identifiable, Sendable {
     case myTeams
     case involved
     case myPullRequests
+    case recentlyClosed
 
     public var id: String { rawValue }
 
@@ -16,16 +17,30 @@ public enum InboxSection: String, CaseIterable, Identifiable, Sendable {
         case .myTeams: String(localized: "My teams")
         case .involved: String(localized: "Involved")
         case .myPullRequests: String(localized: "My PRs")
+        case .recentlyClosed: String(localized: "Recently closed")
         }
     }
 
-    /// GitHub search qualifiers for the section (open, non-archived PRs are added by the loader).
+    /// Full GitHub search query of the section.
+    func searchQuery(now: Date = .now) -> String {
+        let state: String
+        if self == .recentlyClosed {
+            let since = Calendar.current.date(byAdding: .day, value: -7, to: now) ?? now
+            state = "is:closed closed:>=\(since.formatted(.iso8601.year().month().day()))"
+        } else {
+            state = "is:open"
+        }
+        return "is:pr \(state) archived:false sort:updated-desc \(searchQualifiers)"
+    }
+
+    /// Section-specific qualifiers.
     var searchQualifiers: String {
         switch self {
         case .requestedFromMe: "user-review-requested:@me"
         case .myTeams: "review-requested:@me -user-review-requested:@me"
         case .involved: "involves:@me -author:@me -review-requested:@me"
         case .myPullRequests: "author:@me"
+        case .recentlyClosed: "involves:@me"
         }
     }
 }

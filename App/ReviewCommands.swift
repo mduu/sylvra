@@ -25,8 +25,10 @@ struct ReviewCommands: Commands {
             Button("Next File") { actions?.nextFile() }.keyboardShortcut("]", modifiers: .command)
             Button("Previous File") { actions?.previousFile() }.keyboardShortcut("[", modifiers: .command)
             Divider()
-            Button("Next AI Finding") { actions?.nextFinding() }.keyboardShortcut(.downArrow, modifiers: [.command, .option])
-            Button("Previous AI Finding") { actions?.previousFinding() }.keyboardShortcut(.upArrow, modifiers: [.command, .option])
+            Button("Next AI Finding") { actions?.nextFinding() }.keyboardShortcut(
+                .downArrow, modifiers: [.command, .option])
+            Button("Previous AI Finding") { actions?.previousFinding() }.keyboardShortcut(
+                .upArrow, modifiers: [.command, .option])
             Divider()
             Button("Toggle Viewed") { actions?.toggleViewed() }.keyboardShortcut("v", modifiers: [.command, .option])
             Button("Run AI Review") { actions?.runAIReview() }.keyboardShortcut("r", modifiers: [.command, .shift])

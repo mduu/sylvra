@@ -23,7 +23,7 @@ public struct GitHubInboxLoader: InboxLoading {
 
     static func query(pageSize: Int) -> String {
         let searches = InboxSection.allCases.map { section in
-            let query = "is:pr is:open archived:false sort:updated-desc \(section.searchQualifiers)"
+            let query = section.searchQuery()
             return
                 #"\#(section.rawValue): search(query: "\#(query)", type: ISSUE, first: \#(pageSize)) { nodes { ...PR } }"#
         }
