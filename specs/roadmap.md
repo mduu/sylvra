@@ -7,7 +7,7 @@ Status: ✅ done · 🚧 in progress · ⏳ open
 | # | Milestone | Status |
 |---|---|---|
 | M0 | Project skeleton: Xcode project, `SylvraKit` package with slices, lint, CI, scripts | ✅ |
-| M1 | Platform basics: process runner, `gh` token, GitHub GraphQL client, screenshot pipeline | ⏳ |
+| M1 | Platform basics: process runner, `gh` token, GitHub GraphQL client, screenshot pipeline | ✅ |
 | M2 | Inbox: sections (requested from me, my teams, involved, my PRs), PR rows with avatars, refresh | ⏳ |
 | M3 | PR details: overview, description, refs, reviewers, merge state, checks, commits (copy SHA), open on GitHub | ⏳ |
 | M4 | Diff engine: unified diff parser, hunks, intra-line diff, file classification (unit-tested) | ⏳ |

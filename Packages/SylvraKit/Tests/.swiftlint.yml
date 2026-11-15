@@ -1,0 +1,4 @@
+# Tests may force-unwrap and force-try (see AGENTS.md).
+disabled_rules:
+  - force_unwrapping
+  - force_try
