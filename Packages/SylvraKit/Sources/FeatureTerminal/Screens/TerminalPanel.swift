@@ -1,6 +1,6 @@
 import AppKit
 import DesignSystem
-import SwiftTerm
+@preconcurrency import SwiftTerm
 import SwiftUI
 
 /// Bottom terminal panel: tabs with PTY shell sessions (container). `accessory` is a slot for

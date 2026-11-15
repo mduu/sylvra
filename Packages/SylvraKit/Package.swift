@@ -34,7 +34,7 @@ let package = Package(
         .library(name: "SylvraKit", targets: allModules)
     ],
     dependencies: [
-        .package(url: "https://github.com/migueldeicaza/SwiftTerm", exact: "1.99.3")
+        .package(url: "https://github.com/migueldeicaza/SwiftTerm", exact: "1.10.0")
     ],
     targets: [
         .target(name: "SylvraCore"),

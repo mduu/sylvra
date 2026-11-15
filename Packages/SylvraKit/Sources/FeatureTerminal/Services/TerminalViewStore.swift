@@ -1,7 +1,7 @@
 import AppKit
 import Foundation
 import OSLog
-import SwiftTerm
+@preconcurrency import SwiftTerm
 
 /// Keeps one PTY terminal view per session alive, independent of the SwiftUI hierarchy,
 /// so sessions survive switching tabs, pull requests and hiding the panel.
@@ -39,6 +39,7 @@ final class TerminalViewStore: TerminalProcessHosting {
 }
 
 /// Forwards SwiftTerm callbacks (title changes, process exit) to the model.
+/// SwiftTerm delivers them on the main queue but its protocol is not actor-annotated, hence the hop.
 @MainActor
 private final class SessionDelegate: LocalProcessTerminalViewDelegate {
     private let id: TerminalSession.ID
@@ -49,15 +50,15 @@ private final class SessionDelegate: LocalProcessTerminalViewDelegate {
         self.model = model
     }
 
-    func sizeChanged(source: LocalProcessTerminalView, newCols: Int, newRows: Int) {}
+    nonisolated func sizeChanged(source: LocalProcessTerminalView, newCols: Int, newRows: Int) {}
 
-    func setTerminalTitle(source: LocalProcessTerminalView, title: String) {
-        model?.updateTitle(title, of: id)
+    nonisolated func setTerminalTitle(source: LocalProcessTerminalView, title: String) {
+        Task { @MainActor in self.model?.updateTitle(title, of: self.id) }
     }
 
-    func hostCurrentDirectoryUpdate(source: TerminalView, directory: String?) {}
+    nonisolated func hostCurrentDirectoryUpdate(source: TerminalView, directory: String?) {}
 
-    func processTerminated(source: TerminalView, exitCode: Int32?) {
-        model?.markExited(id, code: exitCode)
+    nonisolated func processTerminated(source: TerminalView, exitCode: Int32?) {
+        Task { @MainActor in self.model?.markExited(self.id, code: exitCode) }
     }
 }
