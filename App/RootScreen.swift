@@ -1,6 +1,7 @@
 import FeatureAIReview
 import FeatureDiff
 import FeatureInbox
+import FeatureOpenInIDE
 import FeaturePullRequest
 import SwiftUI
 import SylvraCore
@@ -45,7 +46,15 @@ struct RootScreen: View {
             guard selection == nil, let wanted = environment.initialSelection else { return }
             selection = environment.inbox.snapshot.sections.values.joined().first { $0.id.description == wanted }
         }
+        .overlay(alignment: .bottom) {
+            OpenInIDEStatusToast(status: environment.openInIDE.status)
+                .padding(.bottom, 16)
+                .animation(.snappy, value: environment.openInIDE.status)
+        }
         .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                OpenInIDEToolbarPanel(model: environment.openInIDE, pullRequestID: selection?.id)
+            }
             ToolbarItem(placement: .primaryAction) {
                 Button {
                     isInspectorPresented.toggle()

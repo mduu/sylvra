@@ -1,5 +1,6 @@
 import FeatureDiff
 import FeatureInbox
+import FeatureOpenInIDE
 import FeaturePullRequest
 import Foundation
 import Platform
@@ -22,6 +23,7 @@ final class AppEnvironment {
     let inbox: InboxScreenModel
     let pullRequest: PullRequestScreenModel
     let diff: DiffScreenModel
+    let openInIDE: OpenInIDEModel
 
     init(arguments: [String] = CommandLine.arguments) {
         isDemo = arguments.contains("--demo")
@@ -34,6 +36,10 @@ final class AppEnvironment {
         let detailLoader: any PullRequestDetailLoading =
             isDemo ? DemoPullRequestDetailLoader() : GitHubPullRequestDetailLoader(client: gitHub)
         pullRequest = PullRequestScreenModel(loader: detailLoader)
+        openInIDE =
+            isDemo
+            ? OpenInIDEModel(checkout: DemoCheckout(), opener: DemoIDEOpener())
+            : OpenInIDEModel(checkout: CheckoutService(), opener: IDELauncher())
         diff = DiffScreenModel(loader: isDemo ? DemoDiffLoader() : GitHubDiffLoader(client: gitHub))
         if Self.value(of: "--layout", in: arguments) == "inline" { diff.layout = .inline }
         if let tab = Self.value(of: "--tab", in: arguments).flatMap(PullRequestScreenModel.Tab.init(rawValue:)) {

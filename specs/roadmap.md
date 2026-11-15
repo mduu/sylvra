@@ -13,7 +13,7 @@ Status: ✅ done · 🚧 in progress · ⏳ open
 | M4 | Diff engine: unified diff parser, hunks, intra-line diff, file classification (unit-tested) | ✅ |
 | M5 | Diff view: side-by-side / inline, focused / full file, file tree by namespace, change map, viewed toggle | ✅ |
 | M6 | Review: existing threads, reply, resolve, new comments with suggestions, pending review, submit | ⏳ |
-| M7 | Open in IDE: worktree manager, main-clone option, Rider / VS Code / Xcode / default app | ⏳ |
+| M7 | Open in IDE: worktree manager, main-clone option, Rider / VS Code / Xcode / default app | ✅ |
 | M8 | AI review: Claude Code provider, repo context discovery, structured findings, sharding, patterns, highlights | ⏳ |
 | M9 | AI chat, agent language, multi-model | ⏳ |
 | M10 | Activity indicator, notifications, terminal panel, custom tools, settings | ⏳ |
@@ -31,3 +31,6 @@ Decisions made while building without the product owner present. Revisit when co
 - Team requests use `review-requested:@me -user-review-requested:@me` (GitHub expands teams), so no team list is needed.
 - Diff view is SwiftUI (LazyVStack) for now; the AppKit/TextKit renderer for huge diffs, connector ribbons and configurable context lines (focused mode uses GitHub's 3 lines) follow in M11.
 - The file navigator (change map + files) lives in `FeatureDiff` and is placed into the PR column through a view slot of `PullRequestScreen`, so the slices stay independent.
+- Open in IDE uses one stable review worktree per repository (`~/Library/Application Support/Sylvra/worktrees/<owner>/<repo>`), so Rider keeps a single valid recent project; cleanup of Rider's recent list is not needed for now.
+- Without a local clone, a blobless cache clone in Application Support backs the worktree.
+- Main-clone checkout uses branch `review/pr-<n>` and asks before stashing (named stash).
