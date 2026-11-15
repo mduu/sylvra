@@ -29,24 +29,22 @@ public struct IDELauncher: Sendable {
             NSWorkspace.shared.open(file ?? project)
             return
         }
-        if let launcher = launcher(for: ide) {
-            let result = try await runner.run(
-                launcher, arguments: ide.launcherArguments(project: project, file: file, line: line),
-                workingDirectory: directory)
+        let arguments = ide.launcherArguments(project: project, file: file, line: line)
+        // Command line launchers (`rider`, `code`, `xed` scripts) hand over to the app and return.
+        if let launcher = ide.launchers.lazy.compactMap(ExecutableLocator.locate).first {
+            let result = try await runner.run(launcher, arguments: arguments, workingDirectory: directory)
             if result.exitCode == 0 { return }
         }
-        guard let app = applicationURL(for: ide) else { return }
+        guard let app = applicationURL(for: ide) else { throw IDELaunchError.notInstalled(ide.name) }
         let configuration = NSWorkspace.OpenConfiguration()
         configuration.activates = true
-        _ = try await NSWorkspace.shared.open([project], withApplicationAt: app, configuration: configuration)
-    }
-
-    @MainActor
-    private func launcher(for ide: IDE) -> URL? {
-        if let found = ide.launchers.lazy.compactMap(ExecutableLocator.locate).first { return found }
-        guard let app = applicationURL(for: ide) else { return nil }
-        return ide.bundleLaunchers.map { app.appending(path: $0) }
-            .first { FileManager.default.isExecutableFile(atPath: $0.path) }
+        if !ide.bundleLaunchers.isEmpty, !arguments.isEmpty {
+            // Never wait for a bundle binary (it would stay in the foreground): let Launch Services start it.
+            configuration.arguments = arguments
+            _ = try await NSWorkspace.shared.openApplication(at: app, configuration: configuration)
+        } else {
+            _ = try await NSWorkspace.shared.open([project], withApplicationAt: app, configuration: configuration)
+        }
     }
 }
 
@@ -67,5 +65,15 @@ public enum ProjectDetector {
             }
         }
         return directory
+    }
+}
+
+public enum IDELaunchError: Error, LocalizedError, Equatable {
+    case notInstalled(String)
+
+    public var errorDescription: String? {
+        switch self {
+        case .notInstalled(let name): String(localized: "\(name) is not installed.")
+        }
     }
 }

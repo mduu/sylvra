@@ -86,7 +86,12 @@ public final class OpenInIDEModel {
             }
             try await opener.open(
                 ide, directory: directory, file: file.map { directory.appending(path: $0) }, line: line)
-            status = .done(String(localized: "Opened in \(ide.name)"))
+            status = .done(
+                stash
+                    ? String(
+                        localized:
+                            "Opened in \(ide.name) — your changes are in a stash named “Sylvra: before reviewing …”")
+                    : String(localized: "Opened in \(ide.name)"))
             clearStatusLater()
         } catch CheckoutError.dirtyWorkingTree(let clone) {
             status = .idle

@@ -13,7 +13,10 @@ import SylvraCore
 struct RootScreen: View {
     @Environment(\.openURL) private var openURL
     let environment: AppEnvironment
-    @State private var selection: PullRequestSummary?
+    @State private var selectedID: PullRequestID?
+
+    /// The selected PR's latest summary from the inbox.
+    private var selection: PullRequestSummary? { selectedID.flatMap(environment.inbox.summary(for:)) }
     @State private var isInspectorPresented: Bool
     @State private var columnVisibility: NavigationSplitViewVisibility
 
@@ -25,7 +28,7 @@ struct RootScreen: View {
 
     var body: some View {
         NavigationSplitView(columnVisibility: $columnVisibility) {
-            InboxScreen(model: environment.inbox, selection: $selection)
+            InboxScreen(model: environment.inbox, selection: $selectedID)
                 .navigationSplitViewColumnWidth(min: 240, ideal: 290)
         } content: {
             PullRequestScreen(model: environment.pullRequest, pullRequest: selection) {
@@ -100,8 +103,8 @@ struct RootScreen: View {
             }
         }
         .onChange(of: environment.inbox.snapshot) {
-            guard selection == nil, let wanted = environment.initialSelection else { return }
-            selection = environment.inbox.snapshot.sections.values.joined().first { $0.id.description == wanted }
+            guard selectedID == nil, let wanted = environment.initialSelection else { return }
+            selectedID = environment.inbox.snapshot.sections.values.joined().first { $0.id.description == wanted }?.id
         }
         .overlay(alignment: .bottom) {
             OpenInIDEStatusToast(status: environment.openInIDE.status)

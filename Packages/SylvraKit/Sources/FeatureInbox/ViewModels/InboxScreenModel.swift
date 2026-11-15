@@ -32,6 +32,11 @@ public final class InboxScreenModel {
         }
     }
 
+    /// The latest summary of a PR in any section.
+    public func summary(for id: PullRequestID) -> PullRequestSummary? {
+        snapshot.sections.values.lazy.flatMap { $0 }.first { $0.id == id }
+    }
+
     public func refresh() async {
         if snapshot.isEmpty { loadState = .loading }
         do {

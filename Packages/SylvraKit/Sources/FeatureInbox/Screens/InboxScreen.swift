@@ -5,9 +5,10 @@ import SylvraCore
 /// The inbox sidebar (container): owns loading and periodic refresh.
 public struct InboxScreen: View {
     @Bindable private var model: InboxScreenModel
-    @Binding private var selection: PullRequestSummary?
+    @Binding private var selection: PullRequestID?
 
-    public init(model: InboxScreenModel, selection: Binding<PullRequestSummary?>) {
+    /// Selection is the PR's ID, so it survives refreshes that change the summary (CI state, timestamps).
+    public init(model: InboxScreenModel, selection: Binding<PullRequestID?>) {
         self.model = model
         self._selection = selection
     }
@@ -17,7 +18,7 @@ public struct InboxScreen: View {
             ForEach(model.visibleSections, id: \.section) { entry in
                 Section {
                     ForEach(entry.pullRequests) { pullRequest in
-                        InboxRowView(pullRequest: pullRequest).tag(pullRequest)
+                        InboxRowView(pullRequest: pullRequest).tag(pullRequest.id)
                     }
                 } header: {
                     HStack {
@@ -34,6 +35,14 @@ public struct InboxScreen: View {
         .listStyle(.sidebar)
         .searchable(text: $model.searchText, placement: .sidebar, prompt: Text("Search PRs"))
         .overlay { overlay }
+        .safeAreaInset(edge: .bottom) {
+            if case .failed = model.loadState, !model.snapshot.isEmpty {
+                Label("Offline — showing the last loaded pull requests", systemImage: "wifi.exclamationmark")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .padding(6)
+            }
+        }
         .task { await model.keepRefreshing() }
         .toolbar {
             ToolbarItem {
@@ -51,7 +60,7 @@ public struct InboxScreen: View {
         switch model.loadState {
         case .loading:
             ProgressView()
-        case .failed(let message):
+        case .failed(let message) where model.snapshot.isEmpty:
             ContentUnavailableView {
                 Label("Couldn't load pull requests", systemImage: "exclamationmark.triangle")
             } description: {
@@ -72,10 +81,10 @@ public struct InboxScreen: View {
 }
 
 #Preview {
-    @Previewable @State var selection: PullRequestSummary?
+    @Previewable @State var selection: PullRequestID?
     NavigationSplitView {
         InboxScreen(model: InboxScreenModel(loader: DemoInboxLoader()), selection: $selection)
     } detail: {
-        Text(selection?.title ?? "–")
+        Text(selection?.description ?? "–")
     }
 }

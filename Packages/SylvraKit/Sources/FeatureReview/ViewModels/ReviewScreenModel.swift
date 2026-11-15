@@ -140,10 +140,13 @@ public final class ReviewScreenModel {
     /// Adds the draft to the pending review, creating the pending review if needed.
     public func addDraftToReview() async {
         guard let draft, canPost(draft.body), let nodeID = snapshot?.pullRequestNodeID else { return }
+        let started = pullRequestID
         await perform("add comment") {
-            let reviewID = try await self.ensurePendingReview(nodeID: nodeID)
+            let reviewID = try await self.ensurePendingReview(nodeID: nodeID, for: started)
             let thread = try await self.service.addThread(
                 reviewID: reviewID, location: draft.location, body: draft.body)
+            // The reviewer may have switched PRs meanwhile — never write results into another PR.
+            guard self.pullRequestID == started else { return }
             self.snapshot?.threads.append(thread)
             self.draft = nil
         }
@@ -154,8 +157,10 @@ public final class ReviewScreenModel {
         guard let draft, canPost(draft.body), !hasPendingReview, let nodeID = snapshot?.pullRequestNodeID else {
             return
         }
+        let started = pullRequestID
         await perform("post comment") {
             try await self.service.postComment(pullRequestNodeID: nodeID, location: draft.location, body: draft.body)
+            guard self.pullRequestID == started else { return }
             self.draft = nil
             try await self.reload()
         }
@@ -167,9 +172,11 @@ public final class ReviewScreenModel {
     public func reply(to thread: ReviewThread) async {
         let body = replyDrafts[thread.id] ?? ""
         guard canPost(body) else { return }
+        let started = pullRequestID
         await perform("reply") {
             let comment = try await self.service.reply(
                 threadID: thread.id, reviewID: self.snapshot?.pendingReviewID, body: body)
+            guard self.pullRequestID == started else { return }
             self.updateThread(thread.id) { $0.comments.append(comment) }
             self.replyDrafts[thread.id] = nil
         }
@@ -217,9 +224,11 @@ public final class ReviewScreenModel {
             return
         }
         let reviewID = snapshot?.pendingReviewID
+        let started = pullRequestID
         await perform("submit review") {
             try await self.service.submitReview(
                 pullRequestNodeID: nodeID, reviewID: reviewID, event: self.submitEvent, body: self.submitBody)
+            guard self.pullRequestID == started else { return }
             self.snapshot?.pendingReviewID = nil
             self.submitBody = ""
             self.submitEvent = .comment
@@ -234,10 +243,10 @@ public final class ReviewScreenModel {
         !isWorking && !body.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
-    private func ensurePendingReview(nodeID: String) async throws -> String {
+    private func ensurePendingReview(nodeID: String, for pullRequest: PullRequestID?) async throws -> String {
         if let id = snapshot?.pendingReviewID { return id }
         let id = try await service.startPendingReview(pullRequestNodeID: nodeID)
-        snapshot?.pendingReviewID = id
+        if pullRequestID == pullRequest { snapshot?.pendingReviewID = id }
         return id
     }
 
