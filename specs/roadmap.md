@@ -25,3 +25,4 @@ Decisions made while building without the product owner present. Revisit when co
 
 - Package tests run via `swift test`; the app scheme only builds (Xcode does not pick up local-package test targets in app schemes).
 - SwiftLint pinned to 0.65.1 in CI.
+- Screenshots: `scripts/screenshot.sh <name> [app args]` builds, launches and captures the main window into `docs/screenshots/`.
