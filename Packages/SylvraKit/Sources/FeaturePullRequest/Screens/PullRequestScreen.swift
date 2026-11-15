@@ -37,6 +37,7 @@ public struct PullRequestScreen<Files: View>: View {
                 PullRequestHeaderView(detail: detail) { open(detail.summary.url) }
                 Picker("Section", selection: $model.tab) {
                     Text("Overview").tag(PullRequestScreenModel.Tab.overview)
+                    Text("Files \(detail.changedFiles)").tag(PullRequestScreenModel.Tab.files)
                     Text("Commits \(detail.commits.count)").tag(PullRequestScreenModel.Tab.commits)
                     Text("Checks \(detail.checks.count)").tag(PullRequestScreenModel.Tab.checks)
                 }
@@ -46,6 +47,7 @@ public struct PullRequestScreen<Files: View>: View {
                 switch model.tab {
                 case .overview:
                     OverviewView(detail: detail, open: open)
+                case .files:
                     files
                 case .commits:
                     LazyVStack(alignment: .leading, spacing: 12) {

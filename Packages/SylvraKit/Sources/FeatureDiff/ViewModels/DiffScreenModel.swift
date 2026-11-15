@@ -75,6 +75,26 @@ public final class DiffScreenModel {
         selectedPath = paths[min(max(current + offset, 0), paths.count - 1)]
     }
 
+    /// Folders the reviewer collapsed in the file tree.
+    public private(set) var collapsedFolders: Set<String> = []
+
+    public func toggleFolder(_ path: String) {
+        if collapsedFolders.contains(path) { collapsedFolders.remove(path) } else { collapsedFolders.insert(path) }
+    }
+
+    /// Changed files as a folder tree (noise last).
+    public var fileTree: [FileTreeNode] {
+        let tree = FileTreeNode.build(files.filter { !$0.kind.isNoise })
+        let noise = files.filter(\.kind.isNoise)
+        return noise.isEmpty
+            ? tree
+            : tree + [
+                FileTreeNode(
+                    path: "#noise", name: String(localized: "Generated & lockfiles"),
+                    file: nil, children: FileTreeNode.build(noise))
+            ]
+    }
+
     public func toggleExpanded(_ path: String) {
         if expandedPaths.contains(path) { expandedPaths.remove(path) } else { expandedPaths.insert(path) }
     }

@@ -7,7 +7,7 @@ import SylvraCore
 @Observable
 public final class PullRequestScreenModel {
     public enum Tab: String, CaseIterable, Identifiable {
-        case overview, commits, checks
+        case overview, files, commits, checks
         public var id: String { rawValue }
     }
 
