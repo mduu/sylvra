@@ -160,6 +160,14 @@ Title, author avatar and name, `head → base` refs (with fork owner), merge sta
 4. **Files by namespace** — tree grouped by folder, with +/−, kind icon, viewed checkmark, finding/comment counts. Noise group collapsed at the bottom. Optional AI reading order.
 5. **Review progress** — "12 of 18 files viewed".
 
+**Viewed / not viewed** is a manual, per-file toggle — always under the reviewer's control:
+
+- Checkbox on every file row in the file list and in every sticky file header in the diff; shortcut `V`.
+- Context menu: *Mark as viewed* / *Mark as not viewed*; on folders: *Mark all as viewed / not viewed*.
+- Synced with GitHub's "Viewed" state in both directions.
+- When a viewed file changes in a new push, it automatically flips back to *not viewed* and shows a "changed since viewed" marker (like GitHub).
+- In commit-by-commit mode, viewed state is tracked per commit as well.
+
 ## 7. Diff view — the *wow* view
 
 The diff must feel like the best diff one has ever used: fast, beautiful and instantly understandable.
