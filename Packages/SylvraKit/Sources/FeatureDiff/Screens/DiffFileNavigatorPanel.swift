@@ -1,12 +1,22 @@
 import DesignSystem
 import SwiftUI
 
-/// Change map + files by namespace with viewed toggles (container; placed in the PR column by the app).
-public struct DiffFileNavigatorPanel: View {
-    private let model: DiffScreenModel
+/// A file or folder row of the navigator (for app-provided context menu items).
+public enum NavigatorItem: Hashable, Sendable {
+    case file(path: String)
+    /// Repository-relative folder; `""` is the root.
+    case folder(path: String)
+}
 
-    public init(model: DiffScreenModel) {
+/// Change map + files by namespace with viewed toggles (container; placed in the PR column by the app).
+/// `itemMenu` is a slot for extra context menu items of file and folder rows (e.g. custom tools).
+public struct DiffFileNavigatorPanel<ItemMenu: View>: View {
+    private let model: DiffScreenModel
+    private let itemMenu: (NavigatorItem) -> ItemMenu
+
+    public init(model: DiffScreenModel, @ViewBuilder itemMenu: @escaping (NavigatorItem) -> ItemMenu) {
         self.model = model
+        self.itemMenu = itemMenu
     }
 
     public var body: some View {
@@ -31,7 +41,8 @@ public struct DiffFileNavigatorPanel: View {
                     FolderRowView(
                         folder: group.folder,
                         allViewed: group.files.allSatisfy { model.isViewed($0.path) },
-                        setViewed: { viewed in Task { await model.setViewed(viewed, folder: group.folder) } }
+                        setViewed: { viewed in Task { await model.setViewed(viewed, folder: group.folder) } },
+                        menu: itemMenu(.folder(path: group.folder))
                     )
                     ForEach(group.files) { file in
                         FileRowView(
@@ -39,7 +50,8 @@ public struct DiffFileNavigatorPanel: View {
                             isViewed: model.isViewed(file.path),
                             isSelected: model.selectedPath == file.path,
                             select: { model.selectedPath = file.path },
-                            toggleViewed: { Task { await model.toggleViewed(file.path) } }
+                            toggleViewed: { Task { await model.toggleViewed(file.path) } },
+                            menu: itemMenu(.file(path: file.path))
                         )
                     }
                 }
@@ -73,10 +85,17 @@ public struct DiffFileNavigatorPanel: View {
     }
 }
 
-private struct FolderRowView: View {
+extension DiffFileNavigatorPanel where ItemMenu == EmptyView {
+    public init(model: DiffScreenModel) {
+        self.init(model: model) { _ in EmptyView() }
+    }
+}
+
+private struct FolderRowView<Menu: View>: View {
     let folder: String
     let allViewed: Bool
     let setViewed: (Bool) -> Void
+    let menu: Menu
 
     var body: some View {
         HStack(spacing: 6) {
@@ -88,16 +107,18 @@ private struct FolderRowView: View {
         .contextMenu {
             Button("Mark all as viewed") { setViewed(true) }
             Button("Mark all as not viewed") { setViewed(false) }
+            menu
         }
     }
 }
 
-private struct FileRowView: View {
+private struct FileRowView<Menu: View>: View {
     let file: FileDiff
     let isViewed: Bool
     let isSelected: Bool
     let select: () -> Void
     let toggleViewed: () -> Void
+    let menu: Menu
 
     var body: some View {
         HStack(spacing: 6) {
@@ -120,6 +141,7 @@ private struct FileRowView: View {
         .onTapGesture(perform: select)
         .contextMenu {
             Button(isViewed ? "Mark as not viewed" : "Mark as viewed", action: toggleViewed)
+            menu
         }
     }
 }

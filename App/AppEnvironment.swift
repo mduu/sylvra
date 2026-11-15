@@ -1,10 +1,12 @@
 import FeatureAIReview
 import FeatureActivity
+import FeatureCustomTools
 import FeatureDiff
 import FeatureInbox
 import FeatureOpenInIDE
 import FeaturePullRequest
 import FeatureReview
+import FeatureTerminal
 import Foundation
 import Platform
 import SylvraCore
@@ -19,6 +21,7 @@ import SylvraCore
 /// - `--focus`: hide the inbox sidebar; `--no-inspector`: hide the AI inspector
 /// - `--run-ai-review`: start an AI review as soon as a PR is selected
 /// - `--submit-review`: open the submit review sheet; `--compose path:line`: open the comment composer
+/// - `--terminal`: show the terminal panel with one tab
 @MainActor
 final class AppEnvironment {
     let isDemo: Bool
@@ -35,6 +38,8 @@ final class AppEnvironment {
     let chat: AIChatModel
     let activity = ActivityCenter()
     let review: ReviewScreenModel
+    let terminal = TerminalModel()
+    let customTools = CustomToolStore()
 
     init(arguments: [String] = CommandLine.arguments) {
         isDemo = arguments.contains("--demo")
@@ -78,6 +83,7 @@ final class AppEnvironment {
         {
             review.startComment(at: CodeLocation(path: String(compose[0]), line: line, side: .right), lineText: "")
         }
+        if arguments.contains("--terminal") { terminal.show() }
         if Self.value(of: "--layout", in: arguments) == "inline" { diff.layout = .inline }
         if let tab = Self.value(of: "--tab", in: arguments).flatMap(PullRequestScreenModel.Tab.init(rawValue:)) {
             pullRequest.tab = tab

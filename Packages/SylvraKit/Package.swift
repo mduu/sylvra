@@ -20,6 +20,12 @@ let featureSlices = [
 
 let allModules = ["SylvraCore", "Platform", "DesignSystem"] + featureSlices
 
+/// Third-party dependencies per slice (keep minimal, see AGENTS.md).
+/// SwiftTerm (MIT): terminal emulator + PTY for the terminal panel.
+let sliceDependencies: [String: [Target.Dependency]] = [
+    "FeatureTerminal": [.product(name: "SwiftTerm", package: "SwiftTerm")]
+]
+
 let package = Package(
     name: "SylvraKit",
     defaultLocalization: "en",
@@ -27,11 +33,14 @@ let package = Package(
     products: [
         .library(name: "SylvraKit", targets: allModules)
     ],
+    dependencies: [
+        .package(url: "https://github.com/migueldeicaza/SwiftTerm", exact: "1.10.0")
+    ],
     targets: [
         .target(name: "SylvraCore"),
         .target(name: "Platform", dependencies: ["SylvraCore"]),
         .target(name: "DesignSystem", dependencies: ["SylvraCore"]),
     ]
-        + featureSlices.map { .target(name: $0, dependencies: sharedKernel) }
+        + featureSlices.map { .target(name: $0, dependencies: sharedKernel + (sliceDependencies[$0] ?? [])) }
         + allModules.map { .testTarget(name: "\($0)Tests", dependencies: [.target(name: $0)]) }
 )

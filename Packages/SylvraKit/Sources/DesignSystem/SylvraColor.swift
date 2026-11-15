@@ -15,6 +15,12 @@ public enum SylvraColor {
     public static let accentGoldSoft = dynamic(light: 0xFFF1BF, dark: 0xFFF1BF)
     /// Brand backgrounds (splash, empty states, onboarding).
     public static let canvasDeep = dynamic(light: 0x170A33, dark: 0x0B051A)
+    /// Terminal background: dark violet in both appearances (slightly lifted in light mode).
+    public static let terminalBackground = dynamic(light: 0x1F1240, dark: 0x0B051A)
+    /// Terminal text on `terminalBackground`.
+    public static let terminalForeground = dynamic(light: 0xF1ECFF, dark: 0xE4DCF7)
+    /// Terminal text selection.
+    public static let terminalSelection = dynamic(light: 0x4B2A8A, dark: 0x3A2270)
 
     private static func dynamic(light: UInt32, dark: UInt32) -> Color {
         Color(
