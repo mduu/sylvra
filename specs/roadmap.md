@@ -12,7 +12,7 @@ Status: ✅ done · 🚧 in progress · ⏳ open
 | M3 | PR details: overview, description, refs, reviewers, merge state, checks, commits (copy SHA), open on GitHub | ✅ |
 | M4 | Diff engine: unified diff parser, hunks, intra-line diff, file classification (unit-tested) | ✅ |
 | M5 | Diff view: side-by-side / inline, focused / full file, file tree by namespace, change map, viewed toggle | ✅ |
-| M6 | Review: existing threads, reply, resolve, new comments with suggestions, pending review, submit | ⏳ |
+| M6 | Review: existing threads, reply, resolve, new comments with suggestions, pending review, submit | ✅ |
 | M7 | Open in IDE: worktree manager, main-clone option, Rider / VS Code / Xcode / default app | ⏳ |
 | M8 | AI review: Claude Code provider, repo context discovery, structured findings, sharding, patterns, highlights | ⏳ |
 | M9 | AI chat, agent language, multi-model | ⏳ |
@@ -31,3 +31,10 @@ Decisions made while building without the product owner present. Revisit when co
 - Team requests use `review-requested:@me -user-review-requested:@me` (GitHub expands teams), so no team list is needed.
 - Diff view is SwiftUI (LazyVStack) for now; the AppKit/TextKit renderer for huge diffs, connector ribbons and configurable context lines (focused mode uses GitHub's 3 lines) follow in M11.
 - The file navigator (change map + files) lives in `FeatureDiff` and is placed into the PR column through a view slot of `PullRequestScreen`, so the slices stay independent.
+- Review threads reach the diff the same way: `DiffScreen` has a `lineAccessory: (CodeLocation) -> View` slot and an `onStartComment` callback; `ReviewScreen` (FeatureReview) wraps the diff and owns loading, the toolbar counter and the submit sheet. `CodeLocation` lives in `SylvraCore`.
+- Threads (and the composer) render full width below the line in both layouts instead of in the left/right half, so cards stay readable in narrow windows.
+- *Comment now* is only offered without a pending review (like GitHub); it posts a review with event `COMMENT` containing one thread. Replies join the pending review when one exists, otherwise they post immediately.
+- Comment ranges: ⇧-click a second line (gutter `+` or line number) on the same side to extend the draft to a range. Drag-to-select and the `C` shortcut follow later.
+- Outdated threads are anchored to their `originalLine`; file-level threads (no line) are loaded but not shown yet.
+- Deferred to M11: reactions, live mini-diff for suggestions, Markdown block elements beyond prose and fenced code (lists, headings render as plain text), pagination beyond 100 threads / 50 comments per thread.
+- Launch arguments `--submit-review` (opens the submit sheet) and `--compose path:line` (opens the composer) exist for screenshots.
