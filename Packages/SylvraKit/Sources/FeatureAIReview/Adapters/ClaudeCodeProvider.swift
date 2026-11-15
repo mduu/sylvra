@@ -25,6 +25,42 @@ public struct ClaudeCodeProvider: AgentProvider {
         return try Self.decode(result)
     }
 
+    public func chat(_ request: ChatRequest) async throws -> ChatReply {
+        guard let claude = ExecutableLocator.locate("claude") else { throw AgentError.notInstalled(name) }
+        let result = try await runner.run(
+            claude, arguments: Self.chatArguments(for: request),
+            workingDirectory: request.workingDirectory ?? FileManager.default.temporaryDirectory,
+            input: Data(request.message.utf8))
+        guard let data = result.standardOutput.data(using: .utf8),
+            let envelope = try? JSONDecoder().decode(ChatEnvelope.self, from: data), let text = envelope.result
+        else {
+            throw AgentError.failed(
+                (result.standardError.isEmpty ? result.standardOutput : result.standardError)
+                    .trimmingCharacters(in: .whitespacesAndNewlines))
+        }
+        return ChatReply(text: text, sessionID: envelope.sessionID ?? request.sessionID)
+    }
+
+    static func chatArguments(for request: ChatRequest) -> [String] {
+        var arguments = [
+            "--print", "--output-format", "json", "--model", request.model, "--tools", "Read", "Grep", "Glob",
+            "--append-system-prompt",
+            "You are a code review assistant inside Sylvra. Never modify files. Answer concisely in \(request.language). "
+                + "Reference code as path:line so the reviewer can jump there.",
+        ]
+        if let session = request.sessionID { arguments += ["--resume", session] }
+        return arguments
+    }
+
+    private struct ChatEnvelope: Decodable {
+        let result: String?
+        let sessionID: String?
+        enum CodingKeys: String, CodingKey {
+            case result
+            case sessionID = "session_id"
+        }
+    }
+
     static func arguments(for request: ReviewRequest) -> [String] {
         [
             "--print",

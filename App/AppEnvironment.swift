@@ -32,6 +32,7 @@ final class AppEnvironment {
     let diff: DiffScreenModel
     let openInIDE: OpenInIDEModel
     let aiReview: AIReviewModel
+    let chat: AIChatModel
     let activity = ActivityCenter()
     let review: ReviewScreenModel
 
@@ -54,9 +55,20 @@ final class AppEnvironment {
         let diffLoader: any DiffLoading = isDemo ? DemoDiffLoader() : GitHubDiffLoader(client: gitHub)
         diff = DiffScreenModel(loader: diffLoader)
         let checkout: (any CheckoutPreparing)? = isDemo ? nil : CheckoutService()
+        let agent: any AgentProvider = isDemo ? DemoAgentProvider() : ClaudeCodeProvider()
         aiReview = AIReviewModel(
-            engine: ReviewEngine(provider: isDemo ? DemoAgentProvider() : ClaudeCodeProvider()),
+            engine: ReviewEngine(provider: agent),
             files: { id in ReviewableFiles.make(from: try await diffLoader.loadDiff(for: id).files) },
+            workspace: { id in try await checkout?.prepareWorktree(for: id) }
+        )
+        let reviews = aiReview
+        let details = pullRequest
+        chat = AIChatModel(
+            provider: agent,
+            settings: {
+                reviews.settings(for: details.detail?.summary.id ?? PullRequestID(owner: "", repository: "", number: 0))
+            },
+            prContext: { id in ChatContext.describe(id, detail: details.detail, review: reviews.results[id]) },
             workspace: { id in try await checkout?.prepareWorktree(for: id) }
         )
         review = ReviewScreenModel(service: isDemo ? DemoReviewService() : GitHubReviewService(client: gitHub))

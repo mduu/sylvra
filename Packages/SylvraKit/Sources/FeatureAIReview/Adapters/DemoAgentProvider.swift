@@ -11,6 +11,15 @@ public struct DemoAgentProvider: AgentProvider {
 
     public func detectVersion() async -> String? { "2.1 (demo)" }
 
+    public func chat(_ request: ChatRequest) async throws -> ChatReply {
+        try await Task.sleep(for: delay)
+        let text =
+            "Die Summen werden jetzt **pro Position** gerundet (Sources/Billing/InvoiceService.swift:9). "
+            + "Bei vielen kleinen Positionen weicht das Total dadurch um einige Rappen vom bisherigen Wert ab. "
+            + "Ein Test dafür fehlt (Tests/BillingTests/InvoiceServiceTests.swift:16)."
+        return ChatReply(text: text, sessionID: request.sessionID ?? "demo-session")
+    }
+
     public func review(_ request: ReviewRequest) async throws -> AgentReviewOutput {
         try await Task.sleep(for: delay)
         let json = """

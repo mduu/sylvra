@@ -9,14 +9,19 @@ public struct FindingsInspectorScreen: View {
     private let prBody: String
     private let jump: (ReviewFinding) -> Void
     private let turnIntoComment: ((ReviewFinding) -> Void)?
+    private let chat: AIChatModel?
+    private let jumpToLocation: (String, Int) -> Void
 
     /// - Parameters:
     ///   - jump: shows the finding's location in the diff (wired by the app).
     ///   - turnIntoComment: creates a draft review comment (wired by the app, optional).
     public init(
         model: AIReviewModel, pullRequest: PullRequestSummary?, pullRequestBody: String,
-        jump: @escaping (ReviewFinding) -> Void, turnIntoComment: ((ReviewFinding) -> Void)? = nil
+        jump: @escaping (ReviewFinding) -> Void, turnIntoComment: ((ReviewFinding) -> Void)? = nil,
+        chat: AIChatModel? = nil, jumpToLocation: @escaping (String, Int) -> Void = { _, _ in }
     ) {
+        self.chat = chat
+        self.jumpToLocation = jumpToLocation
         self.model = model
         self.pullRequest = pullRequest
         self.prBody = pullRequestBody
@@ -28,10 +33,14 @@ public struct FindingsInspectorScreen: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 12) {
                 header
-                if let id = pullRequest?.id, model.results[id] != nil || !model.progress.isEmpty {
+                if let id = pullRequest?.id,
+                    model.results[id] != nil || !model.progress.isEmpty || !(chat?.messages(for: id).isEmpty ?? true)
+                        || model.tab == .chat
+                {
                     Picker("Section", selection: $model.tab) {
                         Text("Findings \(model.visibleFindings(for: id).count)").tag(AIReviewModel.Tab.findings)
                         Text("Patterns").tag(AIReviewModel.Tab.patterns)
+                        if chat != nil { Text("Chat").tag(AIReviewModel.Tab.chat) }
                         Text("Summary").tag(AIReviewModel.Tab.summary)
                     }
                     .pickerStyle(.segmented)
@@ -110,6 +119,8 @@ public struct FindingsInspectorScreen: View {
             }
         case .patterns:
             ForEach(model.results[id]?.patterns ?? []) { PatternRowView(pattern: $0) }
+        case .chat:
+            if let chat { AIChatPanel(model: chat, pullRequestID: id, jump: jumpToLocation) }
         case .summary:
             Text(model.results[id]?.summary ?? "").font(.callout).textSelection(.enabled)
         }
@@ -128,6 +139,9 @@ public struct FindingsInspectorScreen: View {
                 }
                 .buttonStyle(.borderedProminent)
                 .disabled(model.runState == .running)
+                if chat != nil {
+                    Button("Ask a question") { model.tab = .chat }.buttonStyle(.borderless)
+                }
             }
         }
         .frame(maxWidth: .infinity)

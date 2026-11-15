@@ -7,7 +7,7 @@ import SylvraCore
 @Observable
 public final class AIReviewModel {
     public enum Tab: String, CaseIterable, Identifiable {
-        case findings, patterns, summary
+        case findings, patterns, chat, summary
         public var id: String { rawValue }
     }
 

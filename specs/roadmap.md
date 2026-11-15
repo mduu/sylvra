@@ -15,7 +15,7 @@ Status: ✅ done · 🚧 in progress · ⏳ open
 | M6 | Review: existing threads, reply, resolve, new comments with suggestions, pending review, submit | ✅ |
 | M7 | Open in IDE: worktree manager, main-clone option, Rider / VS Code / Xcode / default app | ✅ |
 | M8 | AI review: Claude Code provider, repo context discovery, structured findings, sharding, patterns, highlights | ✅ |
-| M9 | AI chat, agent language, multi-model | ⏳ |
+| M9 | AI chat, agent language, multi-model | ✅ |
 | M10 | Activity indicator, notifications, terminal panel, custom tools, settings | 🚧 (activity, notifications, settings done) |
 | M11 | Polish: syntax highlighting, animations, wow diff details, persistence cache | ⏳ |
 
@@ -45,3 +45,4 @@ Decisions made while building without the product owner present. Revisit when co
 - Launch arguments `--submit-review` (opens the submit sheet) and `--compose path:line` (opens the composer) exist for screenshots.
 - AI findings reach the diff as `LineHighlight`s (FeatureDiff) set by the app; *Turn into comment* prefills the review composer (bold title, rationale, suggestion block). Translation into the comment language is not done yet — the reviewer edits the text.
 - Window screenshots need an unlocked screen; while the Mac is locked no screenshots are taken (an offscreen renderer was tried and rejected because it does not reproduce materials and lists correctly).
+- AI chat uses one resumable Claude Code session per PR (`--resume`); the first message carries the PR context (title, description, commits, AI summary and findings); `path:line` references in answers are links into the diff.

@@ -157,3 +157,35 @@ struct AIReviewModelTests {
         #expect(!model.visibleFindings(for: id).contains(first))
     }
 }
+
+@MainActor
+struct AIChatModelTests {
+    let id = PullRequestID(owner: "acme", repository: "billing", number: 1234)
+
+    @Test func keepsConversationAndSessionPerPR() async {
+        let chat = AIChatModel(
+            provider: DemoAgentProvider(delay: .zero), settings: { ReviewSettings(agentLanguage: "German") },
+            prContext: { _ in "PR context" }, workspace: { _ in nil })
+        chat.draft = "Was ändert sich?"
+        await chat.send(for: id)
+        #expect(chat.draft.isEmpty)
+        #expect(chat.messages(for: id).map(\.role) == [.user, .assistant])
+        #expect(chat.messages(for: PullRequestID(owner: "o", repository: "r", number: 1)).isEmpty)
+        chat.reset(id)
+        #expect(chat.messages(for: id).isEmpty)
+    }
+
+    @Test func findsCodeReferences() {
+        let refs = AIChatModel.codeReferences(in: "See Sources/Billing/InvoiceService.swift:9 and Package.swift:3.")
+        #expect(refs.map(\.path) == ["Sources/Billing/InvoiceService.swift", "Package.swift"])
+        #expect(refs.map(\.line) == [9, 3])
+    }
+
+    @Test func chatResumesSessions() {
+        let request = ChatRequest(
+            message: "hi", sessionID: "abc", model: "opus", language: "German", workingDirectory: nil)
+        let arguments = ClaudeCodeProvider.chatArguments(for: request)
+        #expect(arguments.contains("--resume") && arguments.contains("abc"))
+        #expect(!arguments.contains("--no-session-persistence"))
+    }
+}

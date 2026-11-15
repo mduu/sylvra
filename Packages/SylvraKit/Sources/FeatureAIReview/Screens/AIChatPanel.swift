@@ -1,0 +1,163 @@
+import DesignSystem
+import SwiftUI
+import SylvraCore
+
+/// Chat with the agent about the selected pull request (container).
+public struct AIChatPanel: View {
+    @Bindable private var model: AIChatModel
+    private let pullRequestID: PullRequestID?
+    private let jump: (String, Int) -> Void
+
+    /// - Parameter jump: shows `path:line` in the diff (wired by the app).
+    public init(model: AIChatModel, pullRequestID: PullRequestID?, jump: @escaping (String, Int) -> Void) {
+        self.model = model
+        self.pullRequestID = pullRequestID
+        self.jump = jump
+    }
+
+    public var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            ForEach(model.messages(for: pullRequestID)) { message in
+                ChatMessageView(message: message)
+            }
+            if model.isSending {
+                HStack(spacing: 6) {
+                    ProgressView().controlSize(.small)
+                    Text("Thinking…").font(.caption).foregroundStyle(.secondary)
+                }
+            }
+            if model.messages(for: pullRequestID).isEmpty, let id = pullRequestID {
+                FlowPrompts(prompts: AIChatModel.quickPrompts) { prompt in Task { await model.send(prompt, for: id) } }
+            }
+            contextChips
+            HStack(alignment: .bottom, spacing: 6) {
+                TextField("Ask about this pull request…", text: $model.draft, axis: .vertical)
+                    .textFieldStyle(.roundedBorder)
+                    .lineLimit(1...5)
+                    .onSubmit(send)
+                Button(action: send) { Image(systemName: "arrow.up.circle.fill").font(.title2) }
+                    .buttonStyle(.borderless)
+                    .disabled(model.draft.isEmpty || model.isSending || pullRequestID == nil)
+                    .keyboardShortcut(.return, modifiers: .command)
+            }
+        }
+        .environment(
+            \.openURL,
+            OpenURLAction { url in
+                guard url.scheme == "sylvra-code", let reference = CodeReferenceURL(url) else { return .systemAction }
+                jump(reference.path, reference.line)
+                return .handled
+            }
+        )
+        .animation(.snappy, value: model.messages(for: pullRequestID))
+    }
+
+    @ViewBuilder private var contextChips: some View {
+        let chips = [model.context.file, model.context.finding].compactMap { $0 }
+        if !chips.isEmpty {
+            HStack(spacing: 6) {
+                if let file = model.context.file {
+                    chip((file as NSString).lastPathComponent) { model.context.file = nil }
+                }
+                if let finding = model.context.finding {
+                    chip(finding) { model.context.finding = nil }
+                }
+            }
+        }
+    }
+
+    private func chip(_ title: String, remove: @escaping () -> Void) -> some View {
+        HStack(spacing: 4) {
+            Text(title).lineLimit(1)
+            Button(action: remove) { Image(systemName: "xmark") }.buttonStyle(.borderless)
+        }
+        .font(.caption)
+        .padding(.horizontal, 7)
+        .padding(.vertical, 3)
+        .background(SylvraColor.brandPrimary.opacity(0.14), in: Capsule())
+    }
+
+    private func send() {
+        guard let id = pullRequestID else { return }
+        Task { await model.send(for: id) }
+    }
+}
+
+/// One chat bubble with markdown and clickable `path:line` references (pure).
+struct ChatMessageView: View {
+    let message: AIChatModel.Message
+
+    var body: some View {
+        Text(Self.render(message.text))
+            .font(.callout)
+            .textSelection(.enabled)
+            .padding(10)
+            .frame(maxWidth: .infinity, alignment: message.role == .user ? .trailing : .leading)
+            .background(background, in: RoundedRectangle(cornerRadius: 12))
+            .foregroundStyle(message.role == .error ? AnyShapeStyle(.red) : AnyShapeStyle(.primary))
+    }
+
+    private var background: AnyShapeStyle {
+        switch message.role {
+        case .user: AnyShapeStyle(SylvraColor.brandPrimary.opacity(0.14))
+        case .assistant: AnyShapeStyle(AIAccent.cardBackground)
+        case .error: AnyShapeStyle(Color.red.opacity(0.08))
+        }
+    }
+
+    static func render(_ text: String) -> AttributedString {
+        let options = AttributedString.MarkdownParsingOptions(interpretedSyntax: .inlineOnlyPreservingWhitespace)
+        var result = (try? AttributedString(markdown: text, options: options)) ?? AttributedString(text)
+        let plain = String(result.characters)
+        for reference in AIChatModel.codeReferences(in: plain) {
+            let token = String(plain[reference.range])
+            guard let range = result.range(of: token),
+                let url = CodeReferenceURL.make(path: reference.path, line: reference.line)
+            else { continue }
+            result[range].link = url
+            result[range].font = .callout.monospaced()
+        }
+        return result
+    }
+}
+
+/// `sylvra-code://open?path=…&line=…` links used inside chat answers.
+struct CodeReferenceURL {
+    let path: String
+    let line: Int
+
+    init?(_ url: URL) {
+        let items = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems ?? []
+        guard let path = items.first(where: { $0.name == "path" })?.value,
+            let line = items.first(where: { $0.name == "line" })?.value.flatMap(Int.init)
+        else { return nil }
+        self.path = path
+        self.line = line
+    }
+
+    static func make(path: String, line: Int) -> URL? {
+        var components = URLComponents()
+        components.scheme = "sylvra-code"
+        components.host = "open"
+        components.queryItems = [
+            URLQueryItem(name: "path", value: path), URLQueryItem(name: "line", value: String(line)),
+        ]
+        return components.url
+    }
+}
+
+/// Quick prompt buttons (pure).
+private struct FlowPrompts: View {
+    let prompts: [String]
+    let select: (String) -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            ForEach(prompts, id: \.self) { prompt in
+                Button(prompt) { select(prompt) }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+            }
+        }
+    }
+}

@@ -52,13 +52,23 @@ struct RootScreen: View {
                 pullRequest: selection,
                 pullRequestBody: environment.pullRequest.detail?.body ?? "",
                 jump: { finding in environment.diff.selectedPath = finding.path },
-                turnIntoComment: { finding in startComment(from: finding) }
+                turnIntoComment: { finding in startComment(from: finding) },
+                chat: environment.chat,
+                jumpToLocation: { path, _ in environment.diff.selectedPath = path }
             )
             .inspectorColumnWidth(min: 260, ideal: 300)
         }
         .task(id: selection?.id) {
             guard environment.autoRunsAIReview, let selection else { return }
             await environment.aiReview.run(selection.id, title: selection.title, body: "")
+        }
+        .onChange(of: environment.diff.selectedPath) { _, path in
+            environment.chat.context.file = path
+        }
+        .onChange(of: environment.aiReview.selectedFindingID) { _, id in
+            environment.chat.context.finding =
+                environment.aiReview.findings(for: selection?.id)
+                .first { $0.id == id }?.title
         }
         .onChange(of: aiHighlights) { _, highlights in
             withAnimation(.snappy) { environment.diff.lineHighlights = highlights }
