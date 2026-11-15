@@ -1,4 +1,5 @@
 import FeatureAIReview
+import FeatureActivity
 import FeatureDiff
 import FeatureInbox
 import FeatureOpenInIDE
@@ -51,6 +52,27 @@ struct RootScreen: View {
             guard environment.autoRunsAIReview, let selection else { return }
             await environment.aiReview.run(selection.id, title: selection.title, body: "")
         }
+        .onChange(of: environment.aiReview.runState) { _, state in
+            let id = "ai-review"
+            switch state {
+            case .running:
+                environment.activity.start(ActivityJob(id: id, kind: .aiReview, title: String(localized: "AI review")))
+            case .done:
+                let count = environment.aiReview.visibleFindings(for: environment.aiReview.runningPullRequest).count
+                environment.activity.finish(id, message: String(localized: "Review finished — \(count) findings"))
+            case .failed(let message):
+                environment.activity.finish(id, message: message)
+            case .idle:
+                environment.activity.finish(id, message: nil)
+            }
+        }
+        .onChange(of: environment.openInIDE.status) { _, status in
+            if case .working(let message) = status {
+                environment.activity.start(ActivityJob(id: "checkout", kind: .checkout, title: message))
+            } else {
+                environment.activity.finish("checkout", message: nil)
+            }
+        }
         .onChange(of: environment.inbox.snapshot) {
             guard selection == nil, let wanted = environment.initialSelection else { return }
             selection = environment.inbox.snapshot.sections.values.joined().first { $0.id.description == wanted }
@@ -61,6 +83,9 @@ struct RootScreen: View {
                 .animation(.snappy, value: environment.openInIDE.status)
         }
         .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                ActivityToolbarPanel(center: environment.activity)
+            }
             ToolbarItem(placement: .primaryAction) {
                 OpenInIDEToolbarPanel(model: environment.openInIDE, pullRequestID: selection?.id)
             }

@@ -1,3 +1,5 @@
+import FeatureAIReview
+import FeatureActivity
 import FeatureSettings
 import SwiftUI
 
@@ -5,15 +7,22 @@ import SwiftUI
 @main
 struct SylvraApp: App {
     @State private var environment = AppEnvironment()
+    @AppStorage(AppearanceSetting.storageKey) private var appearance = AppearanceSetting.auto.rawValue
 
     var body: some Scene {
         WindowGroup {
             RootScreen(environment: environment)
+                .preferredColorScheme(AppearanceSetting(rawValue: appearance)?.colorScheme)
         }
         .defaultSize(width: 1440, height: 900)
 
         Settings {
-            SettingsScreen()
+            SettingsScreen {
+                AIReviewSettingsView(model: environment.aiReview)
+            } notifications: {
+                NotificationSettingsView(center: environment.activity)
+            }
+            .preferredColorScheme(AppearanceSetting(rawValue: appearance)?.colorScheme)
         }
     }
 }

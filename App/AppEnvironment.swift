@@ -1,4 +1,5 @@
 import FeatureAIReview
+import FeatureActivity
 import FeatureDiff
 import FeatureInbox
 import FeatureOpenInIDE
@@ -28,6 +29,7 @@ final class AppEnvironment {
     let diff: DiffScreenModel
     let openInIDE: OpenInIDEModel
     let aiReview: AIReviewModel
+    let activity = ActivityCenter()
 
     init(arguments: [String] = CommandLine.arguments) {
         isDemo = arguments.contains("--demo")
