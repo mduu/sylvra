@@ -1,0 +1,53 @@
+name: PR validation
+
+# Lean by design (see specs/architecture.md §14.2): PRs only, docs-only changes skipped,
+# cheap Linux lint first, macOS build/test only after lint passed, no artifacts.
+on:
+  pull_request:
+    branches: [main]
+    paths-ignore:
+      - "**/*.md"
+      - "specs/**"
+      - "assets/**"
+
+concurrency:
+  group: pr-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: SwiftLint
+        run: docker run --rm -v "$PWD:/work" -w /work ghcr.io/realm/swiftlint:0.65.1 swiftlint lint --strict
+      - name: swift format
+        run: >
+          docker run --rm -v "$PWD:/work" -w /work swift:6.2
+          swift format lint --strict --recursive App Packages/SylvraKit/Sources Packages/SylvraKit/Tests Packages/SylvraKit/Package.swift
+
+  build-and-test:
+    name: Build & test
+    needs: lint
+    runs-on: macos-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - name: Select newest Xcode
+        run: |
+          XCODE=$(ls -d /Applications/Xcode_*.app | sort -V | tail -1)
+          sudo xcode-select -s "$XCODE"
+          xcodebuild -version
+      - uses: actions/cache@v4
+        with:
+          path: Packages/SylvraKit/.build
+          key: spm-${{ runner.os }}-${{ hashFiles('Packages/SylvraKit/Package.swift', 'Packages/SylvraKit/Package.resolved') }}
+      - name: Package tests
+        run: swift test --package-path Packages/SylvraKit
+      - name: Build app
+        run: xcodebuild -project Sylvra.xcodeproj -scheme Sylvra -destination 'platform=macOS' build CODE_SIGNING_ALLOWED=NO -quiet

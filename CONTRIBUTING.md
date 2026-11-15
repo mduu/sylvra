@@ -30,14 +30,14 @@ cd sylvra
 open Sylvra.xcodeproj
 ```
 
-> The project is in its specification phase. Build and lint commands become available with the first code — see `AGENTS.md`.
+Before opening a PR, run `scripts/format.sh`, `scripts/lint.sh` and `scripts/test.sh` (SwiftLint: `brew install swiftlint`).
 
 ## Workflow
 
 1. Create a branch from `main` (`feature/<short-name>`, `fix/<short-name>`).
 2. Make small, focused commits with imperative messages (`Add intra-line diff for modified line pairs`).
 3. Keep the specs in sync: if your change contradicts or extends a spec, update it in the same PR.
-4. Run lint and tests locally (`scripts/lint.sh`, `xcodebuild … test`) before opening the PR.
+4. Run lint and tests locally (`scripts/lint.sh`, `scripts/test.sh`) before opening the PR.
 5. Open a pull request against `main`:
    - describe **what** changed and **why**,
    - link the related issue,

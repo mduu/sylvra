@@ -1,0 +1,32 @@
+# SwiftLint — lint rules. Formatting is handled by `swift format` (.swift-format).
+included:
+  - App
+  - Packages/SylvraKit/Sources
+  - Packages/SylvraKit/Tests
+excluded:
+  - Packages/SylvraKit/.build
+
+disabled_rules:
+  - trailing_comma        # swift format decides
+  - opening_brace         # swift format decides
+  - todo                  # TODOs are fine while the project grows
+
+opt_in_rules:
+  - force_unwrapping
+  - implicitly_unwrapped_optional
+  - empty_count
+  - first_where
+  - contains_over_first_not_nil
+  - sorted_first_last
+  - redundant_nil_coalescing
+
+analyzer_rules:
+  - unused_declaration
+
+line_length:
+  warning: 140
+  error: 200
+  ignores_comments: true
+
+identifier_name:
+  excluded: [id, x, y, i]

@@ -29,7 +29,7 @@ We deviate **only with a clearly documented reason**. Every deviation is listed 
 
 ### 3.1 Color system (derived from the app icon)
 
-Hex values are sRGB approximations of the Display P3 values used in `assets/AppIcon.icon`.
+Hex values are sRGB approximations of the Display P3 values used in `App/AppIcon.icon`. Code: `DesignSystem/SylvraColor`; system accent color: `App/Assets.xcassets/AccentColor`.
 
 | Token | Role | Light | Dark | Icon source |
 |---|---|---|---|---|

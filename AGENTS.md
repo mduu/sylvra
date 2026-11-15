@@ -61,19 +61,18 @@ Rules:
 ## Build, lint and test
 
 ```bash
-# Build the app
-xcodebuild -project Sylvra.xcodeproj -scheme Sylvra -destination 'platform=macOS' build
-
-# Run all tests
-xcodebuild -project Sylvra.xcodeproj -scheme Sylvra -destination 'platform=macOS' test
-
-# Package tests only (faster)
-swift test --package-path Packages/SylvraKit
-
-# Lint and format
+scripts/test.sh        # package tests (swift test) + app build
 scripts/lint.sh        # SwiftLint + swift format lint
 scripts/format.sh      # swift format (in place)
+
+# Individually
+swift test --package-path Packages/SylvraKit
+xcodebuild -project Sylvra.xcodeproj -scheme Sylvra -destination 'platform=macOS' build
 ```
+
+- All feature code and its tests live in the `SylvraKit` package; the app target (`App/`) only composes slices.
+- The Xcode project uses synchronized folders: new files in `App/` are picked up automatically — never edit `project.pbxproj` by hand for that.
+- New slice = new target in `Packages/SylvraKit/Package.swift` (+ test target), never a folder in `App/`.
 
 Run lint and the relevant tests before reporting a task as done. If you cannot run them, say so.
 

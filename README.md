@@ -36,12 +36,14 @@ Sylvra is **not a Git client**. It is a specialized PR review client.
 
 ## Getting started
 
-> The project is in its specification phase. Build instructions will be added with the first code.
+> Early stage: the project skeleton exists, features are being built.
 
 ```bash
-git clone <repo-url> sylvra
+git clone git@github.com:mduu/sylvra.git
 cd sylvra
-open Sylvra.xcodeproj
+open Sylvra.xcodeproj      # run the "Sylvra" scheme
+scripts/test.sh            # package tests + app build
+scripts/lint.sh            # SwiftLint + swift format
 ```
 
 ## Documentation

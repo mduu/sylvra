@@ -406,7 +406,7 @@ Rider keeps every opened folder in its *recent projects*; deleted worktrees rema
 ### 14.1 Local
 
 - **SwiftLint** (`.swiftlint.yml`) for lint rules, **`swift format`** (`.swift-format`) for formatting.
-- `scripts/lint.sh` and `scripts/format.sh`; optional Git pre-commit hook.
+- `scripts/lint.sh`, `scripts/format.sh` and `scripts/test.sh` (package tests + app build); optional Git pre-commit hook.
 - SwiftLint also runs as an Xcode build phase (warnings in the IDE).
 
 ### 14.2 GitHub Actions (PR validation)
