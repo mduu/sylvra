@@ -210,10 +210,11 @@ struct AIReviewPersistenceTests {
 }
 
 struct CommentRewriterTests {
-    @Test func promptAsksForShortPersonalToneAndKeepsSuggestions() {
+    @Test func promptAsksForShortFactualToneAndKeepsSuggestions() {
         let prompt = CommentRewriter.prompt(for: "Round once.", language: "German", style: .improve)
         #expect(prompt.contains("in German"))
         #expect(prompt.contains("at most two sentences"))
+        #expect(prompt.contains("factual and neutral"))
         #expect(prompt.contains("```suggestion block exactly"))
     }
 

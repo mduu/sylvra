@@ -135,7 +135,7 @@ Everything GitHub shows about a PR, in a calmer layout:
 - **Review checklists** per repository.
 - **Personal review stats**: time to first review, review load per day — for myself, not for surveillance.
 - **Notifications**: new review requests and updates to PRs I reviewed.
-- **Comment tone helper**: rephrase a comment to be clear and kind.
+- **Comment writing help** (built): comments stay **factual, short and neutral**. In the composer: EN/DE per comment (remembered per repository; switching only translates), *Rephrase factually* (at most two sentences, observation → effect → suggestion, no judgment or absolutes), *Shorter and crisper*, *Undo rewrite*. A local, instant **tone check** flags dismissive, absolute, loaded or shouted wording and offers *Rephrase*. Suggestion blocks are never changed; nothing is posted without the reviewer's action.
 
 ## 7. Non-goals
 

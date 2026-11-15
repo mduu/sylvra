@@ -29,16 +29,15 @@ public struct CommentRewriter: Sendable {
             switch style {
             case .improve:
                 """
-                Improve the wording of the following GitHub code review comment and write it in \(language), as if \
-                I — the reviewer — wrote it myself. Keep it short and to the point: at most two sentences unless the \
-                content truly needs more, never longer than the original. Personal and friendly; collaborative \
-                rather than judgmental (prefer a question or a suggestion over a verdict); first person.
+                Rephrase the following GitHub code review comment factually and write it in \(language), as if I — \
+                the reviewer — wrote it myself. Keep it short and to the point: at most two sentences unless the \
+                content truly needs more, never longer than the original.
                 """
             case .shorten:
                 """
                 Make the following GitHub code review comment as short and crisp as possible, in \(language), in my \
-                voice as the reviewer: ideally one sentence, at most two. Keep the point and a friendly tone, drop \
-                filler, hedging and repetition.
+                voice as the reviewer: ideally one sentence, at most two. Keep the point, drop filler, hedging and \
+                repetition.
                 """
             case .translate:
                 """
@@ -48,6 +47,10 @@ public struct CommentRewriter: Sendable {
             }
         return """
             \(task)
+            Stay factual and neutral: name the observation, its concrete effect and, if there is one, the \
+            suggested change. No judgment of the author, no loaded or emotional words, no sarcasm, no \
+            exaggeration or absolutes ("always", "obviously", "just"), no exclamation marks. Polite but not chatty; \
+            a question or a suggestion is fine where it is genuinely open.
             No greeting, no sign-off, no filler phrases, no mention of AI. Keep Markdown and inline code.
             Keep every ```suggestion block exactly as it is, character for character.
             Reply with the comment text only.

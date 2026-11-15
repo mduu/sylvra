@@ -22,6 +22,7 @@ import SylvraCore
 /// - `--run-ai-review`: start an AI review as soon as a PR is selected; with `--turn-into-comment` the top
 ///   finding becomes a comment draft
 /// - `--submit-review`: open the submit review sheet; `--compose=path:line`: open the comment composer
+///   (`--draft=text` prefills it)
 /// - `--terminal`: show the terminal panel with one tab
 @MainActor
 final class AppEnvironment {
@@ -86,6 +87,7 @@ final class AppEnvironment {
             let line = Int(compose[1])
         {
             review.startComment(at: CodeLocation(path: String(compose[0]), line: line, side: .right), lineText: "")
+            review.draft?.body = Self.value(of: "--draft", in: arguments) ?? ""
         }
         if arguments.contains("--terminal") { terminal.show() }
         if Self.value(of: "--layout", in: arguments) == "inline" { diff.layout = .inline }

@@ -24,6 +24,8 @@ struct CommentComposerView: View {
     @State private var isPreviewing = false
     @FocusState private var isFocused: Bool
 
+    private var toneIssues: [ToneCheck.Issue] { isPreviewing ? [] : ToneCheck.issues(in: text) }
+
     private var isEmpty: Bool { text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
 
     var body: some View {
@@ -50,7 +52,7 @@ struct CommentComposerView: View {
                 }
                 if let rewrite {
                     Menu {
-                        Button("Improve wording", systemImage: "wand.and.sparkles") { rewrite(.improve) }
+                        Button("Rephrase factually", systemImage: "wand.and.sparkles") { rewrite(.improve) }
                             .keyboardShortcut("e", modifiers: [.command, .shift])
                         Button("Shorter and crisper", systemImage: "scissors") { rewrite(.shorten) }
                             .keyboardShortcut("k", modifiers: [.command, .shift])
@@ -71,7 +73,7 @@ struct CommentComposerView: View {
                     .fixedSize()
                     .foregroundStyle(SylvraColor.accentGold)
                     .disabled(isRewriting || isEmpty)
-                    .help("Improve wording — short, personal, friendly (⌘⇧E). Menu: shorter (⌘⇧K), undo")
+                    .help("Rephrase factually and concisely (⌘⇧E). Menu: shorter (⌘⇧K), undo")
                 }
                 Button(action: insertSuggestion) {
                     Label("Insert suggestion", systemImage: "plus.forwardslash.minus").labelStyle(.iconOnly)
@@ -110,6 +112,13 @@ struct CommentComposerView: View {
             .background(.background, in: RoundedRectangle(cornerRadius: 6))
             .overlay(RoundedRectangle(cornerRadius: 6).strokeBorder(.separator))
 
+            if !toneIssues.isEmpty {
+                ToneHintView(
+                    issues: toneIssues, isRewriting: isRewriting, makeFactual: rewrite.map { r in { r(.improve) } }
+                )
+                .transition(.opacity)
+            }
+
             HStack {
                 Button("Cancel", role: .cancel, action: cancel)
                     .keyboardShortcut(.cancelAction)
@@ -145,4 +154,48 @@ struct CommentComposerView: View {
     )
     .padding()
     .frame(width: 560)
+}
+
+/// Hint below the composer when the draft contains judgmental wording (pure).
+struct ToneHintView: View {
+    let issues: [ToneCheck.Issue]
+    var isRewriting = false
+    var makeFactual: (() -> Void)?
+
+    var body: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 8) {
+            Image(systemName: "text.bubble").foregroundStyle(SylvraColor.accentGold)
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Keep it factual").font(.caption.weight(.semibold))
+                Text(summary).font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            }
+            Spacer(minLength: 4)
+            if let makeFactual {
+                Button("Rephrase", systemImage: "sparkles", action: makeFactual)
+                    .controlSize(.small)
+                    .disabled(isRewriting)
+            }
+        }
+        .padding(8)
+        .background(SylvraColor.accentGold.opacity(0.08), in: RoundedRectangle(cornerRadius: 6))
+    }
+
+    private var summary: String {
+        issues.prefix(3).map { "«\($0.phrase)» \(Self.reason($0.reason))" }.joined(separator: " · ")
+    }
+
+    private static func reason(_ reason: ToneCheck.Reason) -> String {
+        switch reason {
+        case .dismissive: String(localized: "sounds dismissive")
+        case .absolute: String(localized: "is absolute — name the concrete case")
+        case .loaded: String(localized: "is judgmental — describe the effect instead")
+        case .emphasis: String(localized: "reads as raised voice")
+        }
+    }
+}
+
+#Preview("Tone hint") {
+    ToneHintView(issues: ToneCheck.issues(in: "This is obviously wrong, we always round at the end!"), makeFactual: {})
+        .padding()
+        .frame(width: 520)
 }

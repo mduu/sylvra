@@ -283,3 +283,24 @@ struct CommentLanguageTests {
         #expect(model.draft?.body == "[German translate] Round once.")
     }
 }
+
+struct ToneCheckTests {
+    @Test func flagsJudgmentalWordingInBothLanguages() {
+        let issues = ToneCheck.issues(in: "This is obviously wrong, we always round at the end!")
+        #expect(issues.map(\.phrase) == ["obviously", "wrong", "always", "!"])
+        #expect(ToneCheck.issues(in: "Das ist natürlich Murks").map(\.reason) == [.dismissive, .loaded])
+    }
+
+    @Test func factualCommentHasNoIssues() {
+        #expect(ToneCheck.issues(in: "Rounding per line drifts the total by a few cents. Could we round once?").isEmpty)
+    }
+
+    @Test func ignoresCodeAndWordParts() {
+        let text = "Use `isAlways` here.\n\n```suggestion\nreturn neverNil!\n```\nJustification follows."
+        #expect(ToneCheck.issues(in: text).isEmpty)
+    }
+
+    @Test func flagsShouting() {
+        #expect(ToneCheck.issues(in: "Please do NOT merge").map(\.reason) == [.emphasis])
+    }
+}
