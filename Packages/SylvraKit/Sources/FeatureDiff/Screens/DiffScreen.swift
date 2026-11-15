@@ -37,6 +37,20 @@ public struct DiffScreen<LineAccessory: View>: View {
     public var body: some View {
         content
             .safeAreaInset(edge: .top) {
+                if model.isSearchPresented {
+                    DiffSearchBar(
+                        query: $model.searchQuery,
+                        matchCount: model.searchMatches.count,
+                        currentIndex: model.currentSearchMatch.flatMap { model.searchMatches.firstIndex(of: $0) },
+                        next: { model.selectSearchMatch(offset: 1) },
+                        previous: { model.selectSearchMatch(offset: -1) },
+                        close: { model.isSearchPresented = false }
+                    )
+                    .transition(.move(edge: .top).combined(with: .opacity))
+                }
+            }
+            .animation(.snappy, value: model.isSearchPresented)
+            .safeAreaInset(edge: .top) {
                 ReviewProgressBar(
                     progress: model.progress,
                     hasNewCommits: model.hasNewCommits,
@@ -150,6 +164,11 @@ public struct DiffScreen<LineAccessory: View>: View {
                     diffIsWide = $0
                 }
                 .environment(\.diffIsWide, diffIsWide)
+                .environment(\.diffSearchQuery, model.isSearchPresented ? model.searchQuery : "")
+                .environment(
+                    \.diffCurrentMatch,
+                    model.currentSearchMatch.map { DiffScreenModel.lineAnchor(path: $0.path, line: $0.line) }
+                )
                 .onChange(of: model.selectedPath) { _, path in
                     guard let path, model.focusedLine?.path != path else { return }
                     withAnimation(.snappy) { proxy.scrollTo(path, anchor: .top) }

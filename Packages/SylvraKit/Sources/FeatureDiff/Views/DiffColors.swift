@@ -96,6 +96,9 @@ extension EnvironmentValues {
     @Entry var syntaxLanguage: SyntaxHighlighter.Language = .plain
     /// The diff column is wide enough for threads under their own side-by-side half.
     @Entry var diffIsWide = true
+    /// Find in diff: the query (≥ 2 characters) and the anchor of the current match.
+    @Entry var diffSearchQuery = ""
+    @Entry var diffCurrentMatch: String?
 }
 
 /// Remembers rendered lines so scrolling and re-renders don't re-tokenise (bounded LRU-ish cache).

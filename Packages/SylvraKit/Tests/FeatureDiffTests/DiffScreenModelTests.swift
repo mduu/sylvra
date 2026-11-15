@@ -115,3 +115,48 @@ struct ReadingOrderTests {
         #expect(model.orderedFiles.first?.path == "Sources/Billing/InvoiceService.swift")
     }
 }
+
+@MainActor
+struct DiffNavigationTests {
+    private let id = PullRequestID(owner: "acme", repository: "billing", number: 1234)
+
+    @Test func changeLinesAnchorRemovalsAtTheNextNewLine() throws {
+        let file = try #require(UnifiedDiffParser.parse(DemoDiffLoader.diff).first)
+        // Hunk 1: line 8 (removal + additions start), line 13 (export signature).
+        #expect(DiffScreenModel.changeLines(in: file.hunks) == [8, 13])
+    }
+
+    @Test func jumpsThroughChangesInReviewOrder() async {
+        let model = DiffScreenModel(loader: DemoDiffLoader())
+        await model.load(id, headSHA: "h")
+        model.selectChange(offset: 1)
+        #expect(model.focusedLine?.path == "Sources/Billing/InvoiceService.swift")
+        #expect(model.focusedLine?.line == 8)
+        model.selectChange(offset: 1)
+        #expect(model.focusedLine?.line == 13)
+        model.selectChange(offset: 1)
+        #expect(model.focusedLine?.path == "Sources/Export/CSVEncoder.swift")
+        model.selectChange(offset: -1)
+        #expect(model.focusedLine?.line == 13)
+    }
+
+    @Test func findsMatchesAcrossFilesAndWraps() async {
+        let model = DiffScreenModel(loader: DemoDiffLoader())
+        await model.load(id, headSHA: "h")
+        model.searchQuery = "quantity"
+        let matches = model.searchMatches
+        #expect(matches.count >= 3)
+        #expect(Set(matches.map(\.path)).contains("Sources/Billing/Invoice.swift"))
+        model.selectSearchMatch(offset: -1)
+        #expect(model.currentSearchMatch == matches.last)
+        model.selectSearchMatch(offset: 1)
+        #expect(model.currentSearchMatch == matches.first)
+        // The viewed (collapsed) file expands when its match is shown.
+        model.searchQuery = "let quantity"
+        model.selectSearchMatch(offset: 1)
+        #expect(model.focusedLine?.path == "Sources/Billing/Invoice.swift")
+        #expect(model.expandedPaths.contains("Sources/Billing/Invoice.swift"))
+        model.searchQuery = "q"
+        #expect(model.searchMatches.isEmpty)
+    }
+}

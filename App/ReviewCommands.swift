@@ -10,6 +10,11 @@ struct ReviewActions {
     var runAIReview: () -> Void
     var openOnGitHub: () -> Void
     var toggleInspector: () -> Void
+    var nextChange: () -> Void = {}
+    var previousChange: () -> Void = {}
+    var showPalette: () -> Void = {}
+    var showShortcuts: () -> Void = {}
+    var find: () -> Void = {}
 }
 
 extension FocusedValues {
@@ -22,8 +27,13 @@ struct ReviewCommands: Commands {
 
     var body: some Commands {
         CommandMenu("Review") {
+            Button("Command Palette…") { actions?.showPalette() }.keyboardShortcut("k", modifiers: .command)
+            Button("Find in Diff…") { actions?.find() }.keyboardShortcut("f", modifiers: .command)
+            Divider()
             Button("Next File") { actions?.nextFile() }.keyboardShortcut("]", modifiers: .command)
             Button("Previous File") { actions?.previousFile() }.keyboardShortcut("[", modifiers: .command)
+            Button("Next Change  (n)") { actions?.nextChange() }
+            Button("Previous Change  (p)") { actions?.previousChange() }
             Divider()
             Button("Next AI Finding") { actions?.nextFinding() }.keyboardShortcut(
                 .downArrow, modifiers: [.command, .option])
@@ -35,6 +45,8 @@ struct ReviewCommands: Commands {
             Button("Open on GitHub") { actions?.openOnGitHub() }.keyboardShortcut("g", modifiers: [.command, .shift])
             Button("Toggle AI Inspector") { actions?.toggleInspector() }.keyboardShortcut(
                 "i", modifiers: [.command, .option])
+            Divider()
+            Button("Keyboard Shortcuts") { actions?.showShortcuts() }.keyboardShortcut("/", modifiers: .command)
         }
     }
 }

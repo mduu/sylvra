@@ -160,6 +160,23 @@ public final class DiffScreenModel {
         focusedLine = FocusedLine(path: path, line: line)
     }
 
+    // MARK: - Change navigation and find
+
+    /// A block of changed lines to jump to (new-side line of its first visible row).
+    public struct ChangeTarget: Equatable, Sendable {
+        public let path: String
+        public let line: Int
+    }
+
+    var lastChange: ChangeTarget?
+
+    public var isSearchPresented = false
+    public var searchQuery = "" {
+        didSet { currentSearchMatch = nil }
+    }
+    /// The match the reviewer jumped to last.
+    public internal(set) var currentSearchMatch: ChangeTarget?
+
     /// Scroll anchor ID of a new-side line.
     public nonisolated static func lineAnchor(path: String, line: Int) -> String { "\(path)#L\(line)" }
 

@@ -124,6 +124,8 @@ struct DiffFileBodyView<Accessory: View>: View {
     let accessory: (CodeLocation) -> Accessory
     var highlight: (Int) -> LineHighlight? = { _ in nil }
     var onComment: CommentRequest?
+    @Environment(\.diffSearchQuery) private var searchQuery
+    @Environment(\.diffCurrentMatch) private var currentMatch
     @Environment(\.diffIsWide) private var diffIsWide
 
     /// One lazily built row; unique string IDs (nested offset-based IDs collided and dropped rows).
@@ -170,12 +172,18 @@ struct DiffFileBodyView<Accessory: View>: View {
                                 AIHighlightOverlay(
                                     highlight: line.kind == .removed ? nil : line.newNumber.flatMap(highlight))
                             }
+                            .overlay { searchOverlay(texts: [line.text], newLine: line.newNumber) }
                         inlineAccessories(line)
                     }
                     .id(line.kind == .removed ? "" : DiffScreenModel.lineAnchor(path: path, line: line.newNumber ?? 0))
                 case .sideBySide(_, _, let row, let connector):
                     VStack(spacing: 0) {
                         SideBySideRowView(row: row, connector: connector, onComment: onComment)
+                            .overlay {
+                                searchOverlay(
+                                    texts: [row.left?.text, row.right?.text].compactMap { $0 },
+                                    newLine: row.right?.newNumber)
+                            }
                             .overlay(alignment: .trailing) {
                                 GeometryReader { geometry in
                                     AIHighlightOverlay(highlight: row.right?.newNumber.flatMap(highlight))
@@ -192,6 +200,22 @@ struct DiffFileBodyView<Accessory: View>: View {
             }
         }
         .environment(\.syntaxLanguage, SyntaxHighlighter.Language(path: path))
+    }
+
+    /// Find in diff: matching rows get a gold tint, the current match a stronger edge.
+    @ViewBuilder
+    private func searchOverlay(texts: [String], newLine: Int?) -> some View {
+        if searchQuery.count >= 2,
+            texts.contains(where: { $0.range(of: searchQuery, options: .caseInsensitive) != nil })
+        {
+            let isCurrent = newLine.map { DiffScreenModel.lineAnchor(path: path, line: $0) } == currentMatch
+            Rectangle()
+                .fill(SylvraColor.accentGold.opacity(isCurrent ? 0.28 : 0.14))
+                .overlay(alignment: .leading) {
+                    if isCurrent { Rectangle().fill(SylvraColor.accentGold).frame(width: 3) }
+                }
+                .allowsHitTesting(false)
+        }
     }
 
     /// Context lines can carry threads on both sides; removed lines on the left, added lines on the right.
