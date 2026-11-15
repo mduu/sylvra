@@ -22,7 +22,7 @@ public enum FindingSeverity: String, Codable, Sendable, CaseIterable, Comparable
 }
 
 /// One AI finding anchored to code (see specs/architecture.md §8.4).
-public struct ReviewFinding: Identifiable, Hashable, Sendable {
+public struct ReviewFinding: Identifiable, Hashable, Sendable, Codable {
     public let id: UUID
     public let path: String
     public let startLine: Int
@@ -60,7 +60,7 @@ public struct ReviewFinding: Identifiable, Hashable, Sendable {
 }
 
 /// "path:line" style location for display.
-public struct CodeLocationText: Hashable, Sendable, CustomStringConvertible {
+public struct CodeLocationText: Hashable, Sendable, CustomStringConvertible, Codable {
     public let path: String
     public let startLine: Int
     public let endLine: Int
@@ -71,7 +71,7 @@ public struct CodeLocationText: Hashable, Sendable, CustomStringConvertible {
 }
 
 /// "What patterns are used or missed?" (see specs/projectidea.md §5.7).
-public struct PatternFinding: Identifiable, Hashable, Sendable {
+public struct PatternFinding: Identifiable, Hashable, Sendable, Codable {
     public enum Verdict: String, Codable, Sendable {
         case followed, violated, introduced
     }
@@ -84,7 +84,7 @@ public struct PatternFinding: Identifiable, Hashable, Sendable {
 }
 
 /// Merged result of a review run.
-public struct ReviewResult: Hashable, Sendable {
+public struct ReviewResult: Hashable, Sendable, Codable {
     public var summary: String
     public var findings: [ReviewFinding]
     public var patterns: [PatternFinding]

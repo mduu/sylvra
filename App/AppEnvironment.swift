@@ -49,7 +49,7 @@ final class AppEnvironment {
         autoRunsAIReview = arguments.contains("--run-ai-review")
         gitHub = GitHubClient(tokenProvider: GitHubCLITokenProvider())
         let inboxLoader: any InboxLoading = isDemo ? DemoInboxLoader() : GitHubInboxLoader(client: gitHub)
-        inbox = InboxScreenModel(loader: inboxLoader)
+        inbox = InboxScreenModel(loader: inboxLoader, cache: isDemo ? nil : JSONCache())
         let detailLoader: any PullRequestDetailLoading =
             isDemo ? DemoPullRequestDetailLoader() : GitHubPullRequestDetailLoader(client: gitHub)
         pullRequest = PullRequestScreenModel(loader: detailLoader)
@@ -65,7 +65,8 @@ final class AppEnvironment {
         aiReview = AIReviewModel(
             engine: ReviewEngine(provider: agent),
             files: { id in ReviewableFiles.make(from: try await diffLoader.loadDiff(for: id).files) },
-            workspace: { id in try await checkout?.prepareWorktree(for: id, purpose: .agent) }
+            workspace: { id in try await checkout?.prepareWorktree(for: id, purpose: .agent) },
+            cache: isDemo ? nil : JSONCache()
         )
         let reviews = aiReview
         let details = pullRequest

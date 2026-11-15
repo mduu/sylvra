@@ -1,5 +1,6 @@
 import Foundation
 import Observation
+import Platform
 import SylvraCore
 
 /// State of AI reviews: settings, running jobs and results per pull request.
@@ -43,11 +44,17 @@ public final class AIReviewModel {
     private let workspace: WorkspaceProvider
     private let defaults: UserDefaults
     private var overrides: [String: ReviewSettings]
+    private let cache: JSONCache?
 
     public init(
         engine: ReviewEngine, files: @escaping FilesProvider, workspace: @escaping WorkspaceProvider,
-        defaults: UserDefaults = .standard
+        defaults: UserDefaults = .standard, cache: JSONCache? = nil
     ) {
+        self.cache = cache
+        if let saved = cache?.load([String: ReviewResult].self, key: "ai-review-results") {
+            results = Dictionary(
+                uniqueKeysWithValues: saved.compactMap { key, value in PullRequestID(key).map { ($0, value) } })
+        }
         self.engine = engine
         self.files = files
         self.workspace = workspace
@@ -127,6 +134,9 @@ public final class AIReviewModel {
                 return
             }
             results[id] = result
+            cache?.save(
+                Dictionary(uniqueKeysWithValues: results.map { ($0.key.description, $0.value) }),
+                key: "ai-review-results")
             let failures = progress.filter { if case .failed = $0.state { true } else { false } }
             runState =
                 failures.count == progress.count && !progress.isEmpty ? .failed(Self.failureText(failures)) : .done

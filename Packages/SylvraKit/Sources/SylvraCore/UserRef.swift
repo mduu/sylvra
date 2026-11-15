@@ -1,7 +1,7 @@
 import Foundation
 
 /// A GitHub user as shown in the UI (author, reviewer, committer).
-public struct UserRef: Hashable, Sendable {
+public struct UserRef: Hashable, Sendable, Codable {
     public let login: String
     public let name: String?
     public let avatarURL: URL?

@@ -33,10 +33,18 @@ public struct PullRequestID: Hashable, Sendable, Codable, CustomStringConvertibl
     }
 
     public var description: String { "\(owner)/\(repository)#\(number)" }
+
+    /// Parses `owner/repository#number`.
+    public init?(_ description: String) {
+        let parts = description.split(separator: "#")
+        let names = parts.first?.split(separator: "/") ?? []
+        guard parts.count == 2, names.count == 2, let number = Int(parts[1]) else { return nil }
+        self.init(owner: String(names[0]), repository: String(names[1]), number: number)
+    }
 }
 
 /// The data needed to list a pull request (inbox row, header).
-public struct PullRequestSummary: Identifiable, Hashable, Sendable {
+public struct PullRequestSummary: Identifiable, Hashable, Sendable, Codable {
     public let id: PullRequestID
     public let title: String
     public let author: UserRef

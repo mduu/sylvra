@@ -2,7 +2,7 @@ import Foundation
 import SylvraCore
 
 /// The smart sections of the inbox (see specs/ux.md §5).
-public enum InboxSection: String, CaseIterable, Identifiable, Sendable {
+public enum InboxSection: String, CaseIterable, Identifiable, Sendable, Codable {
     case requestedFromMe
     case myTeams
     case involved
@@ -46,7 +46,7 @@ public enum InboxSection: String, CaseIterable, Identifiable, Sendable {
 }
 
 /// Result of loading the inbox.
-public struct InboxSnapshot: Sendable, Equatable {
+public struct InboxSnapshot: Sendable, Equatable, Codable {
     public var sections: [InboxSection: [PullRequestSummary]]
     public var loadedAt: Date
 

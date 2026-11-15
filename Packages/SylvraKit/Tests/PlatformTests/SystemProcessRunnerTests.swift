@@ -58,3 +58,14 @@ struct ProcessCancellationTests {
         #expect(result.standardOutput.hasPrefix("caf"))
     }
 }
+
+struct JSONCacheTests {
+    @Test func roundTripsValues() throws {
+        let directory = FileManager.default.temporaryDirectory.appending(path: "sylvra-cache-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let cache = JSONCache(directory: directory)
+        cache.save(["a": Date(timeIntervalSince1970: 0)], key: "acme/billing#1")
+        #expect(cache.load([String: Date].self, key: "acme/billing#1")?["a"] == Date(timeIntervalSince1970: 0))
+        #expect(cache.load([String: Date].self, key: "missing") == nil)
+    }
+}

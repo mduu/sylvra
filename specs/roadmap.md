@@ -17,7 +17,7 @@ Status: ✅ done · 🚧 in progress · ⏳ open
 | M8 | AI review: Claude Code provider, repo context discovery, structured findings, sharding, patterns, highlights | ✅ |
 | M9 | AI chat, agent language, multi-model | ✅ |
 | M10 | Activity indicator, notifications, terminal panel, custom tools, settings | ✅ |
-| M11 | Polish: syntax highlighting, animations, wow diff details, persistence cache | 🚧 (syntax highlighting done) |
+| M11 | Polish: syntax highlighting, animations, wow diff details, persistence cache | 🚧 (syntax highlighting, shortcuts, persistence, performance done; visual polish needs an unlocked screen) |
 
 ## Decisions taken autonomously
 
@@ -56,3 +56,4 @@ Decisions made while building without the product owner present. Revisit when co
 - File rows offer file tools, folder rows folder tools, and the terminal toolbar menu and panel header offer PR tools. Two PR-scope examples (“Run tests”, “Open in Fork”) are shown until the user edits the list. Command palette integration and background-job output for tools are deferred.
 - A Fable code review (2026-11-15) found 28 issues; fixed: agent isolation (empty cwd + `--add-dir`, user settings only, no MCP, `dontAsk`), process cancellation/SIGPIPE/lossy decoding, REST query encoding, parser edge cases (phantom line, quoted paths), per-PR agent worktrees with per-repo git serialisation, PR-bound async state (diff, review), cancellable AI reviews, symlink-safe context, single main window, selection by ID, IDE launch, lazy and cached diff rendering.
 - Open follow-ups from that review: pagination beyond 100 files/threads, outdated/file-level threads in a separate list, per-line draft observation in review panels, restore-stash helper after main-clone checkout, cleanup of old per-PR agent worktrees.
+- Persistence is a small JSON cache in Application Support (inbox snapshot, AI review results) instead of GRDB/SQLite — enough for now, no dependency.

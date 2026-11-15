@@ -1,5 +1,6 @@
 import Foundation
 import Observation
+import Platform
 import SylvraCore
 
 /// State of the inbox screen.
@@ -18,9 +19,16 @@ public final class InboxScreenModel {
     public var searchText = ""
 
     private let loader: any InboxLoading
+    private let cache: JSONCache?
 
-    public init(loader: any InboxLoading) {
+    /// - Parameter cache: shows the last loaded inbox immediately at launch (`nil` in demo mode and tests).
+    public init(loader: any InboxLoading, cache: JSONCache? = nil) {
         self.loader = loader
+        self.cache = cache
+        if let cached = cache?.load(InboxSnapshot.self, key: "inbox") {
+            snapshot = cached
+            loadState = .loaded
+        }
     }
 
     /// Sections with the PRs matching the current search.
@@ -42,6 +50,7 @@ public final class InboxScreenModel {
         do {
             snapshot = try await loader.loadInbox()
             loadState = .loaded
+            cache?.save(snapshot, key: "inbox")
         } catch {
             loadState = .failed(Self.message(for: error))
         }

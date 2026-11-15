@@ -189,3 +189,22 @@ struct AIChatModelTests {
         #expect(!arguments.contains("--no-session-persistence"))
     }
 }
+
+@MainActor
+struct AIReviewPersistenceTests {
+    @Test func resultsSurviveRelaunch() async throws {
+        let directory = FileManager.default.temporaryDirectory.appending(path: "sylvra-ai-cache-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let id = PullRequestID(owner: "acme", repository: "billing", number: 7)
+        func makeModel() -> AIReviewModel {
+            AIReviewModel(
+                engine: ReviewEngine(provider: DemoAgentProvider(delay: .zero)),
+                files: { _ in [file("Sources/Billing/InvoiceService.swift", lines: 8...10)] }, workspace: { _ in nil },
+                defaults: UserDefaults(suiteName: "sylvra-ai-\(UUID().uuidString)")!,
+                cache: JSONCache(directory: directory))
+        }
+        await makeModel().run(id, title: "t", body: "")
+        #expect(makeModel().results[id]?.findings.isEmpty == false)
+        #expect(PullRequestID("acme/billing#7") == id)
+    }
+}
