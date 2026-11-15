@@ -14,9 +14,9 @@ Status: ✅ done · 🚧 in progress · ⏳ open
 | M5 | Diff view: side-by-side / inline, focused / full file, file tree by namespace, change map, viewed toggle | ✅ |
 | M6 | Review: existing threads, reply, resolve, new comments with suggestions, pending review, submit | ✅ |
 | M7 | Open in IDE: worktree manager, main-clone option, Rider / VS Code / Xcode / default app | ✅ |
-| M8 | AI review: Claude Code provider, repo context discovery, structured findings, sharding, patterns, highlights | 🚧 (highlights in the diff after M6 merge) |
+| M8 | AI review: Claude Code provider, repo context discovery, structured findings, sharding, patterns, highlights | ✅ |
 | M9 | AI chat, agent language, multi-model | ⏳ |
-| M10 | Activity indicator, notifications, terminal panel, custom tools, settings | ⏳ |
+| M10 | Activity indicator, notifications, terminal panel, custom tools, settings | 🚧 (activity, notifications, settings done) |
 | M11 | Polish: syntax highlighting, animations, wow diff details, persistence cache | ⏳ |
 
 ## Decisions taken autonomously
@@ -43,3 +43,5 @@ Decisions made while building without the product owner present. Revisit when co
 - Outdated threads are anchored to their `originalLine`; file-level threads (no line) are loaded but not shown yet.
 - Deferred to M11: reactions, live mini-diff for suggestions, Markdown block elements beyond prose and fenced code (lists, headings render as plain text), pagination beyond 100 threads / 50 comments per thread.
 - Launch arguments `--submit-review` (opens the submit sheet) and `--compose path:line` (opens the composer) exist for screenshots.
+- AI findings reach the diff as `LineHighlight`s (FeatureDiff) set by the app; *Turn into comment* prefills the review composer (bold title, rationale, suggestion block). Translation into the comment language is not done yet — the reviewer edits the text.
+- Window screenshots need an unlocked screen; while the Mac is locked no screenshots are taken (an offscreen renderer was tried and rejected because it does not reproduce materials and lists correctly).

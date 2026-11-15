@@ -29,6 +29,14 @@ public final class DiffScreenModel {
     /// Files the reviewer expanded although they are collapsed by default (viewed / noise).
     public private(set) var expandedPaths: Set<String> = []
     public private(set) var fullFileHunks: [String: Hunk] = [:]
+    /// AI highlights, set by the app from findings.
+    public var lineHighlights: [LineHighlight] = []
+
+    /// The strongest highlight covering a new-side line.
+    public func highlight(path: String, newLine: Int) -> LineHighlight? {
+        lineHighlights.filter { $0.path == path && $0.lines.contains(newLine) }
+            .max { ($0.isSelected ? 2 : $0.intensity) < ($1.isSelected ? 2 : $1.intensity) }
+    }
 
     private let loader: any DiffLoading
     private var pullRequestID: PullRequestID?

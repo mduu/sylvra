@@ -67,6 +67,7 @@ public struct DiffScreen<LineAccessory: View>: View {
                                         hunks: model.hunks(for: file),
                                         layout: model.layout,
                                         accessory: lineAccessory,
+                                        highlight: { model.highlight(path: file.path, newLine: $0) },
                                         onComment: onStartComment == nil
                                             ? nil
                                             : { side, line, extends in

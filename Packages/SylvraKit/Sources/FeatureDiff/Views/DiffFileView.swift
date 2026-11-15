@@ -1,3 +1,4 @@
+import DesignSystem
 import SwiftUI
 import SylvraCore
 
@@ -48,6 +49,7 @@ struct DiffFileBodyView<Accessory: View>: View {
     let hunks: [Hunk]
     let layout: DiffScreenModel.Layout
     let accessory: (CodeLocation) -> Accessory
+    var highlight: (Int) -> LineHighlight? = { _ in nil }
     var onComment: CommentRequest?
 
     var body: some View {
@@ -58,11 +60,22 @@ struct DiffFileBodyView<Accessory: View>: View {
                 case .inline:
                     ForEach(Array(hunk.lines.enumerated()), id: \.offset) { _, line in
                         InlineLineView(line: line, onComment: onComment)
+                            .overlay {
+                                AIHighlightOverlay(
+                                    highlight: line.kind == .removed ? nil : line.newNumber.flatMap(highlight))
+                            }
                         inlineAccessories(line)
                     }
                 case .sideBySide:
                     ForEach(Array(SideBySideRow.rows(for: hunk).enumerated()), id: \.offset) { _, row in
                         SideBySideRowView(row: row, onComment: onComment)
+                            .overlay(alignment: .trailing) {
+                                GeometryReader { geometry in
+                                    AIHighlightOverlay(highlight: row.right?.newNumber.flatMap(highlight))
+                                        .frame(width: geometry.size.width / 2)
+                                        .frame(maxWidth: .infinity, alignment: .trailing)
+                                }
+                            }
                         sideBySideAccessories(row)
                     }
                 }
@@ -127,5 +140,32 @@ struct Badge: View {
             .padding(.horizontal, 5)
             .padding(.vertical, 1)
             .background(tint.opacity(0.12), in: Capsule())
+    }
+}
+
+/// Xcode-style AI highlight: a soft gradient fading to the right, a gold edge and ✦ for the selected finding (pure).
+struct AIHighlightOverlay: View {
+    let highlight: LineHighlight?
+
+    var body: some View {
+        if let highlight {
+            ZStack(alignment: .leading) {
+                AIAccent.lineGradient(opacity: highlight.isSelected ? 0.45 : 0.18 + 0.22 * highlight.intensity)
+                Rectangle()
+                    .fill(highlight.isSelected ? AnyShapeStyle(SylvraColor.accentGold) : AnyShapeStyle(AIAccent.border))
+                    .frame(width: 3)
+            }
+            .overlay(alignment: .trailing) {
+                if highlight.isSelected {
+                    Image(systemName: "sparkle")
+                        .font(.system(size: 9, weight: .bold))
+                        .foregroundStyle(SylvraColor.accentGold)
+                        .padding(.trailing, 6)
+                        .opacity(highlight.isSelected ? 1 : 0.7)
+                }
+            }
+            .allowsHitTesting(false)
+            .transition(.opacity)
+        }
     }
 }

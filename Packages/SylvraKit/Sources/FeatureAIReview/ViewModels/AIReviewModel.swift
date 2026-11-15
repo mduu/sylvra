@@ -129,6 +129,11 @@ public final class AIReviewModel {
         if selectedFindingID == finding.id { selectedFindingID = nil }
     }
 
+    /// Anchored, not dismissed findings (for diff highlights).
+    public func findings(for id: PullRequestID?) -> [ReviewFinding] {
+        visibleFindings(for: id).filter(\.isAnchored)
+    }
+
     public func findings(in path: String, for id: PullRequestID?) -> [ReviewFinding] {
         visibleFindings(for: id).filter { $0.path == path && $0.isAnchored }
     }

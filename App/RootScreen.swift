@@ -51,13 +51,17 @@ struct RootScreen: View {
                 model: environment.aiReview,
                 pullRequest: selection,
                 pullRequestBody: environment.pullRequest.detail?.body ?? "",
-                jump: { finding in environment.diff.selectedPath = finding.path }
+                jump: { finding in environment.diff.selectedPath = finding.path },
+                turnIntoComment: { finding in startComment(from: finding) }
             )
             .inspectorColumnWidth(min: 260, ideal: 300)
         }
         .task(id: selection?.id) {
             guard environment.autoRunsAIReview, let selection else { return }
             await environment.aiReview.run(selection.id, title: selection.title, body: "")
+        }
+        .onChange(of: aiHighlights) { _, highlights in
+            withAnimation(.snappy) { environment.diff.lineHighlights = highlights }
         }
         .onChange(of: environment.aiReview.runState) { _, state in
             let id = "ai-review"
@@ -109,6 +113,33 @@ struct RootScreen: View {
                 }
             }
         }
+    }
+
+    /// AI findings of the selected PR as diff highlights (bridges FeatureAIReview → FeatureDiff).
+    private var aiHighlights: [LineHighlight] {
+        environment.aiReview.findings(for: selection?.id).map { finding in
+            let intensity: Double =
+                switch finding.severity {
+                case .critical: 1
+                case .major: 0.8
+                case .minor: 0.5
+                case .nit: 0.25
+                }
+            return LineHighlight(
+                path: finding.path, lines: finding.startLine...finding.endLine, intensity: intensity,
+                isSelected: finding.id == environment.aiReview.selectedFindingID)
+        }
+    }
+
+    /// Prefills the review composer with an AI finding; the reviewer edits and owns the comment.
+    private func startComment(from finding: ReviewFinding) {
+        let location = CodeLocation(
+            path: finding.path, line: finding.endLine, side: .right, startLine: finding.startLine)
+        var body = "**\(finding.title)**\n\n\(finding.rationale)"
+        if let suggestion = finding.suggestion { body += "\n\n" + SuggestionBlock.make(code: suggestion) }
+        environment.review.draft = CommentDraft(
+            location: location, lineText: environment.diff.text(at: location), body: body)
+        environment.diff.selectedPath = finding.path
     }
 }
 
