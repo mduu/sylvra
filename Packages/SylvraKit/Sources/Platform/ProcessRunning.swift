@@ -17,5 +17,12 @@ public struct ProcessResult: Sendable {
 ///
 /// Arguments are always passed as an array — never as an interpolated shell string.
 public protocol ProcessRunning: Sendable {
-    func run(_ executable: URL, arguments: [String], workingDirectory: URL?) async throws -> ProcessResult
+    /// Runs `executable`; `input` is written to standard input (e.g. large prompts).
+    func run(_ executable: URL, arguments: [String], workingDirectory: URL?, input: Data?) async throws -> ProcessResult
+}
+
+extension ProcessRunning {
+    public func run(_ executable: URL, arguments: [String], workingDirectory: URL?) async throws -> ProcessResult {
+        try await run(executable, arguments: arguments, workingDirectory: workingDirectory, input: nil)
+    }
 }

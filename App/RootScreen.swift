@@ -39,8 +39,17 @@ struct RootScreen: View {
         .navigationTitle(Text(verbatim: selection.map { "\($0.id.repository) #\($0.id.number)" } ?? "Sylvra"))
         .navigationSubtitle(Text(verbatim: selection?.title ?? ""))
         .inspector(isPresented: $isInspectorPresented) {
-            FindingsInspectorScreen()
-                .inspectorColumnWidth(min: 260, ideal: 300)
+            FindingsInspectorScreen(
+                model: environment.aiReview,
+                pullRequest: selection,
+                pullRequestBody: environment.pullRequest.detail?.body ?? "",
+                jump: { finding in environment.diff.selectedPath = finding.path }
+            )
+            .inspectorColumnWidth(min: 260, ideal: 300)
+        }
+        .task(id: selection?.id) {
+            guard environment.autoRunsAIReview, let selection else { return }
+            await environment.aiReview.run(selection.id, title: selection.title, body: "")
         }
         .onChange(of: environment.inbox.snapshot) {
             guard selection == nil, let wanted = environment.initialSelection else { return }
@@ -56,10 +65,15 @@ struct RootScreen: View {
                 OpenInIDEToolbarPanel(model: environment.openInIDE, pullRequestID: selection?.id)
             }
             ToolbarItem(placement: .primaryAction) {
+                AIReviewToolbarPanel(
+                    model: environment.aiReview, pullRequest: selection,
+                    pullRequestBody: environment.pullRequest.detail?.body ?? "")
+            }
+            ToolbarItem(placement: .primaryAction) {
                 Button {
                     isInspectorPresented.toggle()
                 } label: {
-                    Label("AI Inspector", systemImage: "sparkles")
+                    Label("AI Inspector", systemImage: "sidebar.right")
                 }
             }
         }

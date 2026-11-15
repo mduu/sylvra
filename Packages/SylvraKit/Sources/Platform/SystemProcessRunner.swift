@@ -15,7 +15,9 @@ public enum ProcessRunnerError: Error, Equatable, Sendable {
 public struct SystemProcessRunner: ProcessRunning {
     public init() {}
 
-    public func run(_ executable: URL, arguments: [String], workingDirectory: URL?) async throws -> ProcessResult {
+    public func run(
+        _ executable: URL, arguments: [String], workingDirectory: URL?, input: Data?
+    ) async throws -> ProcessResult {
         try await withCheckedThrowingContinuation { continuation in
             let process = Process()
             process.executableURL = executable
@@ -27,6 +29,8 @@ public struct SystemProcessRunner: ProcessRunning {
             let stderr = Pipe()
             process.standardOutput = stdout
             process.standardError = stderr
+            let stdin = input.map { _ in Pipe() }
+            if let stdin { process.standardInput = stdin } else { process.standardInput = FileHandle.nullDevice }
 
             // Read the pipes concurrently so large outputs cannot block the child process.
             let outputBuffer = PipeBuffer(pipe: stdout)
@@ -43,6 +47,12 @@ public struct SystemProcessRunner: ProcessRunning {
 
             do {
                 try process.run()
+                if let stdin, let input {
+                    DispatchQueue.global(qos: .userInitiated).async {
+                        stdin.fileHandleForWriting.write(input)
+                        try? stdin.fileHandleForWriting.close()
+                    }
+                }
             } catch {
                 continuation.resume(throwing: error)
             }

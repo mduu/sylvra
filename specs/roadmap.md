@@ -14,7 +14,7 @@ Status: ✅ done · 🚧 in progress · ⏳ open
 | M5 | Diff view: side-by-side / inline, focused / full file, file tree by namespace, change map, viewed toggle | ✅ |
 | M6 | Review: existing threads, reply, resolve, new comments with suggestions, pending review, submit | ⏳ |
 | M7 | Open in IDE: worktree manager, main-clone option, Rider / VS Code / Xcode / default app | ✅ |
-| M8 | AI review: Claude Code provider, repo context discovery, structured findings, sharding, patterns, highlights | ⏳ |
+| M8 | AI review: Claude Code provider, repo context discovery, structured findings, sharding, patterns, highlights | 🚧 (highlights in the diff after M6 merge) |
 | M9 | AI chat, agent language, multi-model | ⏳ |
 | M10 | Activity indicator, notifications, terminal panel, custom tools, settings | ⏳ |
 | M11 | Polish: syntax highlighting, animations, wow diff details, persistence cache | ⏳ |
@@ -34,3 +34,5 @@ Decisions made while building without the product owner present. Revisit when co
 - Open in IDE uses one stable review worktree per repository (`~/Library/Application Support/Sylvra/worktrees/<owner>/<repo>`), so Rider keeps a single valid recent project; cleanup of Rider's recent list is not needed for now.
 - Without a local clone, a blobless cache clone in Application Support backs the worktree.
 - Main-clone checkout uses branch `review/pr-<n>` and asks before stashing (named stash).
+- AI review runs `claude --print --output-format json --json-schema … --tools Read Grep Glob` with the prompt on stdin, in the review worktree (read-only tools). Verified against Claude Code 2.1.
+- Agent language defaults to the system language (e.g. German); per-PR model/effort/agents overrides are stored in UserDefaults.

@@ -31,3 +31,12 @@ struct SystemProcessRunnerTests {
         #expect(ExecutableLocator.locate("ls") != nil)
     }
 }
+
+struct ProcessInputTests {
+    @Test func writesStandardInput() async throws {
+        let cat = try #require(ExecutableLocator.locate("cat"))
+        let result = try await SystemProcessRunner().run(
+            cat, arguments: [], workingDirectory: nil, input: Data(String(repeating: "x", count: 200_000).utf8))
+        #expect(result.standardOutput.count == 200_000)
+    }
+}

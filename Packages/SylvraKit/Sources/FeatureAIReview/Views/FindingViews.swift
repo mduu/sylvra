@@ -1,0 +1,186 @@
+import DesignSystem
+import SwiftUI
+
+/// One finding in the inspector list (pure).
+struct FindingRowView: View {
+    let finding: ReviewFinding
+    let isSelected: Bool
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                Circle().fill(finding.severity.color).frame(width: 8, height: 8)
+                Text(finding.title).font(.callout.weight(.semibold)).fixedSize(horizontal: false, vertical: true)
+            }
+            HStack(spacing: 4) {
+                Text(finding.location.description)
+                Text(verbatim: "·")
+                Text(finding.sources.map { $0.model.capitalized }.joined(separator: " + "))
+                if !finding.isAnchored { Image(systemName: "mappin.slash").help("Not in the diff") }
+            }
+            .font(.caption)
+            .foregroundStyle(.secondary)
+            .padding(.leading, 16)
+        }
+        .padding(10)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            isSelected ? AnyShapeStyle(AIAccent.cardBackground) : AnyShapeStyle(.quaternary.opacity(0.5)),
+            in: RoundedRectangle(cornerRadius: 10)
+        )
+        .overlay {
+            if isSelected { RoundedRectangle(cornerRadius: 10).strokeBorder(AIAccent.border, lineWidth: 1.2) }
+        }
+    }
+}
+
+/// Expanded finding: rationale, suggestion and actions (pure).
+public struct FindingDetailView: View {
+    let finding: ReviewFinding
+    let actions: FindingActions
+
+    public init(finding: ReviewFinding, actions: FindingActions) {
+        self.finding = finding
+        self.actions = actions
+    }
+
+    public var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 8) {
+                Text(finding.severity.rawValue.uppercased())
+                    .font(.caption2.weight(.bold))
+                    .foregroundStyle(finding.severity.color)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
+                    .background(finding.severity.color.opacity(0.15), in: Capsule())
+                Text(finding.title).font(.callout.weight(.semibold))
+            }
+            Text(finding.rationale).font(.callout).fixedSize(horizontal: false, vertical: true).textSelection(.enabled)
+            if let suggestion = finding.suggestion {
+                Text(suggestion)
+                    .font(.system(size: 11.5, design: .monospaced))
+                    .padding(8)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(Color.green.opacity(0.12), in: RoundedRectangle(cornerRadius: 6))
+            }
+            HStack {
+                if let comment = actions.turnIntoComment {
+                    Button("Turn into comment", action: comment).buttonStyle(.borderedProminent)
+                }
+                if let open = actions.openInIDE { Button("Open in IDE", action: open) }
+                Spacer()
+                Button("Dismiss", action: actions.dismiss).buttonStyle(.borderless)
+            }
+            .controlSize(.small)
+        }
+        .padding(12)
+        .background(AIAccent.cardBackground, in: RoundedRectangle(cornerRadius: 12))
+        .overlay { RoundedRectangle(cornerRadius: 12).strokeBorder(AIAccent.border, lineWidth: 1) }
+    }
+}
+
+/// Callbacks for a finding (provided by containers; optional ones are hidden when `nil`).
+public struct FindingActions {
+    public var turnIntoComment: (() -> Void)?
+    public var openInIDE: (() -> Void)?
+    public var dismiss: () -> Void
+
+    public init(turnIntoComment: (() -> Void)? = nil, openInIDE: (() -> Void)? = nil, dismiss: @escaping () -> Void) {
+        self.turnIntoComment = turnIntoComment
+        self.openInIDE = openInIDE
+        self.dismiss = dismiss
+    }
+}
+
+/// Pattern verdict row (pure).
+struct PatternRowView: View {
+    let pattern: PatternFinding
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack {
+                Text(pattern.name).font(.callout.weight(.medium))
+                Spacer()
+                Text(pattern.verdict.title)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(pattern.verdict.color)
+                    .padding(.horizontal, 7)
+                    .padding(.vertical, 2)
+                    .background(pattern.verdict.color.opacity(0.14), in: Capsule())
+            }
+            if !pattern.rationale.isEmpty {
+                Text(pattern.rationale).font(.caption).foregroundStyle(.secondary).fixedSize(
+                    horizontal: false, vertical: true)
+            }
+            if !pattern.evidence.isEmpty {
+                Text(pattern.evidence.map(\.description).joined(separator: ", "))
+                    .font(.caption.monospaced())
+                    .foregroundStyle(.tertiary)
+            }
+        }
+        .padding(.vertical, 6)
+    }
+}
+
+/// Status of one agent job (pure).
+struct AgentProgressRowView: View {
+    let progress: ReviewEngine.Progress
+
+    var body: some View {
+        HStack(spacing: 8) {
+            switch progress.state {
+            case .queued: Image(systemName: "clock").foregroundStyle(.secondary)
+            case .running: ProgressView().controlSize(.mini)
+            case .done: Image(systemName: "checkmark.circle.fill").foregroundStyle(.green)
+            case .failed: Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(.red)
+            }
+            Text(progress.title).font(.caption).lineLimit(1)
+            Spacer()
+            Text(stateText).font(.caption).foregroundStyle(.secondary)
+        }
+        .help(helpText)
+    }
+
+    private var stateText: String {
+        switch progress.state {
+        case .queued: String(localized: "queued")
+        case .running: String(localized: "reviewing…")
+        case .done: String(localized: "done")
+        case .failed: String(localized: "failed")
+        }
+    }
+
+    private var helpText: String {
+        if case .failed(let message) = progress.state { return message }
+        return progress.title
+    }
+}
+
+extension FindingSeverity {
+    var color: Color {
+        switch self {
+        case .critical: .red
+        case .major: Color(red: 0.92, green: 0.35, blue: 0.43)
+        case .minor: SylvraColor.accentGold
+        case .nit: .secondary
+        }
+    }
+}
+
+extension PatternFinding.Verdict {
+    var title: String {
+        switch self {
+        case .followed: String(localized: "followed")
+        case .violated: String(localized: "violated")
+        case .introduced: String(localized: "introduced")
+        }
+    }
+
+    var color: Color {
+        switch self {
+        case .followed: .green
+        case .violated: .red
+        case .introduced: SylvraColor.brandPrimary
+        }
+    }
+}

@@ -1,4 +1,5 @@
-# Tests may force-unwrap and force-try (see AGENTS.md).
+# Tests may force-unwrap and force-try (see AGENTS.md) and contain long JSON fixtures.
 disabled_rules:
   - force_unwrapping
   - force_try
+  - line_length
