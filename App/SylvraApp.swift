@@ -15,6 +15,7 @@ struct SylvraApp: App {
                 .preferredColorScheme(AppearanceSetting(rawValue: appearance)?.colorScheme)
         }
         .defaultSize(width: 1440, height: 900)
+        .commands { ReviewCommands() }
 
         Settings {
             SettingsScreen {

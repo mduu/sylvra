@@ -11,6 +11,7 @@ import SylvraCore
 /// Main window layout: inbox · pull request · diff, with the AI inspector on the right.
 /// Composes feature slices — slices themselves never import each other.
 struct RootScreen: View {
+    @Environment(\.openURL) private var openURL
     let environment: AppEnvironment
     @State private var selection: PullRequestSummary?
     @State private var isInspectorPresented: Bool
@@ -62,6 +63,7 @@ struct RootScreen: View {
             guard environment.autoRunsAIReview, let selection else { return }
             await environment.aiReview.run(selection.id, title: selection.title, body: "")
         }
+        .focusedSceneValue(\.reviewActions, reviewActions)
         .onChange(of: environment.diff.selectedPath) { _, path in
             environment.chat.context.file = path
         }
@@ -149,6 +151,37 @@ struct RootScreen: View {
         if let suggestion = finding.suggestion { body += "\n\n" + SuggestionBlock.make(code: suggestion) }
         environment.review.draft = CommentDraft(
             location: location, lineText: environment.diff.text(at: location), body: body)
+        environment.diff.selectedPath = finding.path
+    }
+
+    /// Menu bar / keyboard actions for this window.
+    private var reviewActions: ReviewActions {
+        ReviewActions(
+            nextFile: { environment.diff.selectFile(offset: 1) },
+            previousFile: { environment.diff.selectFile(offset: -1) },
+            nextFinding: { jump(to: environment.aiReview.selectFinding(offset: 1, for: selection?.id)) },
+            previousFinding: { jump(to: environment.aiReview.selectFinding(offset: -1, for: selection?.id)) },
+            toggleViewed: {
+                guard let path = environment.diff.selectedPath ?? environment.diff.orderedFiles.first?.path else {
+                    return
+                }
+                Task { await environment.diff.toggleViewed(path) }
+            },
+            runAIReview: {
+                guard let selection else { return }
+                Task {
+                    await environment.aiReview.run(
+                        selection.id, title: selection.title, body: environment.pullRequest.detail?.body ?? "")
+                }
+            },
+            openOnGitHub: { if let url = selection?.url { openURL(url) } },
+            toggleInspector: { isInspectorPresented.toggle() }
+        )
+    }
+
+    private func jump(to finding: ReviewFinding?) {
+        guard let finding else { return }
+        isInspectorPresented = true
         environment.diff.selectedPath = finding.path
     }
 }

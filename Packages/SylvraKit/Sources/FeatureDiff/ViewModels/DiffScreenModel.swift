@@ -62,6 +62,14 @@ public final class DiffScreenModel {
         (isViewed(file.path) || file.kind.isNoise || file.isBinary) && !expandedPaths.contains(file.path)
     }
 
+    /// Moves the selection to the next / previous file in review order (`]` / `[`).
+    public func selectFile(offset: Int) {
+        let paths = orderedFiles.map(\.path)
+        guard !paths.isEmpty else { return }
+        let current = selectedPath.flatMap(paths.firstIndex(of:)) ?? (offset > 0 ? -1 : paths.count)
+        selectedPath = paths[min(max(current + offset, 0), paths.count - 1)]
+    }
+
     public func toggleExpanded(_ path: String) {
         if expandedPaths.contains(path) { expandedPaths.remove(path) } else { expandedPaths.insert(path) }
     }

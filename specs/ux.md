@@ -24,6 +24,7 @@ We deviate **only with a clearly documented reason**. Every deviation is listed 
 | Custom-rendered diff view instead of standard text views | Core differentiator: performance on huge diffs, gradient AI highlights, connector ribbons and animations are impossible with standard controls. |
 | Brand colors (violet / gold) beyond the system accent color | Recognizability and the calm, premium mood derived from the app icon. The user's system accent color is still respected for standard controls (selection, focus rings) where possible. |
 | Multi-hue AI gradient | AI-generated content must be instantly recognizable and never confused with human content. |
+| Review shortcuts with modifiers (`⌘]`, `⌥⌘↓`, `⌥⌘V`) instead of single letters (`]`, `J`, `V`) | Single-letter menu shortcuts would fire while typing in the comment composer and the chat. |
 
 ## 3. Visual language
 
@@ -276,11 +277,11 @@ stateDiagram-v2
 | Action | Shortcut |
 |---|---|
 | Next / previous PR | `⌘↓` / `⌘↑` |
-| Next / previous file | `]` / `[` |
+| Next / previous file | `⌘]` / `⌘[` |
 | Next / previous hunk | `N` / `P` |
 | Next / previous commit (commit mode) | `⌥]` / `⌥[` |
-| Next / previous AI finding | `J` / `K` |
-| Toggle viewed | `V` |
+| Next / previous AI finding | `⌥⌘↓` / `⌥⌘↑` |
+| Toggle viewed | `⌥⌘V` |
 | Comment on line | `C` |
 | Insert suggestion | `⌘⇧S` |
 | Run AI review | `⌘⇧R` |

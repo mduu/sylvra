@@ -124,6 +124,18 @@ public final class AIReviewModel {
         return (results[id]?.findings ?? []).filter { !dismissed.contains($0.id) }
     }
 
+    /// Selects the next / previous finding (`J` / `K`) and returns it.
+    @discardableResult
+    public func selectFinding(offset: Int, for id: PullRequestID?) -> ReviewFinding? {
+        let findings = visibleFindings(for: id)
+        guard !findings.isEmpty else { return nil }
+        let current = findings.firstIndex { $0.id == selectedFindingID } ?? (offset > 0 ? -1 : findings.count)
+        let finding = findings[min(max(current + offset, 0), findings.count - 1)]
+        selectedFindingID = finding.id
+        tab = .findings
+        return finding
+    }
+
     public func dismiss(_ finding: ReviewFinding) {
         dismissed.insert(finding.id)
         if selectedFindingID == finding.id { selectedFindingID = nil }
