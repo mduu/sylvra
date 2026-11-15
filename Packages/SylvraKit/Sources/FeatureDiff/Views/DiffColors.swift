@@ -25,7 +25,13 @@ enum DiffColors {
 
 extension DiffLine {
     /// The line's text with syntax colors and intra-line highlights applied.
+    @MainActor
     func attributedText(language: SyntaxHighlighter.Language) -> AttributedString {
+        AttributedTextCache.shared.text(for: self, language: language)
+    }
+
+    /// Uncached rendering (tokenising + highlights).
+    func renderAttributedText(language: SyntaxHighlighter.Language) -> AttributedString {
         let tokens = SyntaxHighlighter.tokens(text, language: language)
         guard !highlights.isEmpty || !tokens.isEmpty else { return AttributedString(text) }
         let string = NSMutableAttributedString(string: text)
@@ -75,4 +81,26 @@ enum SyntaxColors {
 extension EnvironmentValues {
     /// Language of the file being rendered (set by `DiffFileBodyView`).
     @Entry var syntaxLanguage: SyntaxHighlighter.Language = .plain
+}
+
+/// Remembers rendered lines so scrolling and re-renders don't re-tokenise (bounded LRU-ish cache).
+@MainActor
+final class AttributedTextCache {
+    static let shared = AttributedTextCache()
+    private struct Key: Hashable {
+        let line: DiffLine
+        let language: SyntaxHighlighter.Language
+    }
+
+    private var storage: [Key: AttributedString] = [:]
+    private let limit = 20_000
+
+    func text(for line: DiffLine, language: SyntaxHighlighter.Language) -> AttributedString {
+        let key = Key(line: line, language: language)
+        if let cached = storage[key] { return cached }
+        let text = line.renderAttributedText(language: language)
+        if storage.count >= limit { storage.removeAll(keepingCapacity: true) }
+        storage[key] = text
+        return text
+    }
 }

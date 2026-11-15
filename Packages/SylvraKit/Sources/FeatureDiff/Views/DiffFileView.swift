@@ -53,7 +53,7 @@ struct DiffFileBodyView<Accessory: View>: View {
     var onComment: CommentRequest?
 
     var body: some View {
-        VStack(spacing: 0) {
+        LazyVStack(spacing: 0) {  // lazy: only visible lines are built, even for 10k-line files
             ForEach(Array(hunks.enumerated()), id: \.offset) { _, hunk in
                 HunkHeaderView(hunk: hunk)
                 switch layout {

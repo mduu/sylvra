@@ -136,6 +136,7 @@ struct OpenInIDEModelTests {
         #expect(model.stashConfirmation?.pullRequest == id)
         await model.confirmStash()
         #expect(model.stashConfirmation == nil)
-        #expect(model.status == .done("Opened in Rider — your changes are in a stash named “Sylvra: before reviewing …”"))
+        #expect(
+            model.status == .done("Opened in Rider — your changes are in a stash named “Sylvra: before reviewing …”"))
     }
 }

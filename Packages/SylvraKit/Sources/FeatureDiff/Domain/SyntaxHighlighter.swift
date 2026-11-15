@@ -15,7 +15,7 @@ public enum SyntaxHighlighter {
         public let range: Range<Int>
     }
 
-    public enum Language: Sendable, Equatable {
+    public enum Language: Sendable, Hashable {
         case swift, csharp, typescript, python, go, kotlin, rust, java, shell, json, yaml, plain
 
         private static let byExtension: [String: Language] = [
