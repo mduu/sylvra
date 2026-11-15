@@ -16,7 +16,7 @@ Status: ✅ done · 🚧 in progress · ⏳ open
 | M7 | Open in IDE: worktree manager, main-clone option, Rider / VS Code / Xcode / default app | ✅ |
 | M8 | AI review: Claude Code provider, repo context discovery, structured findings, sharding, patterns, highlights | ✅ |
 | M9 | AI chat, agent language, multi-model | ⏳ |
-| M10 | Activity indicator, notifications, terminal panel, custom tools, settings | 🚧 (activity, notifications, settings done) |
+| M10 | Activity indicator, notifications, terminal panel, custom tools, settings | ✅ |
 | M11 | Polish: syntax highlighting, animations, wow diff details, persistence cache | ⏳ |
 
 ## Decisions taken autonomously
@@ -45,3 +45,10 @@ Decisions made while building without the product owner present. Revisit when co
 - Launch arguments `--submit-review` (opens the submit sheet) and `--compose path:line` (opens the composer) exist for screenshots.
 - AI findings reach the diff as `LineHighlight`s (FeatureDiff) set by the app; *Turn into comment* prefills the review composer (bold title, rationale, suggestion block). Translation into the comment language is not done yet — the reviewer edits the text.
 - Window screenshots need an unlocked screen; while the Mac is locked no screenshots are taken (an offscreen renderer was tried and rejected because it does not reproduce materials and lists correctly).
+- Terminal uses SwiftTerm 1.10.0 (MIT), pinned exactly: newer releases (1.11+) add a SwiftPM build-tool plugin (needs plugin trust in Xcode/CI) and, from 1.13, a Metal shader that requires the separately downloaded Metal toolchain. Only `FeatureTerminal` depends on it.
+- Terminal sessions are owned by `TerminalModel` (views cached per session outside the SwiftUI hierarchy), so they survive switching PRs and hiding the panel. The panel sits below the diff in the detail column (`VSplitView`); ⌃\` and View ▸ Show Terminal toggle it; showing an empty panel opens a first tab.
+- New tabs start in the PR's review worktree when it exists, otherwise in the home directory. Shells start as login shells (`argv[0]` prefixed with `-`); shell and external terminal app (Terminal, iTerm2, Ghostty, Warp or any bundle identifier) are configurable in Settings ▸ Terminal & Tools.
+- The terminal stays dark violet in both appearances (`terminalBackground` is a slightly lighter violet in light mode), like most terminal themes; caret uses the gold accent.
+- Custom tools run in a new terminal tab: the command (placeholders replaced by single-quote shell-escaped values) is passed to the shell as an argument, followed by an interactive login shell so output stays readable. Non-POSIX shells (fish, nu) run the command via zsh. `{repoRoot}` and `{worktree}` both resolve to the checkout root; `{file}`/`{folder}` are absolute paths in it. Missing values (e.g. `{headSHA}` before details load) abort with a message instead of running.
+- Tools need the review worktree: an existing worktree is reused as is (not refreshed to the latest head); otherwise it is prepared first (visible as an activity job). In demo mode tools run in the home directory.
+- File rows offer file tools, folder rows folder tools, and the terminal toolbar menu and panel header offer PR tools. Two PR-scope examples (“Run tests”, “Open in Fork”) are shown until the user edits the list. Command palette integration and background-job output for tools are deferred.
