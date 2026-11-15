@@ -42,7 +42,7 @@ for attempt in 1 2 3; do
   kill "$APP_PID" 2>/dev/null || true
   echo "Window not found (attempt $attempt), retrying…" >&2
 done
-[ -n "$WINDOW_ID" ] || { echo "Sylvra window not found — is the Mac locked? Window screenshots need an unlocked screen." >&2; exit 1; }
+[ -n "$WINDOW_ID" ] || { echo "Sylvra window not visible — the Mac may be locked or the window stayed in the background." >&2; exit 1; }
 /bin/sleep "${SYLVRA_SCREENSHOT_DELAY:-2}"
 
 mkdir -p docs/screenshots

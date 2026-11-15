@@ -11,7 +11,7 @@ Sylvra is a native macOS app for reviewing **your team's GitHub pull requests**,
 Sylvra is **not a Git client** and not a code generator. It helps you understand a change, find what matters and write clear, factual review comments. You stay the reviewer.
 
 <p align="center">
-  <img src="docs/screenshots/app-16-violet.png" alt="Sylvra: inbox, pull request, diff with an inline AI finding, AI inspector" width="100%">
+  <img src="docs/screenshots/app-22-overview.png" alt="Sylvra: inbox, pull request, diff with reading order, review thread with reactions and an inline AI finding, AI inspector" width="100%">
 </p>
 
 *The name is a coined word from Latin* silva */ English* sylvan *— forest, wooded.*

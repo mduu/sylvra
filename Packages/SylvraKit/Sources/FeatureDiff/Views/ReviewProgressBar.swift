@@ -38,8 +38,8 @@ struct ReviewProgressBar: View {
     private func sinceText(_ progress: ReviewProgress) -> Text {
         let when = progress.lastReviewedAt.map { Text($0, format: .relative(presentation: .named)) } ?? Text("earlier")
         return isShowingSinceReview
-            ? Text("Showing only changes since your last review (\(when)).")
-            : Text("This pull request changed since your last review (\(when)).")
+            ? Text("Only changes since your last review (\(when))")
+            : Text("Changed since your last review (\(when))")
     }
 
     private func bar(icon: String, tint: Color, text: Text, @ViewBuilder actions: () -> some View) -> some View {

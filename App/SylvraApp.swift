@@ -1,3 +1,4 @@
+import AppKit
 import FeatureAIReview
 import FeatureActivity
 import FeatureSettings
@@ -22,6 +23,11 @@ struct SylvraApp: App {
         // One main window: the feature models are shared, so a second window would show mixed state.
         Window("Sylvra", id: "main") {
             RootScreen(environment: environment)
+                .onAppear {
+                    // Demo / screenshot launches start from a terminal: come to the front, otherwise macOS keeps
+                    // the window ordered out while someone works in another app and it can't be captured.
+                    if environment.isDemo { NSApplication.shared.activate() }
+                }
                 .preferredColorScheme(
                     launchAppearance?.colorScheme ?? AppearanceSetting(rawValue: appearance)?.colorScheme)
         }
