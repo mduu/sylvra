@@ -81,6 +81,7 @@ struct DiffFileBodyView<Accessory: View>: View {
                 }
             }
         }
+        .environment(\.syntaxLanguage, SyntaxHighlighter.Language(path: path))
     }
 
     /// Context lines can carry threads on both sides; removed lines on the left, added lines on the right.

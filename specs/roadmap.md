@@ -17,7 +17,7 @@ Status: ✅ done · 🚧 in progress · ⏳ open
 | M8 | AI review: Claude Code provider, repo context discovery, structured findings, sharding, patterns, highlights | ✅ |
 | M9 | AI chat, agent language, multi-model | ✅ |
 | M10 | Activity indicator, notifications, terminal panel, custom tools, settings | 🚧 (activity, notifications, settings done) |
-| M11 | Polish: syntax highlighting, animations, wow diff details, persistence cache | ⏳ |
+| M11 | Polish: syntax highlighting, animations, wow diff details, persistence cache | 🚧 (syntax highlighting done) |
 
 ## Decisions taken autonomously
 
@@ -46,3 +46,4 @@ Decisions made while building without the product owner present. Revisit when co
 - AI findings reach the diff as `LineHighlight`s (FeatureDiff) set by the app; *Turn into comment* prefills the review composer (bold title, rationale, suggestion block). Translation into the comment language is not done yet — the reviewer edits the text.
 - Window screenshots need an unlocked screen; while the Mac is locked no screenshots are taken (an offscreen renderer was tried and rejected because it does not reproduce materials and lists correctly).
 - AI chat uses one resumable Claude Code session per PR (`--resume`); the first message carries the PR context (title, description, commits, AI summary and findings); `path:line` references in answers are links into the diff.
+- Syntax highlighting is a lightweight line-based tokenizer (Swift, C#, TS/JS, Python, Go, Kotlin, Rust, Java, shell, JSON, YAML) instead of tree-sitter for now — no grammar dependencies, good enough for diffs; can be swapped behind `SyntaxHighlighter`.

@@ -11,6 +11,7 @@ typealias CommentRequest = (_ side: CodeLocation.Side, _ line: Int, _ extendsRan
 
 /// One line in the inline (unified) layout (pure).
 struct InlineLineView: View {
+    @Environment(\.syntaxLanguage) private var language
     let line: DiffLine
     var onComment: CommentRequest?
     @State private var isHovered = false
@@ -24,7 +25,7 @@ struct InlineLineView: View {
             }
             .commentOnClick(commentAction)
             Text(marker).frame(width: 16).foregroundStyle(.secondary)
-            Text(line.attributedText)
+            Text(line.attributedText(language: language))
                 .lineLimit(1)
                 .frame(maxWidth: .infinity, alignment: .leading)
         }
@@ -69,6 +70,7 @@ struct SideBySideRowView: View {
 }
 
 private struct SideBySideHalf: View {
+    @Environment(\.syntaxLanguage) private var language
     let line: DiffLine?
     let number: Int?
     let side: CodeLocation.Side
@@ -80,7 +82,7 @@ private struct SideBySideHalf: View {
             CommentGutter(isHovered: isHovered && line != nil, action: commentAction)
             LineNumber(number).commentOnClick(commentAction)
             if let line {
-                Text(line.attributedText)
+                Text(line.attributedText(language: language))
                     .lineLimit(1)
                     .padding(.leading, 6)
                     .frame(maxWidth: .infinity, alignment: .leading)
