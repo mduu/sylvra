@@ -11,7 +11,7 @@ Status: ✅ done · 🚧 in progress · ⏳ open
 | M2 | Inbox: sections (requested from me, my teams, involved, my PRs), PR rows with avatars, refresh | ✅ |
 | M3 | PR details: overview, description, refs, reviewers, merge state, checks, commits (copy SHA), open on GitHub | ✅ |
 | M4 | Diff engine: unified diff parser, hunks, intra-line diff, file classification (unit-tested) | ✅ |
-| M5 | Diff view: side-by-side / inline, focused / full file, file tree by namespace, change map, viewed toggle | ⏳ |
+| M5 | Diff view: side-by-side / inline, focused / full file, file tree by namespace, change map, viewed toggle | ✅ |
 | M6 | Review: existing threads, reply, resolve, new comments with suggestions, pending review, submit | ⏳ |
 | M7 | Open in IDE: worktree manager, main-clone option, Rider / VS Code / Xcode / default app | ⏳ |
 | M8 | AI review: Claude Code provider, repo context discovery, structured findings, sharding, patterns, highlights | ⏳ |
@@ -29,3 +29,5 @@ Decisions made while building without the product owner present. Revisit when co
 - Launch argument `--demo` switches all loaders to fixture data (used for screenshots; real GitHub data otherwise).
 - Inbox hides empty sections; the "Watched" and "Recently closed" sections follow with settings (M10).
 - Team requests use `review-requested:@me -user-review-requested:@me` (GitHub expands teams), so no team list is needed.
+- Diff view is SwiftUI (LazyVStack) for now; the AppKit/TextKit renderer for huge diffs, connector ribbons and configurable context lines (focused mode uses GitHub's 3 lines) follow in M11.
+- The file navigator (change map + files) lives in `FeatureDiff` and is placed into the PR column through a view slot of `PullRequestScreen`, so the slices stay independent.

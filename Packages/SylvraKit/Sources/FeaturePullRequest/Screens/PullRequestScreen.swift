@@ -4,14 +4,20 @@ import SwiftUI
 import SylvraCore
 
 /// The PR column (container): loads details for the selected PR and handles copy / open actions.
-public struct PullRequestScreen: View {
+/// `files` is a slot for the file navigator, provided by the app (slices don't import each other).
+public struct PullRequestScreen<Files: View>: View {
     @Bindable private var model: PullRequestScreenModel
     private let pullRequest: PullRequestSummary?
+    private let files: Files
     @Environment(\.openURL) private var openURL
 
-    public init(model: PullRequestScreenModel, pullRequest: PullRequestSummary?) {
+    public init(
+        model: PullRequestScreenModel, pullRequest: PullRequestSummary?,
+        @ViewBuilder files: () -> Files = { EmptyView() }
+    ) {
         self.model = model
         self.pullRequest = pullRequest
+        self.files = files()
     }
 
     public var body: some View {
@@ -40,6 +46,7 @@ public struct PullRequestScreen: View {
                 switch model.tab {
                 case .overview:
                     OverviewView(detail: detail, open: open)
+                    files
                 case .commits:
                     LazyVStack(alignment: .leading, spacing: 12) {
                         ForEach(detail.commits) { commit in

@@ -10,17 +10,30 @@ import SylvraCore
 struct RootScreen: View {
     let environment: AppEnvironment
     @State private var selection: PullRequestSummary?
-    @State private var isInspectorPresented = true
+    @State private var isInspectorPresented: Bool
+    @State private var columnVisibility: NavigationSplitViewVisibility
+
+    init(environment: AppEnvironment) {
+        self.environment = environment
+        _isInspectorPresented = State(initialValue: environment.showsInspector)
+        _columnVisibility = State(initialValue: environment.startsFocused ? .doubleColumn : .all)
+    }
 
     var body: some View {
-        NavigationSplitView {
+        NavigationSplitView(columnVisibility: $columnVisibility) {
             InboxScreen(model: environment.inbox, selection: $selection)
                 .navigationSplitViewColumnWidth(min: 240, ideal: 290)
         } content: {
-            PullRequestScreen(model: environment.pullRequest, pullRequest: selection)
-                .navigationSplitViewColumnWidth(min: 300, ideal: 360)
+            PullRequestScreen(model: environment.pullRequest, pullRequest: selection) {
+                DiffFileNavigatorPanel(model: environment.diff)
+            }
+            .navigationSplitViewColumnWidth(min: 300, ideal: 360)
         } detail: {
-            DiffScreen()
+            DiffScreen(
+                model: environment.diff,
+                pullRequestID: selection?.id,
+                headSHA: environment.pullRequest.detail.flatMap { $0.summary.id == selection?.id ? $0.headSHA : nil }
+            )
         }
         .navigationTitle(Text(verbatim: selection.map { "\($0.id.repository) #\($0.id.number)" } ?? "Sylvra"))
         .navigationSubtitle(Text(verbatim: selection?.title ?? ""))
