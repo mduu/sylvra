@@ -82,11 +82,16 @@ public struct FindingDetailView: View {
 /// Callbacks for a finding (provided by containers; optional ones are hidden when `nil`).
 public struct FindingActions {
     public var turnIntoComment: (() -> Void)?
+    public var askInChat: (() -> Void)?
     public var openInIDE: (() -> Void)?
     public var dismiss: () -> Void
 
-    public init(turnIntoComment: (() -> Void)? = nil, openInIDE: (() -> Void)? = nil, dismiss: @escaping () -> Void) {
+    public init(
+        turnIntoComment: (() -> Void)? = nil, askInChat: (() -> Void)? = nil, openInIDE: (() -> Void)? = nil,
+        dismiss: @escaping () -> Void
+    ) {
         self.turnIntoComment = turnIntoComment
+        self.askInChat = askInChat
         self.openInIDE = openInIDE
         self.dismiss = dismiss
     }

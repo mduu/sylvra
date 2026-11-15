@@ -28,6 +28,8 @@ public struct PullRequestScreen<Files: View>: View {
                 placeholder
             }
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(SylvraColor.surfacePrimary)
         .task(id: pullRequest?.id) { await model.load(pullRequest?.id) }
     }
 

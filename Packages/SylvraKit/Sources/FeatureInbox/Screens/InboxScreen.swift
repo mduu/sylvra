@@ -33,6 +33,8 @@ public struct InboxScreen: View {
             }
         }
         .listStyle(.sidebar)
+        .scrollContentBackground(.hidden)
+        .background(SylvraColor.surfaceSidebar)
         .searchable(text: $model.searchText, placement: .sidebar, prompt: Text("Search PRs"))
         .overlay { overlay }
         .safeAreaInset(edge: .bottom) {

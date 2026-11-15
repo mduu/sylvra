@@ -22,6 +22,17 @@ public enum SylvraColor {
     /// Terminal text selection.
     public static let terminalSelection = dynamic(light: 0x4B2A8A, dark: 0x3A2270)
 
+    // MARK: Window surfaces (from the design preview)
+
+    /// Main content background (PR column, window).
+    public static let surfacePrimary = dynamic(light: 0xFBFAFE, dark: 0x120A26)
+    /// Sidebar and inspector.
+    public static let surfaceSidebar = dynamic(light: 0xF5F2FC, dark: 0x140B2A)
+    /// Cards and elevated panels on a surface.
+    public static let surfaceElevated = dynamic(light: 0xFFFFFF, dark: 0x1C1236)
+    /// Selected rows (inbox selection, file selection).
+    public static let surfaceSelected = dynamic(light: 0xECE4FB, dark: 0x2A1B4E)
+
     // MARK: Diff surface
 
     /// Background of code in the diff (a calm, slightly violet canvas).

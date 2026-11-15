@@ -1,3 +1,4 @@
+import DesignSystem
 import FeatureAIReview
 import FeatureActivity
 import FeatureDiff
@@ -45,12 +46,15 @@ struct RootScreen: View {
                     headSHA: environment.pullRequest.detail.flatMap {
                         $0.summary.id == selection?.id ? $0.headSHA : nil
                     },
-                    lineAccessory: { ReviewThreadsPanel(model: environment.review, location: $0) },
+                    lineAccessory: { lineAccessory(at: $0) },
                     onStartComment: { environment.review.startComment(at: $0, lineText: $1) }
                 )
             }
             .terminalPanel(environment, selection: selection)
         }
+        .containerBackground(SylvraColor.surfacePrimary, for: .window)
+        .toolbarBackground(SylvraColor.surfacePrimary, for: .windowToolbar)
+        .toolbarBackgroundVisibility(.visible, for: .windowToolbar)
         .navigationTitle(Text(verbatim: selection.map { "\($0.id.repository) #\($0.id.number)" } ?? "Sylvra"))
         .navigationSubtitle(Text(verbatim: selection?.title ?? ""))
         .inspector(isPresented: $isInspectorPresented) {
@@ -68,6 +72,10 @@ struct RootScreen: View {
         .task(id: selection?.id) {
             guard environment.autoRunsAIReview, let selection else { return }
             await environment.aiReview.run(selection.id, title: selection.title, body: "")
+            // Screenshots / demos: show the top finding in the diff right away.
+            if let first = environment.aiReview.findings(for: selection.id).first {
+                environment.aiReview.selectedFindingID = first.id
+            }
         }
         .focusedSceneValue(\.reviewActions, reviewActions)
         .onChange(of: environment.diff.selectedPath) { _, path in
@@ -192,6 +200,46 @@ struct RootScreen: View {
         guard let finding else { return }
         isInspectorPresented = true
         environment.diff.selectedPath = finding.path
+    }
+
+    /// Below a diff line: review threads, and the selected AI finding as an inline card at its last line.
+    @ViewBuilder
+    private func lineAccessory(at location: CodeLocation) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            ReviewThreadsPanel(model: environment.review, location: location)
+            if let finding = selectedFinding, location.side == .right, location.path == finding.path,
+                location.line == finding.endLine
+            {
+                InlineFindingCard(
+                    finding: finding,
+                    originalLines: environment.diff.text(
+                        at: CodeLocation(
+                            path: finding.path, line: finding.endLine, side: .right, startLine: finding.startLine)),
+                    ideName: selection.map { environment.openInIDE.preferredIDE(for: $0.id).name },
+                    actions: FindingActions(
+                        turnIntoComment: { startComment(from: finding) },
+                        askInChat: {
+                            environment.chat.context.finding = finding.title
+                            environment.aiReview.tab = .chat
+                            isInspectorPresented = true
+                        },
+                        openInIDE: {
+                            guard let id = selection?.id else { return }
+                            Task { await environment.openInIDE.open(id, file: finding.path, line: finding.startLine) }
+                        },
+                        dismiss: { withAnimation(.snappy) { environment.aiReview.dismiss(finding) } }
+                    )
+                )
+                .padding(.vertical, 10)
+                .padding(.horizontal, 12)
+                .transition(.opacity.combined(with: .scale(scale: 0.97, anchor: .top)))
+            }
+        }
+        .animation(.snappy, value: environment.aiReview.selectedFindingID)
+    }
+
+    private var selectedFinding: ReviewFinding? {
+        environment.aiReview.findings(for: selection?.id).first { $0.id == environment.aiReview.selectedFindingID }
     }
 }
 

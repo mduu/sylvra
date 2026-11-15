@@ -54,6 +54,8 @@ public struct FindingsInspectorScreen: View {
             .animation(.snappy, value: model.selectedFindingID)
             .animation(.snappy, value: model.progress)
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(SylvraColor.surfaceSidebar)
         .task { await model.detectAgent() }
     }
 
