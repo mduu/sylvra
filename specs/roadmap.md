@@ -19,6 +19,21 @@ Status: ✅ done · 🚧 in progress · ⏳ open
 | M10 | Activity indicator, notifications, terminal panel, custom tools, settings | ✅ |
 | M11 | Polish: syntax highlighting, animations, wow diff details, persistence cache | ✅ |
 
+## After the MVP (done)
+
+Ideas taken over from comparable review tools (Review Buddy, Lo, Pulldog, review-man):
+
+- ✅ Since my last review: diff scope from the last reviewed commit, banner, push detection with Refresh.
+- ✅ AI reading order with risky areas; diff sorted by it.
+- ✅ Discuss selected code privately with Claude; answers → factual draft comment.
+- ✅ Keyboard: single keys (`j`/`k`, `n`/`p`, `v`, `?` …), command palette (⌘K).
+- ✅ Find in diff (⌘F).
+- ✅ Reveal hidden context step by step (+20 / all).
+- ✅ Emoji reactions on review comments.
+- ✅ Comment writing help: factual rephrasing, shorter, EN/DE per comment, tone check.
+
+More ideas: [`backlog.md`](backlog.md).
+
 ## Next (after the MVP)
 
 - Pagination beyond 100 changed files / 100 review threads / 50 comments per thread.

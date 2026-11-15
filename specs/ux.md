@@ -294,6 +294,10 @@ stateDiagram-v2
 | Submit review | `⌘↩` |
 | Quick open (PR or file) | `⌘P` |
 | Command palette | `⌘K` |
+| Find in diff | `⌘F` or `/` |
+| Keyboard shortcuts overview | `?` or `⌘/` |
+
+Built single-key shortcuts (active whenever no text is being edited — composer, chat, search and the terminal keep their keys): `j`/`k` next/previous file, `n`/`p` next/previous change, `.`/`,` next/previous AI finding, `v` toggle viewed, `i` AI inspector, `/` find, `?` shortcuts. Reactions on comments post to GitHub immediately on click (an explicit action, like on github.com).
 
 ## 15. Settings
 
