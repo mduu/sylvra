@@ -124,13 +124,13 @@ struct DiffFileBodyView<Accessory: View>: View {
     private enum Row: Identifiable {
         case header(Int, Hunk)
         case inline(Int, Int, DiffLine)
-        case sideBySide(Int, Int, SideBySideRow)
+        case sideBySide(Int, Int, SideBySideRow, ConnectorSegment?)
 
         var id: String {
             switch self {
             case .header(let hunk, _): "h\(hunk)"
             case .inline(let hunk, let index, _): "i\(hunk)-\(index)"
-            case .sideBySide(let hunk, let index, _): "s\(hunk)-\(index)"
+            case .sideBySide(let hunk, let index, _, _): "s\(hunk)-\(index)"
             }
         }
     }
@@ -140,7 +140,12 @@ struct DiffFileBodyView<Accessory: View>: View {
             let lines: [Row] =
                 switch layout {
                 case .inline: hunk.lines.enumerated().map { .inline(hunkIndex, $0, $1) }
-                case .sideBySide: SideBySideRow.rows(for: hunk).enumerated().map { .sideBySide(hunkIndex, $0, $1) }
+                case .sideBySide:
+                    {
+                        let rows = SideBySideRow.rows(for: hunk)
+                        let segments = ConnectorSegment.segments(for: rows)
+                        return rows.indices.map { .sideBySide(hunkIndex, $0, rows[$0], segments[$0]) }
+                    }()
                 }
             return [.header(hunkIndex, hunk)] + lines
         }
@@ -161,9 +166,9 @@ struct DiffFileBodyView<Accessory: View>: View {
                             }
                         inlineAccessories(line)
                     }
-                case .sideBySide(_, _, let row):
+                case .sideBySide(_, _, let row, let connector):
                     VStack(spacing: 0) {
-                        SideBySideRowView(row: row, onComment: onComment)
+                        SideBySideRowView(row: row, connector: connector, onComment: onComment)
                             .overlay(alignment: .trailing) {
                                 GeometryReader { geometry in
                                     AIHighlightOverlay(highlight: row.right?.newNumber.flatMap(highlight))

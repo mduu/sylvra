@@ -173,3 +173,15 @@ struct UnifiedDiffParserRegressionTests {
         #expect(lines.allSatisfy { $0.missingNewline })
     }
 }
+
+struct ConnectorSegmentTests {
+    @Test func blocksSpanChangedRows() throws {
+        let file = try #require(UnifiedDiffParser.parse(UnifiedDiffParserTests.sample).first)
+        let rows = SideBySideRow.rows(for: file.hunks[0])
+        let segments = ConnectorSegment.segments(for: rows)
+        #expect(segments[0] == nil)
+        #expect(segments[1] == ConnectorSegment(indexInBlock: 0, blockRows: 3, leftRows: 1, rightRows: 3))
+        #expect(segments[3]?.indexInBlock == 2)
+        #expect(segments[4] == nil)
+    }
+}

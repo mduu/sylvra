@@ -7,6 +7,7 @@ private let diffRowHeight: CGFloat = 22
 private let codeFont = Font.system(size: 12.5, design: .monospaced)
 /// Unchanged code is slightly dimmed, so the change is in the light (focus lens, see specs/ux.md §7.2).
 private let contextOpacity = 0.62
+private let connectorWidth: CGFloat = 44
 
 /// Request to start a comment on a line: side, line number and whether to extend the current range (⇧-click).
 typealias CommentRequest = (_ side: CodeLocation.Side, _ line: Int, _ extendsRange: Bool) -> Void
@@ -68,12 +69,13 @@ struct InlineLineView: View {
 /// One row in the side-by-side layout (pure).
 struct SideBySideRowView: View {
     let row: SideBySideRow
+    var connector: ConnectorSegment?
     var onComment: CommentRequest?
 
     var body: some View {
         HStack(spacing: 0) {
             SideBySideHalf(line: row.left, number: row.left?.oldNumber, side: .left, onComment: onComment)
-            Rectangle().fill(SylvraColor.codeHairline).frame(width: 1)
+            ConnectorRibbonView(segment: connector, rowHeight: diffRowHeight).frame(width: connectorWidth)
             SideBySideHalf(line: row.right, number: row.right?.newNumber, side: .right, onComment: onComment)
         }
         .font(codeFont)
@@ -192,6 +194,60 @@ struct HunkHeaderView: View {
 
     private var hairline: some View {
         Rectangle().fill(SylvraColor.codeHairline).frame(height: 1)
+    }
+}
+
+/// The slice of a change block's ribbon on this row: a curved band from the removed lines (left, coral)
+/// to the added lines (right, green). Each row draws the whole block shape shifted by its index and clipped,
+/// so the slices join into one continuous ribbon (pure, see specs/ux.md §7.2).
+struct ConnectorRibbonView: View {
+    let segment: ConnectorSegment?
+    let rowHeight: CGFloat
+
+    var body: some View {
+        Canvas { context, size in
+            // Hairline through unchanged rows keeps the two halves visually apart.
+            context.fill(
+                Path(CGRect(x: size.width / 2 - 0.5, y: 0, width: 1, height: size.height)),
+                with: .color(SylvraColor.codeHairline))
+            guard let segment else { return }
+            context.translateBy(x: 0, y: -CGFloat(segment.indexInBlock) * rowHeight)
+            let left = CGFloat(max(segment.leftRows, 0)) * rowHeight
+            let right = CGFloat(max(segment.rightRows, 0)) * rowHeight
+            let width = size.width
+            var band = Path()
+            band.move(to: CGPoint(x: 0, y: 1))
+            band.addLine(to: CGPoint(x: width, y: 1))
+            band.addLine(to: CGPoint(x: width, y: max(right - 1, 1)))
+            band.addCurve(
+                to: CGPoint(x: 0, y: max(left - 1, 1)),
+                control1: CGPoint(x: width * 0.45, y: max(right - 1, 1)),
+                control2: CGPoint(x: width * 0.55, y: max(left - 1, 1)))
+            band.closeSubpath()
+            let gradient = Gradient(colors: [
+                SylvraColor.diffRemoved.opacity(0.42), SylvraColor.diffAdded.opacity(0.42),
+            ])
+            context.fill(
+                band, with: .linearGradient(gradient, startPoint: .zero, endPoint: CGPoint(x: width, y: 0)))
+            var edges = Path()
+            edges.move(to: CGPoint(x: 0, y: 1))
+            edges.addLine(to: CGPoint(x: width, y: 1))
+            edges.move(to: CGPoint(x: width, y: max(right - 1, 1)))
+            edges.addCurve(
+                to: CGPoint(x: 0, y: max(left - 1, 1)),
+                control1: CGPoint(x: width * 0.45, y: max(right - 1, 1)),
+                control2: CGPoint(x: width * 0.55, y: max(left - 1, 1)))
+            let edgeGradient = Gradient(colors: [
+                SylvraColor.diffRemoved.opacity(0.85), SylvraColor.diffAdded.opacity(0.85),
+            ])
+            context.stroke(
+                edges, with: .linearGradient(edgeGradient, startPoint: .zero, endPoint: CGPoint(x: width, y: 0)),
+                lineWidth: 1.5)
+        }
+        .background(SylvraColor.codeSurface)
+        .frame(height: rowHeight)
+        .clipped()
+        .accessibilityHidden(true)
     }
 }
 
