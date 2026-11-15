@@ -32,10 +32,9 @@ public struct ReviewThreadsPanel: View {
                 }
                 if hasDraft { composer }
             }
-            .padding(.vertical, 8)
-            .padding(.leading, 30)
-            .padding(.trailing, 16)
-            .frame(maxWidth: 760, alignment: .leading)
+            .padding(.vertical, 6)
+            .padding(.horizontal, 8)
+            .frame(maxWidth: .infinity, alignment: .leading)
             .transition(.opacity.combined(with: .move(edge: .top)))
         }
     }

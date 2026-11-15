@@ -13,6 +13,7 @@ public struct DiffScreen<LineAccessory: View>: View {
     private let headSHA: String?
     private let lineAccessory: (CodeLocation) -> LineAccessory
     private let onStartComment: ((CodeLocation, String) -> Void)?
+    @State private var diffIsWide = true
     @State private var commentAnchor: CodeLocation?
 
     public init(
@@ -108,6 +109,12 @@ public struct DiffScreen<LineAccessory: View>: View {
                     }
                     .animation(.snappy, value: model.layout)
                 }
+                .onGeometryChange(for: Bool.self) {
+                    $0.size.width >= 760  // room for two thread lanes of ~320 pt
+                } action: {
+                    diffIsWide = $0
+                }
+                .environment(\.diffIsWide, diffIsWide)
                 .onChange(of: model.selectedPath) { _, path in
                     guard let path else { return }
                     withAnimation(.snappy) { proxy.scrollTo(path, anchor: .top) }

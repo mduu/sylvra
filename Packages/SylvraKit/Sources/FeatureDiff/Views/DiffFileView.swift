@@ -119,6 +119,7 @@ struct DiffFileBodyView<Accessory: View>: View {
     let accessory: (CodeLocation) -> Accessory
     var highlight: (Int) -> LineHighlight? = { _ in nil }
     var onComment: CommentRequest?
+    @Environment(\.diffIsWide) private var diffIsWide
 
     /// One lazily built row; unique string IDs (nested offset-based IDs collided and dropped rows).
     private enum Row: Identifiable {
@@ -185,20 +186,79 @@ struct DiffFileBodyView<Accessory: View>: View {
     }
 
     /// Context lines can carry threads on both sides; removed lines on the left, added lines on the right.
+    /// Accessories are indented past the gutter, which keeps running underneath (the diff stays one surface).
     @ViewBuilder private func inlineAccessories(_ line: DiffLine) -> some View {
         if line.kind != .added, let old = line.oldNumber {
-            accessory(CodeLocation(path: path, line: old, side: .left))
+            AccessoryLane { accessory(CodeLocation(path: path, line: old, side: .left)) }
         }
         if line.kind != .removed, let new = line.newNumber {
-            accessory(CodeLocation(path: path, line: new, side: .right))
+            AccessoryLane { accessory(CodeLocation(path: path, line: new, side: .right)) }
         }
     }
 
-    /// Accessories span the full width below the row (left side first): thread cards stay readable
-    /// in narrow windows.
-    @ViewBuilder private func sideBySideAccessories(_ row: SideBySideRow) -> some View {
-        if let old = row.left?.oldNumber { accessory(CodeLocation(path: path, line: old, side: .left)) }
-        if let new = row.right?.newNumber { accessory(CodeLocation(path: path, line: new, side: .right)) }
+    /// Side by side: a thread sits under the half it belongs to; the other half and the center keep going.
+    /// All surfaces are backgrounds, so lines without threads add no height at all.
+    /// Wide diffs put a thread under its own half; narrow diffs (all columns visible) use one lane across the
+    /// code width, so cards never get squeezed into half a column.
+    @ViewBuilder
+    private func sideBySideAccessories(_ row: SideBySideRow) -> some View {
+        Group {
+            if diffIsWide {
+                HStack(alignment: .top, spacing: 0) {
+                    AccessoryLane {
+                        if let old = row.left?.oldNumber { accessory(CodeLocation(path: path, line: old, side: .left)) }
+                    }
+                    Spacer(minLength: 44).frame(width: 44)
+                    AccessoryLane {
+                        if let new = row.right?.newNumber {
+                            accessory(CodeLocation(path: path, line: new, side: .right))
+                        }
+                    }
+                }
+            } else {
+                AccessoryLane {
+                    if let old = row.left?.oldNumber { accessory(CodeLocation(path: path, line: old, side: .left)) }
+                    if let new = row.right?.newNumber { accessory(CodeLocation(path: path, line: new, side: .right)) }
+                }
+            }
+        }
+        .background {
+            HStack(spacing: 0) {
+                GutterStrip()
+                Rectangle().fill(SylvraColor.codeHairline).frame(width: 1).frame(width: 44)
+                GutterStrip()
+            }
+        }
+        .background(SylvraColor.codeSurface)
+    }
+}
+
+/// Content placed between diff lines, indented past the gutter; the gutter keeps running (pure).
+private struct AccessoryLane<Content: View>: View {
+    var minWidth: CGFloat = 0
+    @ViewBuilder let content: Content
+
+    var body: some View {
+        // The zero-height placeholder keeps an empty lane in the layout (an empty `if` would vanish and let
+        // the other side's thread take the full width).
+        ZStack(alignment: .topLeading) {
+            Color.clear.frame(height: 0)
+            content
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.leading, 62)
+        .background(alignment: .leading) { SylvraColor.codeGutter.frame(width: 62) }
+        .background(SylvraColor.codeSurface)
+    }
+}
+
+/// A half's gutter column with the code surface beside it (background only).
+private struct GutterStrip: View {
+    var body: some View {
+        HStack(spacing: 0) {
+            SylvraColor.codeGutter.frame(width: 62)
+            SylvraColor.codeSurface
+        }
     }
 }
 

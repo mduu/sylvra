@@ -41,9 +41,14 @@ struct ReviewThreadView: View {
                 footer
             }
         }
-        .background(.background, in: RoundedRectangle(cornerRadius: 8))
-        .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(.separator))
-        .shadow(color: .black.opacity(0.04), radius: 2, y: 1)
+        // Lives inside the code surface: a quiet card with a violet edge instead of a separate white box.
+        .background(SylvraColor.codeGutter, in: RoundedRectangle(cornerRadius: 8))
+        .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(SylvraColor.codeHairline))
+        .overlay(alignment: .leading) {
+            UnevenRoundedRectangle(topLeadingRadius: 8, bottomLeadingRadius: 8)
+                .fill(SylvraColor.brandPrimary.opacity(thread.isResolved ? 0.35 : 0.9))
+                .frame(width: 3)
+        }
     }
 
     private var header: some View {
@@ -55,7 +60,7 @@ struct ReviewThreadView: View {
                     .foregroundStyle(.secondary)
                 if isCollapsed, let first = thread.comments.first {
                     AvatarView(first.author, size: 16)
-                    Text(first.author.displayName).fontWeight(.medium)
+                    Text(first.author.displayName).fontWeight(.medium).lineLimit(1).fixedSize()
                     Text(Self.preview(of: first.body)).foregroundStyle(.secondary).lineLimit(1)
                 } else {
                     Text(Self.lineLabel(thread.location)).foregroundStyle(.secondary)
@@ -130,7 +135,7 @@ struct ReviewCommentView: View {
             AvatarView(comment.author, size: 24)
             VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 6) {
-                    Text(comment.author.displayName).font(.callout.weight(.semibold))
+                    Text(comment.author.displayName).font(.callout.weight(.semibold)).lineLimit(1)
                     Text(comment.createdAt, format: .relative(presentation: .named))
                         .font(.caption)
                         .foregroundStyle(.secondary)
@@ -204,9 +209,11 @@ struct StatusBadge: View {
         }
         .font(.caption2.weight(.semibold))
         .foregroundStyle(tint)
+        .lineLimit(1)
         .padding(.horizontal, 6)
         .padding(.vertical, 1)
         .background(tint.opacity(0.12), in: Capsule())
+        .fixedSize()  // never wrap ("Re-solve-d") in narrow lanes
     }
 }
 

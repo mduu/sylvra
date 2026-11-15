@@ -94,6 +94,8 @@ enum SyntaxColors {
 extension EnvironmentValues {
     /// Language of the file being rendered (set by `DiffFileBodyView`).
     @Entry var syntaxLanguage: SyntaxHighlighter.Language = .plain
+    /// The diff column is wide enough for threads under their own side-by-side half.
+    @Entry var diffIsWide = true
 }
 
 /// Remembers rendered lines so scrolling and re-renders don't re-tokenise (bounded LRU-ish cache).
