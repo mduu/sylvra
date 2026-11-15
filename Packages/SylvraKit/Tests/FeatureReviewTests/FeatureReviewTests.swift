@@ -256,3 +256,26 @@ private struct FailingResolveService: ReviewService {
     func deleteComment(id: String) async throws {}
     func submitReview(pullRequestNodeID: String, reviewID: String?, event: ReviewEvent, body: String) async throws {}
 }
+
+@MainActor
+struct CommentLanguageTests {
+    private let id = PullRequestID(owner: "acme", repository: "lang-\(UUID().uuidString)", number: 1)
+    private let location = CodeLocation(path: "A.swift", line: 3, side: .right)
+
+    @Test func rewritesDraftInChosenLanguageAndRemembersItPerRepository() async {
+        let model = ReviewScreenModel(service: DemoReviewService(snapshot: DemoReviewService.sample()))
+        await model.load(id)
+        model.rewriter = { text, language in "[\(language)] \(text)" }
+        model.startComment(at: location, lineText: "x")
+        model.draft?.body = "Round once."
+
+        await model.rewriteDraft()
+        #expect(model.draft?.body == "[English] Round once.")
+
+        model.draftLanguage = "German"
+        #expect(model.draftLanguage == "German")
+        // The language switch triggers a rewrite of the current draft.
+        try? await Task.sleep(for: .milliseconds(50))
+        #expect(model.draft?.body == "[German] [English] Round once.")
+    }
+}

@@ -62,10 +62,10 @@ struct RootScreen: View {
                 model: environment.aiReview,
                 pullRequest: selection,
                 pullRequestBody: environment.pullRequest.detail?.body ?? "",
-                jump: { finding in environment.diff.selectedPath = finding.path },
+                jump: { finding in environment.diff.focus(path: finding.path, line: finding.startLine) },
                 turnIntoComment: { finding in startComment(from: finding) },
                 chat: environment.chat,
-                jumpToLocation: { path, _ in environment.diff.selectedPath = path }
+                jumpToLocation: { path, line in environment.diff.focus(path: path, line: line) }
             )
             .inspectorColumnWidth(min: 240, ideal: 300, max: 420)
         }
@@ -75,6 +75,7 @@ struct RootScreen: View {
             // Screenshots / demos: show the top finding in the diff right away.
             if let first = environment.aiReview.findings(for: selection.id).first {
                 environment.aiReview.selectedFindingID = first.id
+                if environment.autoTurnsIntoComment { startComment(from: first) }
             }
         }
         .focusedSceneValue(\.reviewActions, reviewActions)
@@ -164,11 +165,13 @@ struct RootScreen: View {
     private func startComment(from finding: ReviewFinding) {
         let location = CodeLocation(
             path: finding.path, line: finding.endLine, side: .right, startLine: finding.startLine)
-        var body = "**\(finding.title)**\n\n\(finding.rationale)"
+        var body = finding.rationale
         if let suggestion = finding.suggestion { body += "\n\n" + SuggestionBlock.make(code: suggestion) }
         environment.review.draft = CommentDraft(
             location: location, lineText: environment.diff.text(at: location), body: body)
-        environment.diff.selectedPath = finding.path
+        environment.diff.focus(path: finding.path, line: finding.endLine)
+        // Start from a personal draft in the language last used for this repository; the reviewer edits it.
+        Task { await environment.review.rewriteDraft() }
     }
 
     /// Menu bar / keyboard actions for this window.
@@ -199,7 +202,7 @@ struct RootScreen: View {
     private func jump(to finding: ReviewFinding?) {
         guard let finding else { return }
         isInspectorPresented = true
-        environment.diff.selectedPath = finding.path
+        environment.diff.focus(path: finding.path, line: finding.startLine)
     }
 
     /// Below a diff line: review threads, and the selected AI finding as an inline card at its last line.

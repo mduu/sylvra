@@ -116,8 +116,20 @@ public struct DiffScreen<LineAccessory: View>: View {
                 }
                 .environment(\.diffIsWide, diffIsWide)
                 .onChange(of: model.selectedPath) { _, path in
-                    guard let path else { return }
+                    guard let path, model.focusedLine?.path != path else { return }
                     withAnimation(.snappy) { proxy.scrollTo(path, anchor: .top) }
+                }
+                .onChange(of: model.focusedLine?.token) {
+                    guard let target = model.focusedLine else { return }
+                    // First the file (always realised), then the line once the lazy rows around it exist.
+                    proxy.scrollTo(target.path, anchor: .top)
+                    Task {
+                        try? await Task.sleep(for: .milliseconds(120))
+                        withAnimation(.smooth(duration: 0.35)) {
+                            proxy.scrollTo(
+                                DiffScreenModel.lineAnchor(path: target.path, line: target.line), anchor: .center)
+                        }
+                    }
                 }
             }
         } else {

@@ -208,3 +208,19 @@ struct AIReviewPersistenceTests {
         #expect(PullRequestID("acme/billing#7") == id)
     }
 }
+
+struct CommentRewriterTests {
+    @Test func promptAsksForPersonalToneAndKeepsSuggestions() {
+        let prompt = CommentRewriter.prompt(for: "Round once.", language: "German")
+        #expect(prompt.contains("in German"))
+        #expect(prompt.contains("```suggestion block exactly"))
+    }
+
+    @Test func guardDetectsDroppedSuggestions() {
+        let original = "Round once.\n\n```suggestion\nlet x = 1\n```"
+        #expect(
+            SuggestionGuard.keepsSuggestions(
+                original: original, rewritten: "Bitte einmal runden.\n\n```suggestion\nlet x = 1\n```"))
+        #expect(!SuggestionGuard.keepsSuggestions(original: original, rewritten: "Bitte einmal runden."))
+    }
+}

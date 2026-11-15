@@ -48,7 +48,13 @@ public struct ReviewThreadsPanel: View {
             insertSuggestion: model.insertSuggestion,
             addToReview: { Task { await model.addDraftToReview() } },
             commentNow: { Task { await model.postDraftNow() } },
-            cancel: { withAnimation(.snappy) { model.cancelDraft() } }
+            cancel: { withAnimation(.snappy) { model.cancelDraft() } },
+            language: Binding(
+                get: {
+                    _ = model.languageRevision; return model.draftLanguage
+                }, set: { model.draftLanguage = $0 }),
+            isRewriting: model.isRewriting,
+            rewrite: model.rewriter == nil ? nil : { Task { await model.rewriteDraft() } }
         )
     }
 

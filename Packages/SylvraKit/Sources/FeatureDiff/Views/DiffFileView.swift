@@ -167,6 +167,7 @@ struct DiffFileBodyView<Accessory: View>: View {
                             }
                         inlineAccessories(line)
                     }
+                    .id(line.kind == .removed ? "" : DiffScreenModel.lineAnchor(path: path, line: line.newNumber ?? 0))
                 case .sideBySide(_, _, let row, let connector):
                     VStack(spacing: 0) {
                         SideBySideRowView(row: row, connector: connector, onComment: onComment)
@@ -179,6 +180,9 @@ struct DiffFileBodyView<Accessory: View>: View {
                             }
                         sideBySideAccessories(row)
                     }
+                    .id(
+                        DiffScreenModel.lineAnchor(
+                            path: path, line: row.right?.newNumber ?? -(row.left?.oldNumber ?? 0)))
                 }
             }
         }

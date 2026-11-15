@@ -75,6 +75,26 @@ public final class DiffScreenModel {
         selectedPath = paths[min(max(current + offset, 0), paths.count - 1)]
     }
 
+    /// A line the diff should scroll to (new side), e.g. an AI finding; reset after scrolling.
+    public private(set) var focusedLine: FocusedLine?
+
+    /// A scroll request to a new-side line; `token` makes repeated requests for the same line distinct.
+    public struct FocusedLine: Equatable, Sendable {
+        public let path: String
+        public let line: Int
+        public let token = UUID()
+    }
+
+    /// Scrolls to a line of the new version and expands its file if it is collapsed.
+    public func focus(path: String, line: Int) {
+        if let file = files.first(where: { $0.path == path }), isCollapsed(file) { toggleExpanded(path) }
+        selectedPath = path
+        focusedLine = FocusedLine(path: path, line: line)
+    }
+
+    /// Scroll anchor ID of a new-side line.
+    public nonisolated static func lineAnchor(path: String, line: Int) -> String { "\(path)#L\(line)" }
+
     /// Folders the reviewer collapsed in the file tree.
     public private(set) var collapsedFolders: Set<String> = []
 

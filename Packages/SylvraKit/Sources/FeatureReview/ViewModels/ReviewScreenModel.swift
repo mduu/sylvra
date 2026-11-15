@@ -117,6 +117,53 @@ public final class ReviewScreenModel {
 
     // MARK: - Composer
 
+    // MARK: - Comment language and rewriting
+
+    /// Rewrites a comment draft personally in a language (`English`, `German`); provided by the app (AI agent).
+    public typealias Rewriter = @Sendable (_ text: String, _ language: String) async throws -> String
+
+    public var rewriter: Rewriter?
+    public private(set) var isRewriting = false
+    /// Default when a repository has no remembered choice yet.
+    public var defaultCommentLanguage = "English"
+
+    /// Language of the current draft; remembered per repository (comments switch between German and English).
+    public var draftLanguage: String {
+        get {
+            guard let pullRequestID else { return defaultCommentLanguage }
+            return UserDefaults.standard.string(forKey: Self.languageKey(pullRequestID)) ?? defaultCommentLanguage
+        }
+        set {
+            if let pullRequestID { UserDefaults.standard.set(newValue, forKey: Self.languageKey(pullRequestID)) }
+            languageRevision += 1
+            Task { await rewriteDraft() }
+        }
+    }
+
+    /// Bumped when the language changes so views observing `draftLanguage` refresh.
+    public private(set) var languageRevision = 0
+
+    private static func languageKey(_ id: PullRequestID) -> String { "commentLanguage.\(id.owner)/\(id.repository)" }
+
+    /// Rewrites the draft in `draftLanguage`; suggestion blocks are kept verbatim by the rewriter.
+    public func rewriteDraft() async {
+        guard let rewriter, let draft, !draft.body.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+            !isRewriting
+        else { return }
+        let started = pullRequestID
+        let location = draft.location
+        isRewriting = true
+        defer { isRewriting = false }
+        do {
+            let rewritten = try await rewriter(draft.body, draftLanguage)
+            // Only replace the text if the reviewer is still on the same draft.
+            guard pullRequestID == started, self.draft?.location == location else { return }
+            self.draft?.body = rewritten
+        } catch {
+            errorMessage = String(localized: "Couldn't rewrite: \(error.localizedDescription)")
+        }
+    }
+
     /// Starts a comment on a location (from the diff gutter). Keeps the text when only the range changes.
     public func startComment(at location: CodeLocation, lineText: String) {
         if let current = draft, current.location.path == location.path, current.location.side == location.side,

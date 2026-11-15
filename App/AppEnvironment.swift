@@ -19,7 +19,8 @@ import SylvraCore
 /// - `--tab=overview|commits|checks`: initial tab of the PR column
 /// - `--layout=inline`: inline instead of side-by-side diff
 /// - `--focus`: hide the inbox sidebar; `--no-inspector`: hide the AI inspector
-/// - `--run-ai-review`: start an AI review as soon as a PR is selected
+/// - `--run-ai-review`: start an AI review as soon as a PR is selected; with `--turn-into-comment` the top
+///   finding becomes a comment draft
 /// - `--submit-review`: open the submit review sheet; `--compose=path:line`: open the comment composer
 /// - `--terminal`: show the terminal panel with one tab
 @MainActor
@@ -29,6 +30,7 @@ final class AppEnvironment {
     let startsFocused: Bool
     let showsInspector: Bool
     let autoRunsAIReview: Bool
+    let autoTurnsIntoComment: Bool
     let gitHub: GitHubClient
     let inbox: InboxScreenModel
     let pullRequest: PullRequestScreenModel
@@ -47,6 +49,7 @@ final class AppEnvironment {
         startsFocused = arguments.contains("--focus")
         showsInspector = !arguments.contains("--no-inspector")
         autoRunsAIReview = arguments.contains("--run-ai-review")
+        autoTurnsIntoComment = arguments.contains("--turn-into-comment")
         gitHub = GitHubClient(tokenProvider: GitHubCLITokenProvider())
         let inboxLoader: any InboxLoading = isDemo ? DemoInboxLoader() : GitHubInboxLoader(client: gitHub)
         inbox = InboxScreenModel(loader: inboxLoader, cache: isDemo ? nil : JSONCache())
@@ -77,6 +80,7 @@ final class AppEnvironment {
             workspace: { id in try await checkout?.prepareWorktree(for: id, purpose: .agent) }
         )
         review = ReviewScreenModel(service: isDemo ? DemoReviewService() : GitHubReviewService(client: gitHub))
+        Self.configureCommentRewriting(review, agent: agent, isDemo: isDemo)
         review.isSubmitSheetPresented = arguments.contains("--submit-review")
         if let compose = Self.value(of: "--compose", in: arguments)?.split(separator: ":"), compose.count == 2,
             let line = Int(compose[1])
@@ -98,5 +102,15 @@ final class AppEnvironment {
         }
         guard let index = arguments.firstIndex(of: flag), arguments.indices.contains(index + 1) else { return nil }
         return arguments[index + 1]
+    }
+
+    /// Comment language default and the AI rewriter (demo: canned rewrite without an agent call).
+    private static func configureCommentRewriting(_ review: ReviewScreenModel, agent: any AgentProvider, isDemo: Bool) {
+        review.defaultCommentLanguage = UserDefaults.standard.string(forKey: "commentLanguage") ?? "English"
+        let rewriter = CommentRewriter(provider: agent)
+        review.rewriter =
+            isDemo
+            ? { @Sendable text, language in try await DemoCommentRewriter.rewrite(text, language: language) }
+            : { @Sendable text, language in try await rewriter.rewrite(text, language: language) }
     }
 }

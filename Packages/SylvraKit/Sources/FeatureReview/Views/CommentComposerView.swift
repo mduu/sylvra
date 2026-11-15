@@ -13,6 +13,11 @@ struct CommentComposerView: View {
     var addToReview: () -> Void = {}
     var commentNow: () -> Void = {}
     var cancel: () -> Void = {}
+    /// Language of this comment (`English`, `German`); changing it translates the draft when a rewriter exists.
+    var language: Binding<String>?
+    var isRewriting = false
+    /// Rewrites the draft personally in the selected language; `nil` hides the button.
+    var rewrite: (() -> Void)?
 
     @State private var isPreviewing = false
     @FocusState private var isFocused: Bool
@@ -29,10 +34,32 @@ struct CommentComposerView: View {
                 .pickerStyle(.segmented)
                 .labelsHidden()
                 .fixedSize()
-                Text(lineLabel).font(.caption).foregroundStyle(.secondary)
+                Text(lineLabel).font(.caption).foregroundStyle(.secondary).lineLimit(1).fixedSize()
                 Spacer()
+                if let language {
+                    Picker("Language", selection: language) {
+                        Text(verbatim: "EN").tag("English")
+                        Text(verbatim: "DE").tag("German")
+                    }
+                    .pickerStyle(.segmented)
+                    .labelsHidden()
+                    .fixedSize()
+                    .help("Language of this comment — switching translates the draft")
+                }
+                if let rewrite {
+                    Button(action: rewrite) {
+                        if isRewriting {
+                            ProgressView().controlSize(.mini)
+                        } else {
+                            Label("Rewrite", systemImage: "sparkles").labelStyle(.iconOnly)
+                        }
+                    }
+                    .foregroundStyle(SylvraColor.accentGold)
+                    .disabled(isRewriting || isEmpty)
+                    .help("Rewrite the draft in a personal, friendly tone (suggestions stay unchanged)")
+                }
                 Button(action: insertSuggestion) {
-                    Label("Insert suggestion", systemImage: "plus.forwardslash.minus")
+                    Label("Insert suggestion", systemImage: "plus.forwardslash.minus").labelStyle(.iconOnly)
                 }
                 .keyboardShortcut("s", modifiers: [.command, .shift])
                 .help("Insert a suggestion block with the selected lines (⌘⇧S)")
