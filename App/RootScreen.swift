@@ -47,7 +47,12 @@ struct RootScreen: View {
                         $0.summary.id == selection?.id ? $0.headSHA : nil
                     },
                     lineAccessory: { lineAccessory(at: $0) },
-                    onStartComment: { environment.review.startComment(at: $0, lineText: $1) }
+                    onStartComment: { environment.review.startComment(at: $0, lineText: $1) },
+                    onRefresh: {
+                        guard let id = selection?.id else { return }
+                        await environment.pullRequest.load(id)
+                        await environment.inbox.refresh()
+                    }
                 )
             }
             .terminalPanel(environment, selection: selection)

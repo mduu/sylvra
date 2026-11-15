@@ -3,7 +3,51 @@ import SylvraCore
 
 /// Fixture diff for `--demo`, previews and screenshots.
 public struct DemoDiffLoader: DiffLoading {
-    public init() {}
+    /// Simulates a push after the screen opened (`--new-commits`).
+    private let simulatesPush: Bool
+    private let started = Date()
+
+    public init(simulatesPush: Bool = false) {
+        self.simulatesPush = simulatesPush
+    }
+
+    public func loadReviewProgress(for id: PullRequestID) async throws -> ReviewProgress {
+        ReviewProgress(
+            headSHA: simulatesPush && Date().timeIntervalSince(started) > 3 ? "f00dfeed" : "e08b5a1",
+            lastReviewedSHA: "c0ffee1",
+            lastReviewedAt: Date().addingTimeInterval(-26 * 3600))
+    }
+
+    public func loadDiff(for id: PullRequestID, from base: String, to head: String) async throws -> [FileDiff] {
+        UnifiedDiffParser.parse(Self.sinceLastReviewDiff)
+    }
+
+    /// What changed after the reviewer's last review: quantities and the CSV header.
+    static let sinceLastReviewDiff = """
+        diff --git a/Sources/Billing/Invoice.swift b/Sources/Billing/Invoice.swift
+        index 3333333..4444444 100644
+        --- a/Sources/Billing/Invoice.swift
+        +++ b/Sources/Billing/Invoice.swift
+        @@ -8,6 +8,7 @@ struct Invoice: Codable {
+         struct LineItem: Codable {
+             let name: String
+             let price: Decimal
+        +    let quantity: Decimal
+         }
+        diff --git a/Sources/Export/CSVEncoder.swift b/Sources/Export/CSVEncoder.swift
+        index 5555550..5555555 100644
+        --- a/Sources/Export/CSVEncoder.swift
+        +++ b/Sources/Export/CSVEncoder.swift
+        @@ -4,7 +4,7 @@
+         struct CSVEncoder {
+             func encode(_ items: [LineItem]) -> Data {
+        -        var lines = ["name,price"]
+        +        var lines = ["name,price,quantity"]
+                 for item in items {
+        -            lines.append("\\(item.name),\\(item.price)")
+        +            lines.append("\\(item.name),\\(item.price),\\(item.quantity)")
+                 }
+        """
 
     public func loadDiff(for id: PullRequestID) async throws -> PullRequestDiff {
         PullRequestDiff(

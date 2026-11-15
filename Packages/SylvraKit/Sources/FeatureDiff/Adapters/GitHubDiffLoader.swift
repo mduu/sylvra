@@ -53,6 +53,61 @@ public struct GitHubDiffLoader: DiffLoading {
     }
 }
 
+extension GitHubDiffLoader {
+    public func loadReviewProgress(for id: PullRequestID) async throws -> ReviewProgress {
+        let response = try await client.graphQL(
+            """
+            query($owner: String!, $name: String!, $number: Int!) {
+              viewer { login }
+              repository(owner: $owner, name: $name) {
+                pullRequest(number: $number) {
+                  headRefOid
+                  reviews(last: 50) { nodes { author { login } state submittedAt commit { oid } } }
+                }
+              }
+            }
+            """,
+            variables: ["owner": .string(id.owner), "name": .string(id.repository), "number": .int(id.number)],
+            as: ReviewProgressResponse.self
+        )
+        guard let pullRequest = response.repository?.pullRequest else { throw GitHubDiffError.notFound }
+        let mine = pullRequest.reviews.nodes.compactMap(\.self).last {
+            $0.author?.login == response.viewer.login && $0.state != "PENDING" && $0.commit != nil
+        }
+        return ReviewProgress(
+            headSHA: pullRequest.headRefOid, lastReviewedSHA: mine?.commit?.oid, lastReviewedAt: mine?.submittedAt)
+    }
+
+    public func loadDiff(for id: PullRequestID, from base: String, to head: String) async throws -> [FileDiff] {
+        let data = try await client.rest(
+            path: "repos/\(id.owner)/\(id.repository)/compare/\(base)...\(head)",
+            accept: "application/vnd.github.v3.diff")
+        return UnifiedDiffParser.parse(String(decoding: data, as: UTF8.self))
+    }
+}
+
+enum GitHubDiffError: Error { case notFound }
+
+private struct ReviewProgressResponse: Decodable, Sendable {
+    let viewer: Viewer
+    let repository: Repository?
+    struct Viewer: Decodable, Sendable { let login: String }
+    struct Repository: Decodable, Sendable { let pullRequest: PullRequest? }
+    struct PullRequest: Decodable, Sendable {
+        let headRefOid: String
+        let reviews: Reviews
+    }
+    struct Reviews: Decodable, Sendable { let nodes: [Review?] }
+    struct Review: Decodable, Sendable {
+        let author: Author?
+        let state: String
+        let submittedAt: Date?
+        let commit: Commit?
+    }
+    struct Author: Decodable, Sendable { let login: String }
+    struct Commit: Decodable, Sendable { let oid: String }
+}
+
 private struct ViewedResponse: Decodable, Sendable {
     let repository: Repository?
     struct Repository: Decodable, Sendable { let pullRequest: PullRequest? }

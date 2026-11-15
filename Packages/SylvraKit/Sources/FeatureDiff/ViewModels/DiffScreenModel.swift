@@ -13,6 +13,8 @@ public final class DiffScreenModel {
 
     public enum Scope: String, CaseIterable, Identifiable {
         case focused, fullFile
+        /// Only what changed since the reviewer's last review (last reviewed commit → head).
+        case sinceLastReview
         public var id: String { rawValue }
     }
 
@@ -47,11 +49,56 @@ public final class DiffScreenModel {
     private var pullRequestID: PullRequestID?
     private var headSHA: String?
 
-    public init(loader: any DiffLoading) {
+    public init(loader: any DiffLoading, pollInterval: Duration = .seconds(60)) {
         self.loader = loader
+        self.pollInterval = pollInterval
     }
 
-    public var files: [FileDiff] { diff?.files ?? [] }
+    public var files: [FileDiff] {
+        scope == .sinceLastReview ? (sinceReviewFiles ?? []) : (diff?.files ?? [])
+    }
+
+    // MARK: - Since last review / new pushes
+
+    /// Head and last reviewed commit, refreshed when loading and while polling.
+    public private(set) var progress: ReviewProgress?
+    /// Files changed between the last reviewed commit and head (scope `.sinceLastReview`).
+    public private(set) var sinceReviewFiles: [FileDiff]?
+    /// Someone pushed after the diff was loaded.
+    public private(set) var hasNewCommits = false
+    /// How often to check for new pushes.
+    public let pollInterval: Duration
+
+    /// Checks GitHub for a new head commit (called periodically by the diff screen).
+    public func checkForNewCommits() async {
+        guard let id = pullRequestID, let loaded = progress,
+            let latest = try? await loader.loadReviewProgress(for: id), pullRequestID == id
+        else { return }
+        if latest.headSHA != loaded.headSHA { hasNewCommits = true }
+    }
+
+    private func loadProgress(_ id: PullRequestID) async {
+        guard let loaded = try? await loader.loadReviewProgress(for: id), pullRequestID == id else { return }
+        progress = loaded
+        hasNewCommits = false
+    }
+
+    private func loadSinceReview() async {
+        guard let id = pullRequestID, let progress, let base = progress.lastReviewedSHA else {
+            sinceReviewFiles = []
+            return
+        }
+        do {
+            let loaded = try await loader.loadDiff(for: id, from: base, to: progress.headSHA)
+            guard pullRequestID == id else { return }
+            sinceReviewFiles = loaded
+        } catch {
+            sinceReviewFiles = []
+            let reason = error.localizedDescription
+            lastError = String(
+                localized: "Couldn't load the changes since your last review (gone after a force push?): \(reason)")
+        }
+    }
 
     /// Files ordered for reviewing: noise last.
     public var orderedFiles: [FileDiff] {
@@ -151,6 +198,9 @@ public final class DiffScreenModel {
             expandedPaths = []
             fullFileHunks = [:]
             selectedPath = nil
+            progress = nil
+            sinceReviewFiles = nil
+            if scope == .sinceLastReview { scope = .focused }
             loadState = .loading
         }
         pullRequestID = id
@@ -160,7 +210,9 @@ public final class DiffScreenModel {
             guard !Task.isCancelled else { return }
             diff = loaded
             loadState = .loaded
+            await loadProgress(id)
             if scope == .fullFile { await loadFullFiles() }
+            if scope == .sinceLastReview { await loadSinceReview() }
         } catch {
             guard !Task.isCancelled else { return }
             loadState = .failed(String(describing: error))
@@ -197,6 +249,7 @@ public final class DiffScreenModel {
     public func setScope(_ scope: Scope) async {
         self.scope = scope
         if scope == .fullFile { await loadFullFiles() }
+        if scope == .sinceLastReview, sinceReviewFiles == nil { await loadSinceReview() }
     }
 
     private func loadFullFiles() async {

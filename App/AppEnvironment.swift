@@ -19,6 +19,7 @@ import SylvraCore
 /// - `--tab=overview|commits|checks`: initial tab of the PR column
 /// - `--layout=inline`: inline instead of side-by-side diff
 /// - `--focus`: hide the inbox sidebar; `--no-inspector`: hide the AI inspector
+/// - `--new-commits` (demo): simulate a push a few seconds after start
 /// - `--run-ai-review`: start an AI review as soon as a PR is selected; with `--turn-into-comment` the top
 ///   finding becomes a comment draft
 /// - `--submit-review`: open the submit review sheet; `--compose=path:line`: open the comment composer
@@ -61,8 +62,10 @@ final class AppEnvironment {
             isDemo
             ? OpenInIDEModel(checkout: DemoCheckout(), opener: DemoIDEOpener())
             : OpenInIDEModel(checkout: CheckoutService(), opener: IDELauncher())
-        let diffLoader: any DiffLoading = isDemo ? DemoDiffLoader() : GitHubDiffLoader(client: gitHub)
-        diff = DiffScreenModel(loader: diffLoader)
+        let diffLoader: any DiffLoading =
+            isDemo
+            ? DemoDiffLoader(simulatesPush: arguments.contains("--new-commits")) : GitHubDiffLoader(client: gitHub)
+        diff = DiffScreenModel(loader: diffLoader, pollInterval: isDemo ? .seconds(2) : .seconds(60))
         // AI agents read a per-PR worktree (never the shared IDE worktree, which may switch PRs meanwhile).
         let checkout: CheckoutService? = isDemo ? nil : CheckoutService()
         let agent: any AgentProvider = isDemo ? DemoAgentProvider() : ClaudeCodeProvider()

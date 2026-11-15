@@ -66,3 +66,34 @@ struct DiffScreenModelTests {
         #expect(model.text(at: CodeLocation(path: "missing", line: 1, side: .right)).isEmpty)
     }
 }
+
+@MainActor
+struct SinceLastReviewTests {
+    private let id = PullRequestID(owner: "acme", repository: "billing", number: 1234)
+
+    @Test func showsOnlyChangesSinceLastReview() async {
+        let model = DiffScreenModel(loader: DemoDiffLoader())
+        await model.load(id, headSHA: "e08b5a1")
+        #expect(model.progress?.hasChangesSinceReview == true)
+        #expect(model.files.count == 6)
+        await model.setScope(.sinceLastReview)
+        #expect(model.files.map(\.path) == ["Sources/Billing/Invoice.swift", "Sources/Export/CSVEncoder.swift"])
+        await model.setScope(.focused)
+        #expect(model.files.count == 6)
+    }
+
+    @Test func detectsNewPushes() async throws {
+        let model = DiffScreenModel(loader: DemoDiffLoader(simulatesPush: true))
+        await model.load(id, headSHA: "e08b5a1")
+        await model.checkForNewCommits()
+        #expect(!model.hasNewCommits)
+        try await Task.sleep(for: .seconds(3.2))
+        await model.checkForNewCommits()
+        #expect(model.hasNewCommits)
+    }
+
+    @Test func progressWithoutPreviousReviewHasNoChangesSinceReview() {
+        #expect(!ReviewProgress(headSHA: "a").hasChangesSinceReview)
+        #expect(!ReviewProgress(headSHA: "a", lastReviewedSHA: "a").hasChangesSinceReview)
+    }
+}

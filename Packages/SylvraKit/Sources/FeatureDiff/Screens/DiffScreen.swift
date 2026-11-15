@@ -13,6 +13,8 @@ public struct DiffScreen<LineAccessory: View>: View {
     private let headSHA: String?
     private let lineAccessory: (CodeLocation) -> LineAccessory
     private let onStartComment: ((CodeLocation, String) -> Void)?
+    /// Reloads the PR after a push (details, head SHA → diff); `nil` reloads only the diff.
+    private let onRefresh: (() async -> Void)?
     @State private var diffIsWide = true
     @State private var commentAnchor: CodeLocation?
 
@@ -21,17 +23,45 @@ public struct DiffScreen<LineAccessory: View>: View {
         pullRequestID: PullRequestID?,
         headSHA: String?,
         @ViewBuilder lineAccessory: @escaping (CodeLocation) -> LineAccessory,
-        onStartComment: ((CodeLocation, String) -> Void)? = nil
+        onStartComment: ((CodeLocation, String) -> Void)? = nil,
+        onRefresh: (() async -> Void)? = nil
     ) {
         self.model = model
         self.pullRequestID = pullRequestID
         self.headSHA = headSHA
         self.lineAccessory = lineAccessory
         self.onStartComment = onStartComment
+        self.onRefresh = onRefresh
     }
 
     public var body: some View {
         content
+            .safeAreaInset(edge: .top) {
+                ReviewProgressBar(
+                    progress: model.progress,
+                    hasNewCommits: model.hasNewCommits,
+                    isShowingSinceReview: model.scope == .sinceLastReview,
+                    showSinceReview: { Task { await model.setScope(.sinceLastReview) } },
+                    showAll: { Task { await model.setScope(.focused) } },
+                    refresh: {
+                        Task {
+                            if let onRefresh {
+                                await onRefresh()
+                            } else {
+                                await model.load(pullRequestID, headSHA: headSHA)
+                            }
+                        }
+                    }
+                )
+                .animation(.snappy, value: model.hasNewCommits)
+            }
+            .task(id: pullRequestID) {
+                // Watch for pushes while the PR is open.
+                while !Task.isCancelled {
+                    try? await Task.sleep(for: model.pollInterval)
+                    await model.checkForNewCommits()
+                }
+            }
             .safeAreaInset(edge: .top) {
                 if let error = model.lastError {
                     HStack {
@@ -65,10 +95,14 @@ public struct DiffScreen<LineAccessory: View>: View {
                         Label("Focused", systemImage: "text.line.first.and.arrowtriangle.forward").tag(
                             DiffScreenModel.Scope.focused)
                         Label("Full file", systemImage: "doc.plaintext").tag(DiffScreenModel.Scope.fullFile)
+                        if model.progress?.lastReviewedSHA != nil {
+                            Label("Since my last review", systemImage: "clock.arrow.circlepath").tag(
+                                DiffScreenModel.Scope.sinceLastReview)
+                        }
                     }
                     .pickerStyle(.segmented)
                     .labelStyle(.iconOnly)
-                    .help("Changed lines only, or the full file")
+                    .help("Changed lines only, the full file, or only what changed since your last review")
                 }
             }
     }
