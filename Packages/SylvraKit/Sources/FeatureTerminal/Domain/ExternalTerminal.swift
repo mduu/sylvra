@@ -1,0 +1,35 @@
+import Foundation
+
+/// A terminal app that can open a folder ("Open in external terminal").
+public struct ExternalTerminal: Identifiable, Hashable, Sendable {
+    public var id: String { bundleIdentifier }
+    public let name: String
+    public let bundleIdentifier: String
+
+    public init(name: String, bundleIdentifier: String) {
+        self.name = name
+        self.bundleIdentifier = bundleIdentifier
+    }
+
+    public static let terminal = ExternalTerminal(name: "Terminal", bundleIdentifier: "com.apple.Terminal")
+    public static let presets: [ExternalTerminal] = [
+        .terminal,
+        ExternalTerminal(name: "iTerm2", bundleIdentifier: "com.googlecode.iterm2"),
+        ExternalTerminal(name: "Ghostty", bundleIdentifier: "com.mitchellh.ghostty"),
+        ExternalTerminal(name: "Warp", bundleIdentifier: "dev.warp.Warp-Stable"),
+    ]
+
+    /// The preset with `bundleIdentifier`, or a custom entry named after it.
+    public static func named(_ bundleIdentifier: String) -> ExternalTerminal {
+        presets.first { $0.bundleIdentifier == bundleIdentifier }
+            ?? ExternalTerminal(name: bundleIdentifier, bundleIdentifier: bundleIdentifier)
+    }
+}
+
+/// UserDefaults keys of the terminal settings (shared by the model and the settings pane).
+public enum TerminalPreferences {
+    /// Shell path; empty = the user's login shell.
+    public static let shellKey = "terminal.shell"
+    /// Bundle identifier of the external terminal app; empty = Terminal.
+    public static let externalTerminalKey = "terminal.externalApp"
+}
