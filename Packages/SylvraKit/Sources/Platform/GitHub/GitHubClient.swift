@@ -1,7 +1,7 @@
 import Foundation
 
 /// Errors of the GitHub client.
-public enum GitHubError: Error, Equatable, Sendable {
+public enum GitHubError: Error, Equatable, Sendable, LocalizedError {
     /// No token available (not signed in).
     case notAuthenticated
     /// HTTP error with status code and message.
@@ -10,6 +10,16 @@ public enum GitHubError: Error, Equatable, Sendable {
     case graphQL([String])
     /// The response could not be decoded.
     case decoding(String)
+
+    public var errorDescription: String? {
+        switch self {
+        case .notAuthenticated:
+            String(localized: "Not signed in to GitHub. Run `gh auth login` or sign in in Settings.")
+        case .http(let status, let message): "GitHub \(status): \(message)"
+        case .graphQL(let messages): messages.joined(separator: "\n")
+        case .decoding(let message): String(localized: "Unexpected response from GitHub: \(message)")
+        }
+    }
 }
 
 /// Sends HTTP requests. Abstracted so the client can be tested without network access.
@@ -85,17 +95,21 @@ public actor GitHubClient {
     }
 
     /// GET request against the REST API returning the raw body (e.g. diffs with a custom `Accept` header).
-    public func rest(path: String, accept: String = "application/vnd.github+json") async throws -> Data {
-        var request = try await authorizedRequest(path: path)
+    public func rest(
+        path: String, query: [URLQueryItem] = [], accept: String = "application/vnd.github+json"
+    ) async throws -> Data {
+        var request = try await authorizedRequest(path: path, query: query)
         request.setValue(accept, forHTTPHeaderField: "Accept")
         return try await perform(request)
     }
 
     // MARK: - Private
 
-    private func authorizedRequest(path: String) async throws -> URLRequest {
+    private func authorizedRequest(path: String, query: [URLQueryItem] = []) async throws -> URLRequest {
         let token = try await token()
-        var request = URLRequest(url: baseURL.appending(path: path))
+        var url = baseURL.appending(path: path)
+        if !query.isEmpty { url.append(queryItems: query) }
+        var request = URLRequest(url: url)
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         request.setValue("Sylvra", forHTTPHeaderField: "User-Agent")
         request.setValue("2022-11-28", forHTTPHeaderField: "X-GitHub-Api-Version")

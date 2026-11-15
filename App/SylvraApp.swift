@@ -1,6 +1,7 @@
 import FeatureAIReview
 import FeatureActivity
 import FeatureSettings
+import Platform
 import SwiftUI
 
 /// App entry point. The `App` target is the composition root: it wires the feature slices together.
@@ -8,6 +9,10 @@ import SwiftUI
 struct SylvraApp: App {
     @State private var environment = AppEnvironment()
     @AppStorage(AppearanceSetting.storageKey) private var appearance = AppearanceSetting.auto.rawValue
+
+    init() {
+        ProcessSignals.ignoreBrokenPipes()
+    }
 
     var body: some Scene {
         WindowGroup {

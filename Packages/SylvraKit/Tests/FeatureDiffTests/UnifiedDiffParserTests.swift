@@ -8,7 +8,7 @@ struct UnifiedDiffParserTests {
         index 1111111..2222222 100644
         --- a/Sources/Billing/InvoiceService.swift
         +++ b/Sources/Billing/InvoiceService.swift
-        @@ -40,7 +40,9 @@ struct InvoiceService {
+        @@ -40,5 +40,7 @@ struct InvoiceService {
          func total(for invoice: Invoice) -> Decimal {
         -    invoice.items.reduce(0) { $0 + $1.price }
         +    invoice.items.reduce(.zero) { sum, item in
@@ -61,7 +61,7 @@ struct UnifiedDiffParserTests {
         #expect(file.hunks.count == 2)
         let hunk = file.hunks[0]
         #expect(hunk.section == "struct InvoiceService {")
-        #expect(hunk.oldStart == 40 && hunk.newStart == 40 && hunk.newCount == 9)
+        #expect(hunk.oldStart == 40 && hunk.newStart == 40 && hunk.newCount == 7)
         #expect(hunk.lines[1].kind == .removed && hunk.lines[1].oldNumber == 41)
         #expect(hunk.lines[2].kind == .added && hunk.lines[2].newNumber == 41)
         #expect(hunk.lines.last?.newNumber == 46)
@@ -132,5 +132,44 @@ struct FileClassifierTests {
     ])
     func classifies(path: String, expected: FileKind) {
         #expect(FileClassifier.classify(path) == expected)
+    }
+}
+
+/// Regressions found in review: real GitHub output details.
+struct UnifiedDiffParserRegressionTests {
+    @Test func trailingNewlineAddsNoPhantomLine() throws {
+        let diff = "diff --git a/a.txt b/a.txt\n--- a/a.txt\n+++ b/a.txt\n@@ -1,2 +1,2 @@\n one\n-two\n+zwei\n"
+        let hunk = try #require(UnifiedDiffParser.parse(diff).first?.hunks.first)
+        #expect(hunk.lines.count == 3)
+        #expect(hunk.lines.last?.newNumber == 2)
+    }
+
+    @Test func pathsWithSpacesAreTabTerminated() throws {
+        let diff =
+            "diff --git a/my file.txt b/my file.txt\n--- a/my file.txt\t\n+++ b/my file.txt\t\n@@ -1 +1 @@\n-a\n+b\n"
+        let file = try #require(UnifiedDiffParser.parse(diff).first)
+        #expect(file.path == "my file.txt")
+        #expect(file.status == .modified)
+    }
+
+    @Test func quotedNonASCIIPaths() throws {
+        let diff = """
+            diff --git "a/f\\303\\244.txt" "b/f\\303\\244.txt"
+            --- "a/f\\303\\244.txt"
+            +++ "b/f\\303\\244.txt"
+            @@ -1 +1 @@
+            -a
+            +b
+            """
+        let file = try #require(UnifiedDiffParser.parse(diff).first)
+        #expect(file.path == "fä.txt")
+        #expect(file.status == .modified)
+    }
+
+    @Test func noNewlineMarkerAfterLastLine() throws {
+        let diff = "--- a/x\n+++ b/x\n@@ -1 +1 @@\n-a\n\\ No newline at end of file\n+b\n\\ No newline at end of file\n"
+        let lines = try #require(UnifiedDiffParser.parse(diff).first?.hunks.first?.lines)
+        #expect(lines.count == 2)
+        #expect(lines.allSatisfy { $0.missingNewline })
     }
 }

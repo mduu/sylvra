@@ -33,6 +33,10 @@ private struct FileBuilder {
     var hunks: [Hunk] = []
     var oldLine = 0
     var newLine = 0
+    /// Lines still expected in the current hunk (from its header); 0 when the hunk is complete.
+    var remainingOld = 0
+    var remainingNew = 0
+    var isInHunk: Bool { remainingOld > 0 || remainingNew > 0 }
 
     init(gitHeader: String?) {
         guard let gitHeader else { return }
@@ -45,17 +49,19 @@ private struct FileBuilder {
     }
 
     mutating func consume(_ line: String) {
-        if !hunks.isEmpty, let first = line.first, "+- \\".contains(first) {
-            consumeHunkLine(line)
+        if line.hasPrefix("\\"), !hunks.isEmpty {
+            consumeHunkLine(line)  // "\ No newline at end of file" may follow the last line of a hunk
+            return
+        }
+        if isInHunk, !line.hasPrefix("@@ ") {  // a new header ends a hunk with a miscounted header
+            // Some tools strip the leading space of empty context lines.
+            consumeHunkLine(line.isEmpty ? " " : line)
             return
         }
         if line.hasPrefix("@@") {
             startHunk(line)
         } else if line.hasPrefix("--- ") || line.hasPrefix("+++ ") {
             consumePathLine(line)
-        } else if !hunks.isEmpty, line.isEmpty {
-            // Some tools strip the leading space of empty context lines.
-            consumeHunkLine(" ")
         } else {
             consumeMetadata(line)
         }
@@ -64,9 +70,9 @@ private struct FileBuilder {
     private mutating func consumePathLine(_ line: String) {
         let path = String(line.dropFirst(4))
         if line.hasPrefix("--- ") {
-            if path == "/dev/null" { isNew = true } else { oldPath = path.removingPrefix("a/") }
+            if path == "/dev/null" { isNew = true } else { oldPath = GitPath.decode(path).removingPrefix("a/") }
         } else {
-            if path == "/dev/null" { isDeleted = true } else { newPath = path.removingPrefix("b/") }
+            if path == "/dev/null" { isDeleted = true } else { newPath = GitPath.decode(path).removingPrefix("b/") }
         }
     }
 
@@ -77,10 +83,10 @@ private struct FileBuilder {
             isDeleted = true
         } else if line.hasPrefix("rename from ") {
             isRename = true
-            oldPath = String(line.dropFirst("rename from ".count))
+            oldPath = GitPath.decode(String(line.dropFirst("rename from ".count)))
         } else if line.hasPrefix("rename to ") {
             isRename = true
-            newPath = String(line.dropFirst("rename to ".count))
+            newPath = GitPath.decode(String(line.dropFirst("rename to ".count)))
         } else if line.hasPrefix("Binary files ") || line == "GIT binary patch" {
             isBinary = true
         }
@@ -100,6 +106,8 @@ private struct FileBuilder {
                 section: section, lines: []))
         oldLine = old.start
         newLine = new.start
+        remainingOld = old.count
+        remainingNew = new.count
     }
 
     private static func range(_ token: Substring?) -> (start: Int, count: Int) {
@@ -116,9 +124,11 @@ private struct FileBuilder {
         case "+":
             hunk.lines.append(DiffLine(kind: .added, oldNumber: nil, newNumber: newLine, text: text))
             newLine += 1
+            remainingNew -= 1
         case "-":
             hunk.lines.append(DiffLine(kind: .removed, oldNumber: oldLine, newNumber: nil, text: text))
             oldLine += 1
+            remainingOld -= 1
         case "\\":
             if var last = hunk.lines.popLast() {
                 last.missingNewline = true
@@ -128,6 +138,8 @@ private struct FileBuilder {
             hunk.lines.append(DiffLine(kind: .context, oldNumber: oldLine, newNumber: newLine, text: text))
             oldLine += 1
             newLine += 1
+            remainingOld -= 1
+            remainingNew -= 1
         }
     }
 
@@ -147,5 +159,35 @@ private struct FileBuilder {
 extension String {
     fileprivate func removingPrefix(_ prefix: String) -> String {
         hasPrefix(prefix) ? String(dropFirst(prefix.count)) : self
+    }
+}
+
+/// Git path quoting: a trailing tab after `---`/`+++` paths with spaces, C-quoted names with octal UTF-8 escapes.
+enum GitPath {
+    static func decode(_ raw: String) -> String {
+        var path = raw
+        if let tab = path.firstIndex(of: "\t") { path = String(path[..<tab]) }
+        guard path.count >= 2, path.hasPrefix("\""), path.hasSuffix("\"") else { return path }
+        var bytes: [UInt8] = []
+        var iterator = Array(path.dropFirst().dropLast().utf8).makeIterator()
+        while let byte = iterator.next() {
+            guard byte == UInt8(ascii: "\\"), let escaped = iterator.next() else {
+                bytes.append(byte)
+                continue
+            }
+            switch escaped {
+            case UInt8(ascii: "n"): bytes.append(10)
+            case UInt8(ascii: "t"): bytes.append(9)
+            case UInt8(ascii: "0")...UInt8(ascii: "7"):
+                var value = Int(escaped - UInt8(ascii: "0"))
+                for _ in 0..<2 {
+                    guard let digit = iterator.next() else { break }
+                    value = value * 8 + Int(digit - UInt8(ascii: "0"))
+                }
+                bytes.append(UInt8(truncatingIfNeeded: value))
+            default: bytes.append(escaped)
+            }
+        }
+        return String(decoding: bytes, as: UTF8.self)
     }
 }

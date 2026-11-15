@@ -40,3 +40,21 @@ struct ProcessInputTests {
         #expect(result.standardOutput.count == 200_000)
     }
 }
+
+struct ProcessCancellationTests {
+    @Test func cancellationTerminatesTheChild() async throws {
+        let sleep = try #require(ExecutableLocator.locate("sleep"))
+        let start = Date.now
+        let task = Task { try await SystemProcessRunner().run(sleep, arguments: ["30"], workingDirectory: nil) }
+        try await Task.sleep(for: .milliseconds(300))
+        task.cancel()
+        _ = try? await task.value
+        #expect(Date.now.timeIntervalSince(start) < 10)
+    }
+
+    @Test func nonUTF8OutputIsKept() async throws {
+        let printf = try #require(ExecutableLocator.locate("printf"))
+        let result = try await SystemProcessRunner().run(printf, arguments: ["caf\\351"], workingDirectory: nil)
+        #expect(result.standardOutput.hasPrefix("caf"))
+    }
+}

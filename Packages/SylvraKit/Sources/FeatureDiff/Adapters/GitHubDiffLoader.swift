@@ -24,7 +24,7 @@ public struct GitHubDiffLoader: DiffLoading {
             variables: ["owner": .string(id.owner), "name": .string(id.repository), "number": .int(id.number)],
             as: ViewedResponse.self
         )
-        let text = String(bytes: try await diffData, encoding: .utf8) ?? ""
+        let text = String(decoding: try await diffData, as: UTF8.self)
         let pullRequest = try await viewed.repository?.pullRequest
         let viewedPaths = Set(
             pullRequest?.files?.nodes.compactMap { $0?.viewerViewedState == "VIEWED" ? $0?.path : nil } ?? [])
@@ -32,13 +32,11 @@ public struct GitHubDiffLoader: DiffLoading {
     }
 
     public func loadFileContent(for id: PullRequestID, path: String, ref: String) async throws -> String {
-        let encodedPath = path.split(separator: "/").map {
-            $0.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? String($0)
-        }.joined(separator: "/")
+        // `appending(path:)` encodes each segment itself; the ref goes into a real query item.
         let data = try await client.rest(
-            path: "repos/\(id.owner)/\(id.repository)/contents/\(encodedPath)?ref=\(ref)",
+            path: "repos/\(id.owner)/\(id.repository)/contents/\(path)", query: [URLQueryItem(name: "ref", value: ref)],
             accept: "application/vnd.github.raw+json")
-        return String(bytes: data, encoding: .utf8) ?? ""
+        return String(decoding: data, as: UTF8.self)
     }
 
     public func setViewed(_ viewed: Bool, path: String, pullRequestNodeID: String) async throws {

@@ -18,8 +18,21 @@ public struct SystemProcessRunner: ProcessRunning {
     public func run(
         _ executable: URL, arguments: [String], workingDirectory: URL?, input: Data?
     ) async throws -> ProcessResult {
+        let box = ProcessBox()
+        return try await withTaskCancellationHandler {
+            try await launch(
+                executable, arguments: arguments, workingDirectory: workingDirectory, input: input, box: box)
+        } onCancel: {
+            box.terminate()
+        }
+    }
+
+    private func launch(
+        _ executable: URL, arguments: [String], workingDirectory: URL?, input: Data?, box: ProcessBox
+    ) async throws -> ProcessResult {
         try await withCheckedThrowingContinuation { continuation in
             let process = Process()
+            box.set(process)
             process.executableURL = executable
             process.arguments = arguments
             process.currentDirectoryURL = workingDirectory
@@ -49,7 +62,9 @@ public struct SystemProcessRunner: ProcessRunning {
                 try process.run()
                 if let stdin, let input {
                     DispatchQueue.global(qos: .userInitiated).async {
-                        stdin.fileHandleForWriting.write(input)
+                        // `write(contentsOf:)` throws instead of raising when the child already exited
+                        // (SIGPIPE itself is ignored at app start, see `ProcessSignals`).
+                        try? stdin.fileHandleForWriting.write(contentsOf: input)
                         try? stdin.fileHandleForWriting.close()
                     }
                 }
@@ -97,8 +112,38 @@ private final class PipeBuffer: @unchecked Sendable {
         let rest = pipe.fileHandleForReading.readDataToEndOfFile()
         lock.lock()
         data.append(rest)
-        let text = String(bytes: data, encoding: .utf8) ?? ""
+        let text = String(decoding: data, as: UTF8.self)  // lossy: never drop non-UTF-8 output
         lock.unlock()
         return text
+    }
+}
+
+/// Holds the running process so a task cancellation can terminate it.
+private final class ProcessBox: @unchecked Sendable {
+    private let lock = NSLock()
+    private var process: Process?
+    private var isCancelled = false
+
+    func set(_ process: Process) {
+        lock.lock()
+        self.process = process
+        let cancelled = isCancelled
+        lock.unlock()
+        if cancelled { process.terminate() }
+    }
+
+    func terminate() {
+        lock.lock()
+        isCancelled = true
+        let process = process
+        lock.unlock()
+        if process?.isRunning == true { process?.terminate() }
+    }
+}
+
+/// Process-wide signal setup: writing to a pipe whose reader exited must not kill the app.
+public enum ProcessSignals {
+    public static func ignoreBrokenPipes() {
+        signal(SIGPIPE, SIG_IGN)
     }
 }
