@@ -42,6 +42,26 @@ struct ReviewMergerTests {
             AgentReviewOutput.self, from: Data(#"{"summary":"s","findings":\#(findings),"patterns":[]}"#.utf8))
     }
 
+    @Test func mergesReadingOrdersAndDropsUnknownFiles() throws {
+        let decode = { (json: String) in
+            try JSONDecoder().decode(
+                AgentReviewOutput.self,
+                from: Data(#"{"summary":"s","findings":[],"patterns":[],"readingOrder":\#(json)}"#.utf8))
+        }
+        let first = try decode(#"[{"path":"b.swift","reason":"core","risky":true},{"path":"x.swift","reason":"?"}]"#)
+        let second = try decode(#"[{"path":"a.swift","reason":"tests"},{"path":"b.swift","reason":"again"}]"#)
+        let result = ReviewMerger.merge(
+            [(first, opus), (second, fable)], files: [file("a.swift", lines: 1...2), file("b.swift", lines: 1...2)])
+        #expect(result.readingOrder.map(\.path) == ["b.swift", "a.swift"])
+        #expect(result.readingOrder.first?.isRisky == true)
+    }
+
+    @Test func decodesCachedResultsWithoutReadingOrder() throws {
+        let json = #"{"summary":"s","findings":[],"patterns":[],"history":[]}"#
+        let result = try JSONDecoder().decode(ReviewResult.self, from: Data(json.utf8))
+        #expect(result.readingOrder.isEmpty)
+    }
+
     @Test func mergesDuplicatesAcrossModels() throws {
         let first = try output(
             #"[{"path":"a.swift","startLine":10,"endLine":10,"severity":"major","category":"bug","title":"Rounding drifts invoice totals","rationale":"r","confidence":0.9}]"#

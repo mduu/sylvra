@@ -100,9 +100,30 @@ public final class DiffScreenModel {
         }
     }
 
-    /// Files ordered for reviewing: noise last.
+    /// AI-suggested reading order, set by the app from the review result.
+    public var readingOrder: [ReadingStep] = []
+    /// Sort the diff by `readingOrder` (else repository order).
+    public var usesReadingOrder = true
+
+    /// Position (1-based) and step of a file in the reading order.
+    public func readingStep(for path: String) -> (number: Int, step: ReadingStep)? {
+        guard let index = readingOrder.firstIndex(where: { $0.path == path }) else { return nil }
+        return (index + 1, readingOrder[index])
+    }
+
+    /// Files ordered for reviewing: AI reading order (if any and enabled), the rest, noise last.
     public var orderedFiles: [FileDiff] {
-        files.filter { !$0.kind.isNoise } + files.filter(\.kind.isNoise)
+        var relevant = files.filter { !$0.kind.isNoise }
+        if usesReadingOrder, !readingOrder.isEmpty {
+            let rank = Dictionary(
+                readingOrder.enumerated().map { ($1.path, $0) }, uniquingKeysWith: { first, _ in first })
+            let original = Dictionary(
+                relevant.enumerated().map { ($1.path, $0) }, uniquingKeysWith: { first, _ in first })
+            relevant.sort {
+                (rank[$0.path] ?? Int.max, original[$0.path] ?? 0) < (rank[$1.path] ?? Int.max, original[$1.path] ?? 0)
+            }
+        }
+        return relevant + files.filter(\.kind.isNoise)
     }
 
     public var viewedCount: Int { files.count { isViewed($0.path) } }

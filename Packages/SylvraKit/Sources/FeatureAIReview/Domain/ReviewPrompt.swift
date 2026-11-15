@@ -44,7 +44,11 @@ public struct ReviewRequest: Sendable {
             Line numbers refer to the NEW version of the file (right side of the diff). Only report findings on lines \
             that appear in the diff. A `suggestion` replaces exactly startLine…endLine.
 
-            Write summary, titles, rationales and pattern explanations in \(language). Keep code, identifiers and \
+            Also suggest a reading order (`readingOrder`): the changed files of this shard in the order a reviewer \
+            should read them — the core change and risky areas first, then what depends on it, tests and mechanical \
+            changes last. Give each a short reason (a few words) and mark risky areas with `risky: true`.
+
+            Write summary, titles, rationales, reading-order reasons and pattern explanations in \(language). Keep code, identifiers and \
             suggestions unchanged.
             """)
         parts.append("## Pull request\n\nTitle: \(pullRequestTitle)\n\n\(pullRequestBody.prefix(4000))")
@@ -78,6 +82,8 @@ public struct ReviewRequest: Sendable {
         "name":{"type":"string"},"verdict":{"type":"string","enum":["followed","violated","introduced"]},\
         "rationale":{"type":"string"},"evidence":{"type":"array","items":{"type":"object",\
         "properties":{"path":{"type":"string"},"startLine":{"type":"integer"},"endLine":{"type":"integer"}}}}}}},\
+        "readingOrder":{"type":"array","items":{"type":"object","required":["path","reason"],"properties":{\
+        "path":{"type":"string"},"reason":{"type":"string"},"risky":{"type":"boolean"}}}},\
         "history":{"type":"array","items":{"type":"string"}}}}
         """
 }
@@ -120,7 +126,14 @@ public struct AgentReviewOutput: Decodable, Sendable {
         let endLine: Int?
     }
 
+    public struct Step: Decodable, Sendable {
+        let path: String
+        let reason: String?
+        let risky: Bool?
+    }
+
     let summary: String
+    let readingOrder: [Step]?
     let findings: [Finding]
     let patterns: [Pattern]?
     let history: [String]?

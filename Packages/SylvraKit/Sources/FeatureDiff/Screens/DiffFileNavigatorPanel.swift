@@ -48,6 +48,15 @@ public struct DiffFileNavigatorPanel<ItemMenu: View>: View {
                 }
                 ProgressView(value: Double(model.viewedCount), total: Double(max(model.files.count, 1)))
                     .tint(SylvraColor.brandPrimary)
+                if !model.readingOrder.isEmpty {
+                    Toggle(isOn: Binding(get: { model.usesReadingOrder }, set: { model.usesReadingOrder = $0 })) {
+                        Label("Sort diff by AI reading order", systemImage: "sparkles")
+                    }
+                    .toggleStyle(.switch)
+                    .controlSize(.mini)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                }
                 if style == "tree" {
                     ForEach(model.fileTree) { node in treeRows(node, depth: 0) }
                 } else {
@@ -69,7 +78,8 @@ public struct DiffFileNavigatorPanel<ItemMenu: View>: View {
                     isSelected: model.selectedPath == file.path,
                     select: { model.selectedPath = file.path },
                     toggleViewed: { Task { await model.toggleViewed(file.path) } },
-                    menu: itemMenu(.file(path: file.path))
+                    menu: itemMenu(.file(path: file.path)),
+                    readingNumber: model.readingStep(for: file.path)?.number
                 )
                 .padding(.leading, CGFloat(depth) * 14))
         }
@@ -115,7 +125,8 @@ public struct DiffFileNavigatorPanel<ItemMenu: View>: View {
                         isSelected: model.selectedPath == file.path,
                         select: { model.selectedPath = file.path },
                         toggleViewed: { Task { await model.toggleViewed(file.path) } },
-                        menu: itemMenu(.file(path: file.path))
+                        menu: itemMenu(.file(path: file.path)),
+                        readingNumber: model.readingStep(for: file.path)?.number
                     )
                 }
             }
@@ -182,6 +193,7 @@ private struct FileRowView<Menu: View>: View {
     let select: () -> Void
     let toggleViewed: () -> Void
     let menu: Menu
+    var readingNumber: Int?
 
     var body: some View {
         HStack(spacing: 6) {
@@ -190,6 +202,14 @@ private struct FileRowView<Menu: View>: View {
                 .labelsHidden()
             FileKindIcon(kind: file.kind)
             Text(file.fileName).lineLimit(1).foregroundStyle(isViewed ? .secondary : .primary)
+            if let readingNumber {
+                Text(verbatim: "\(readingNumber)")
+                    .font(.system(size: 9, weight: .bold).monospacedDigit())
+                    .foregroundStyle(.white)
+                    .frame(minWidth: 14, minHeight: 14)
+                    .background(AIAccent.border, in: Circle())
+                    .help("Suggested reading order (AI)")
+            }
             Spacer(minLength: 4)
             Text(verbatim: "+\(file.additions) −\(file.deletions)")
                 .font(.caption.monospacedDigit())

@@ -97,3 +97,21 @@ struct SinceLastReviewTests {
         #expect(!ReviewProgress(headSHA: "a", lastReviewedSHA: "a").hasChangesSinceReview)
     }
 }
+
+@MainActor
+struct ReadingOrderTests {
+    @Test func sortsFilesByReadingOrderAndKeepsNoiseLast() async {
+        let model = DiffScreenModel(loader: DemoDiffLoader())
+        await model.load(PullRequestID(owner: "acme", repository: "billing", number: 1234), headSHA: "h")
+        model.readingOrder = [
+            ReadingStep(path: "Sources/Export/CSVEncoder.swift", reason: "risky", isRisky: true),
+            ReadingStep(path: "Sources/Billing/Invoice.swift", reason: "model"),
+        ]
+        let paths = model.orderedFiles.map(\.path)
+        #expect(paths.prefix(2) == ["Sources/Export/CSVEncoder.swift", "Sources/Billing/Invoice.swift"])
+        #expect(paths.last == "Package.resolved")
+        #expect(model.readingStep(for: "Sources/Billing/Invoice.swift")?.number == 2)
+        model.usesReadingOrder = false
+        #expect(model.orderedFiles.first?.path == "Sources/Billing/InvoiceService.swift")
+    }
+}

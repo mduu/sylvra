@@ -133,6 +133,9 @@ public struct FindingsInspectorScreen: View {
             if let chat { AIChatPanel(model: chat, pullRequestID: id, jump: jumpToLocation) }
         case .summary:
             Text(model.results[id]?.summary ?? "").font(.callout).textSelection(.enabled)
+            if let order = model.results[id]?.readingOrder, !order.isEmpty {
+                ReadingOrderView(steps: order) { jumpToLocation($0.path, 1) }
+            }
         }
     }
 

@@ -1,4 +1,5 @@
 import Foundation
+import SylvraCore
 
 /// Validates agent output against the diff and merges shards / models (see specs/architecture.md §8.4–8.5).
 public enum ReviewMerger {
@@ -8,10 +9,17 @@ public enum ReviewMerger {
         var patterns: [PatternFinding] = []
         var summaries: [String] = []
         var history: [String] = []
+        var readingOrder: [ReadingStep] = []
 
         for (output, source) in outputs {
             summaries.append(output.summary)
             history += output.history ?? []
+            // Shards cover different files: keep each agent's order, first mention wins; only files of the PR.
+            for step in output.readingOrder ?? [] where byPath[step.path] != nil {
+                guard !readingOrder.contains(where: { $0.path == step.path }) else { continue }
+                readingOrder.append(
+                    ReadingStep(path: step.path, reason: step.reason ?? "", isRisky: step.risky ?? false))
+            }
             for raw in output.findings {
                 let finding = anchor(raw, source: source, file: byPath[raw.path])
                 if let index = findings.firstIndex(where: { isDuplicate($0, finding) }) {
@@ -37,7 +45,7 @@ public enum ReviewMerger {
         findings.sort { ($0.severity, $0.path, $0.startLine) < ($1.severity, $1.path, $1.startLine) }
         return ReviewResult(
             summary: summaries.filter { !$0.isEmpty }.joined(separator: "\n\n"), findings: findings, patterns: patterns,
-            history: Array(Set(history)).sorted())
+            history: Array(Set(history)).sorted(), readingOrder: readingOrder)
     }
 
     /// Re-anchors findings outside the diff to the nearest visible line, or marks them unanchored.

@@ -89,14 +89,30 @@ public struct ReviewResult: Hashable, Sendable, Codable {
     public var findings: [ReviewFinding]
     public var patterns: [PatternFinding]
     public var history: [String]
+    /// Suggested reading order (core and risky files first).
+    public var readingOrder: [ReadingStep]
 
     public init(
-        summary: String = "", findings: [ReviewFinding] = [], patterns: [PatternFinding] = [], history: [String] = []
+        summary: String = "", findings: [ReviewFinding] = [], patterns: [PatternFinding] = [], history: [String] = [],
+        readingOrder: [ReadingStep] = []
     ) {
         self.summary = summary
         self.findings = findings
         self.patterns = patterns
         self.history = history
+        self.readingOrder = readingOrder
+    }
+
+    private enum CodingKeys: String, CodingKey { case summary, findings, patterns, history, readingOrder }
+
+    // Results cached before reading orders existed decode with an empty order.
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        summary = try container.decode(String.self, forKey: .summary)
+        findings = try container.decode([ReviewFinding].self, forKey: .findings)
+        patterns = try container.decode([PatternFinding].self, forKey: .patterns)
+        history = try container.decode([String].self, forKey: .history)
+        readingOrder = try container.decodeIfPresent([ReadingStep].self, forKey: .readingOrder) ?? []
     }
 }
 

@@ -92,6 +92,9 @@ struct RootScreen: View {
                 environment.aiReview.findings(for: selection?.id)
                 .first { $0.id == id }?.title
         }
+        .onChange(of: aiReadingOrder, initial: true) { _, order in
+            withAnimation(.snappy) { environment.diff.readingOrder = order }
+        }
         .onChange(of: aiHighlights) { _, highlights in
             withAnimation(.snappy) { environment.diff.lineHighlights = highlights }
         }
@@ -244,6 +247,10 @@ struct RootScreen: View {
             }
         }
         .animation(.snappy, value: environment.aiReview.selectedFindingID)
+    }
+
+    private var aiReadingOrder: [ReadingStep] {
+        selection.flatMap { environment.aiReview.results[$0.id]?.readingOrder } ?? []
     }
 
     private var selectedFinding: ReviewFinding? {

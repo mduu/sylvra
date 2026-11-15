@@ -135,7 +135,8 @@ public struct DiffScreen<LineAccessory: View>: View {
                                     isViewed: model.isViewed(file.path),
                                     isCollapsed: model.isCollapsed(file),
                                     toggleCollapsed: { withAnimation(.snappy) { model.toggleExpanded(file.path) } },
-                                    toggleViewed: { Task { await model.toggleViewed(file.path) } }
+                                    toggleViewed: { Task { await model.toggleViewed(file.path) } },
+                                    readingStep: model.readingStep(for: file.path)
                                 )
                                 .id(file.path)
                             }

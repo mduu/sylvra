@@ -25,6 +25,14 @@ public struct DemoAgentProvider: AgentProvider {
         let json = """
             {"summary": "Adds CSV export next to JSON and changes how invoice totals are summed. The rounding change \
             affects every existing invoice — that is where the risk is.",
+             "readingOrder": [
+              {"path": "Sources/Billing/InvoiceService.swift", "reason": "Core change: totals are rounded per line", \
+            "risky": true},
+              {"path": "Sources/Billing/Invoice.swift", "reason": "New quantity field the totals depend on"},
+              {"path": "Sources/Export/ExportFormat.swift", "reason": "New export API"},
+              {"path": "Sources/Export/CSVEncoder.swift", "reason": "CSV output: escaping", "risky": true},
+              {"path": "Tests/BillingTests/InvoiceServiceTests.swift", "reason": "Tests for the export"}
+             ],
              "findings": [
               {"path": "Sources/Billing/InvoiceService.swift", "startLine": 9, "endLine": 9, "severity": "major",
                "category": "bug", "title": "Rounding per line item changes invoice totals",
