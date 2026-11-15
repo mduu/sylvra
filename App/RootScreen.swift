@@ -2,6 +2,7 @@ import FeatureAIReview
 import FeatureDiff
 import FeatureInbox
 import FeaturePullRequest
+import FeatureReview
 import SwiftUI
 import SylvraCore
 
@@ -29,11 +30,17 @@ struct RootScreen: View {
             }
             .navigationSplitViewColumnWidth(min: 300, ideal: 360)
         } detail: {
-            DiffScreen(
-                model: environment.diff,
-                pullRequestID: selection?.id,
-                headSHA: environment.pullRequest.detail.flatMap { $0.summary.id == selection?.id ? $0.headSHA : nil }
-            )
+            ReviewScreen(model: environment.review, pullRequestID: selection?.id) {
+                DiffScreen(
+                    model: environment.diff,
+                    pullRequestID: selection?.id,
+                    headSHA: environment.pullRequest.detail.flatMap {
+                        $0.summary.id == selection?.id ? $0.headSHA : nil
+                    },
+                    lineAccessory: { ReviewThreadsPanel(model: environment.review, location: $0) },
+                    onStartComment: { environment.review.startComment(at: $0, lineText: $1) }
+                )
+            }
         }
         .navigationTitle(Text(verbatim: selection.map { "\($0.id.repository) #\($0.id.number)" } ?? "Sylvra"))
         .navigationSubtitle(Text(verbatim: selection?.title ?? ""))
