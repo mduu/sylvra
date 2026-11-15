@@ -120,10 +120,13 @@ public final class ReviewScreenModel {
     // MARK: - Comment language and rewriting
 
     /// Rewrites a comment draft personally in a language (`English`, `German`); provided by the app (AI agent).
-    public typealias Rewriter = @Sendable (_ text: String, _ language: String) async throws -> String
+    public typealias Rewriter =
+        @Sendable (_ text: String, _ language: String, _ style: CommentRewriteStyle) async throws -> String
 
     public var rewriter: Rewriter?
     public private(set) var isRewriting = false
+    /// The draft text before the last AI rewrite, for *Undo rewrite*.
+    public private(set) var textBeforeRewrite: String?
     /// Default when a repository has no remembered choice yet.
     public var defaultCommentLanguage = "English"
 
@@ -136,7 +139,7 @@ public final class ReviewScreenModel {
         set {
             if let pullRequestID { UserDefaults.standard.set(newValue, forKey: Self.languageKey(pullRequestID)) }
             languageRevision += 1
-            Task { await rewriteDraft() }
+            Task { await rewriteDraft(.translate) }
         }
     }
 
@@ -144,25 +147,6 @@ public final class ReviewScreenModel {
     public private(set) var languageRevision = 0
 
     private static func languageKey(_ id: PullRequestID) -> String { "commentLanguage.\(id.owner)/\(id.repository)" }
-
-    /// Rewrites the draft in `draftLanguage`; suggestion blocks are kept verbatim by the rewriter.
-    public func rewriteDraft() async {
-        guard let rewriter, let draft, !draft.body.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
-            !isRewriting
-        else { return }
-        let started = pullRequestID
-        let location = draft.location
-        isRewriting = true
-        defer { isRewriting = false }
-        do {
-            let rewritten = try await rewriter(draft.body, draftLanguage)
-            // Only replace the text if the reviewer is still on the same draft.
-            guard pullRequestID == started, self.draft?.location == location else { return }
-            self.draft?.body = rewritten
-        } catch {
-            errorMessage = String(localized: "Couldn't rewrite: \(error.localizedDescription)")
-        }
-    }
 
     /// Starts a comment on a location (from the diff gutter). Keeps the text when only the range changes.
     public func startComment(at location: CodeLocation, lineText: String) {
@@ -332,5 +316,37 @@ public final class ReviewScreenModel {
             rollback?()
             errorMessage = String(localized: "Couldn't \(action): \(error.localizedDescription)")
         }
+    }
+}
+
+// MARK: - AI writing help
+
+extension ReviewScreenModel {
+    /// Rewrites the draft in `draftLanguage`; suggestion blocks are kept verbatim by the rewriter.
+    public func rewriteDraft(_ style: CommentRewriteStyle = .improve) async {
+        guard let rewriter, let draft, !draft.body.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+            !isRewriting
+        else { return }
+        let started = pullRequestID
+        let location = draft.location
+        isRewriting = true
+        defer { isRewriting = false }
+        do {
+            let original = draft.body
+            let rewritten = try await rewriter(original, draftLanguage, style)
+            // Only replace the text if the reviewer is still on the same draft.
+            guard pullRequestID == started, self.draft?.location == location else { return }
+            self.draft?.body = rewritten
+            textBeforeRewrite = original
+        } catch {
+            errorMessage = String(localized: "Couldn't rewrite: \(error.localizedDescription)")
+        }
+    }
+
+    /// Restores the draft text from before the last AI rewrite.
+    public func undoRewrite() {
+        guard let textBeforeRewrite, draft != nil else { return }
+        draft?.body = textBeforeRewrite
+        self.textBeforeRewrite = nil
     }
 }

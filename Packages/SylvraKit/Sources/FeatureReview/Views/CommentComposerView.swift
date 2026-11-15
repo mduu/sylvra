@@ -17,7 +17,9 @@ struct CommentComposerView: View {
     var language: Binding<String>?
     var isRewriting = false
     /// Rewrites the draft personally in the selected language; `nil` hides the button.
-    var rewrite: (() -> Void)?
+    var rewrite: ((CommentRewriteStyle) -> Void)?
+    /// Restores the text before the last rewrite; `nil` when there is nothing to undo.
+    var undoRewrite: (() -> Void)?
 
     @State private var isPreviewing = false
     @FocusState private var isFocused: Bool
@@ -47,16 +49,29 @@ struct CommentComposerView: View {
                     .help("Language of this comment — switching translates the draft")
                 }
                 if let rewrite {
-                    Button(action: rewrite) {
+                    Menu {
+                        Button("Improve wording", systemImage: "wand.and.sparkles") { rewrite(.improve) }
+                            .keyboardShortcut("e", modifiers: [.command, .shift])
+                        Button("Shorter and crisper", systemImage: "scissors") { rewrite(.shorten) }
+                            .keyboardShortcut("k", modifiers: [.command, .shift])
+                        if let undoRewrite {
+                            Divider()
+                            Button("Undo rewrite", systemImage: "arrow.uturn.backward", action: undoRewrite)
+                        }
+                    } label: {
                         if isRewriting {
                             ProgressView().controlSize(.mini)
                         } else {
-                            Label("Rewrite", systemImage: "sparkles").labelStyle(.iconOnly)
+                            Label("Writing help", systemImage: "sparkles").labelStyle(.iconOnly)
                         }
+                    } primaryAction: {
+                        rewrite(.improve)
                     }
+                    .menuStyle(.button)
+                    .fixedSize()
                     .foregroundStyle(SylvraColor.accentGold)
                     .disabled(isRewriting || isEmpty)
-                    .help("Rewrite the draft in a personal, friendly tone (suggestions stay unchanged)")
+                    .help("Improve wording — short, personal, friendly (⌘⇧E). Menu: shorter (⌘⇧K), undo")
                 }
                 Button(action: insertSuggestion) {
                     Label("Insert suggestion", systemImage: "plus.forwardslash.minus").labelStyle(.iconOnly)

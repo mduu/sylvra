@@ -265,17 +265,21 @@ struct CommentLanguageTests {
     @Test func rewritesDraftInChosenLanguageAndRemembersItPerRepository() async {
         let model = ReviewScreenModel(service: DemoReviewService(snapshot: DemoReviewService.sample()))
         await model.load(id)
-        model.rewriter = { text, language in "[\(language)] \(text)" }
+        model.rewriter = { text, language, style in "[\(language) \(style.rawValue)] \(text)" }
         model.startComment(at: location, lineText: "x")
         model.draft?.body = "Round once."
 
         await model.rewriteDraft()
-        #expect(model.draft?.body == "[English] Round once.")
+        #expect(model.draft?.body == "[English improve] Round once.")
+        model.undoRewrite()
+        #expect(model.draft?.body == "Round once.")
+        #expect(model.textBeforeRewrite == nil)
 
         model.draftLanguage = "German"
         #expect(model.draftLanguage == "German")
         // The language switch triggers a rewrite of the current draft.
         try? await Task.sleep(for: .milliseconds(50))
-        #expect(model.draft?.body == "[German] [English] Round once.")
+        // Switching the language only translates.
+        #expect(model.draft?.body == "[German translate] Round once.")
     }
 }

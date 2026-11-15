@@ -110,7 +110,9 @@ final class AppEnvironment {
         let rewriter = CommentRewriter(provider: agent)
         review.rewriter =
             isDemo
-            ? { @Sendable text, language in try await DemoCommentRewriter.rewrite(text, language: language) }
-            : { @Sendable text, language in try await rewriter.rewrite(text, language: language) }
+            ? { @Sendable text, language, style in
+                try await DemoCommentRewriter.rewrite(text, language: language, style: style)
+            }
+            : { @Sendable text, language, style in try await rewriter.rewrite(text, language: language, style: style) }
     }
 }

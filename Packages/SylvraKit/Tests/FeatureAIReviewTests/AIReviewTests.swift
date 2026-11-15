@@ -210,10 +210,19 @@ struct AIReviewPersistenceTests {
 }
 
 struct CommentRewriterTests {
-    @Test func promptAsksForPersonalToneAndKeepsSuggestions() {
-        let prompt = CommentRewriter.prompt(for: "Round once.", language: "German")
+    @Test func promptAsksForShortPersonalToneAndKeepsSuggestions() {
+        let prompt = CommentRewriter.prompt(for: "Round once.", language: "German", style: .improve)
         #expect(prompt.contains("in German"))
+        #expect(prompt.contains("at most two sentences"))
         #expect(prompt.contains("```suggestion block exactly"))
+    }
+
+    @Test func eachStyleHasItsOwnTask() {
+        let shorten = CommentRewriter.prompt(for: "x", language: "English", style: .shorten)
+        let translate = CommentRewriter.prompt(for: "x", language: "German", style: .translate)
+        #expect(shorten.contains("short and crisp"))
+        #expect(translate.contains("Translate"))
+        #expect(!translate.contains("Improve"))
     }
 
     @Test func guardDetectsDroppedSuggestions() {

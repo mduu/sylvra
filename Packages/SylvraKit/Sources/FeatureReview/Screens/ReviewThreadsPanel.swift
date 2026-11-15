@@ -54,7 +54,8 @@ public struct ReviewThreadsPanel: View {
                     _ = model.languageRevision; return model.draftLanguage
                 }, set: { model.draftLanguage = $0 }),
             isRewriting: model.isRewriting,
-            rewrite: model.rewriter == nil ? nil : { Task { await model.rewriteDraft() } }
+            rewrite: model.rewriter == nil ? nil : { style in Task { await model.rewriteDraft(style) } },
+            undoRewrite: model.textBeforeRewrite == nil ? nil : { model.undoRewrite() }
         )
     }
 
