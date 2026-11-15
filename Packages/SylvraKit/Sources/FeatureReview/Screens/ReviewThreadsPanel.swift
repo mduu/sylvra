@@ -82,6 +82,7 @@ public struct ReviewThreadsPanel: View {
             cancelEditing: model.cancelEditing,
             saveEdit: { comment in Task { await model.saveEdit(of: comment) } },
             delete: { comment in Task { await model.delete(comment) } },
+            react: { reaction, comment in Task { await model.toggleReaction(reaction, on: comment) } },
             open: { openURL($0) }
         )
     }

@@ -75,6 +75,14 @@ struct CommentNode: Decodable, Sendable {
     let viewerCanUpdate: Bool
     let viewerCanDelete: Bool
     let author: Author?
+    let reactionGroups: [ReactionGroupNode]?
+
+    struct ReactionGroupNode: Decodable, Sendable {
+        let content: String
+        let viewerHasReacted: Bool
+        let reactors: Count
+        struct Count: Decodable, Sendable { let totalCount: Int }
+    }
 
     struct Author: Decodable, Sendable {
         let login: String
@@ -94,7 +102,14 @@ struct CommentNode: Decodable, Sendable {
             url: url,
             isPending: state == "PENDING",
             viewerCanUpdate: viewerCanUpdate,
-            viewerCanDelete: viewerCanDelete)
+            viewerCanDelete: viewerCanDelete,
+            reactions: (reactionGroups ?? []).compactMap { group in
+                guard let reaction = Reaction(rawValue: group.content), group.reactors.totalCount > 0 else {
+                    return nil
+                }
+                return ReactionGroup(
+                    reaction: reaction, count: group.reactors.totalCount, viewerHasReacted: group.viewerHasReacted)
+            })
     }
 }
 

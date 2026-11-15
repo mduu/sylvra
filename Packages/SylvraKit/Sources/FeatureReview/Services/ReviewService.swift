@@ -26,6 +26,9 @@ public protocol ReviewService: Sendable {
 
     func deleteComment(id: String) async throws
 
+    /// Adds or removes the viewer's reaction on a comment.
+    func setReaction(_ reaction: Reaction, added: Bool, commentID: String) async throws
+
     /// Submits the pending review, or creates and submits a new review when `reviewID` is `nil`.
     func submitReview(pullRequestNodeID: String, reviewID: String?, event: ReviewEvent, body: String) async throws
 }

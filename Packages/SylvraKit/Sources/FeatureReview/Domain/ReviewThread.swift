@@ -12,11 +12,13 @@ public struct ReviewComment: Identifiable, Hashable, Sendable {
     public let isPending: Bool
     public let viewerCanUpdate: Bool
     public let viewerCanDelete: Bool
+    public var reactions: [ReactionGroup]
 
     public init(
         id: String, author: UserRef, body: String, createdAt: Date, url: URL? = nil, isPending: Bool = false,
-        viewerCanUpdate: Bool = false, viewerCanDelete: Bool = false
+        viewerCanUpdate: Bool = false, viewerCanDelete: Bool = false, reactions: [ReactionGroup] = []
     ) {
+        self.reactions = reactions
         self.id = id
         self.author = author
         self.body = body

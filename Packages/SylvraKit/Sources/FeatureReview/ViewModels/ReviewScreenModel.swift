@@ -238,6 +238,18 @@ public final class ReviewScreenModel {
         }
     }
 
+    /// Toggles the viewer's reaction (optimistic, rolled back on failure). Reactions post immediately on GitHub.
+    public func toggleReaction(_ reaction: Reaction, on comment: ReviewComment) async {
+        let current = snapshot?.threads.lazy.flatMap(\.comments).first { $0.id == comment.id }?.reactions ?? []
+        let added = !(current.first { $0.reaction == reaction }?.viewerHasReacted ?? false)
+        updateComment(comment.id) { $0.reactions = $0.reactions.toggling(reaction) }
+        await perform(added ? "add reaction" : "remove reaction") {
+            try await self.service.setReaction(reaction, added: added, commentID: comment.id)
+        } rollback: {
+            self.updateComment(comment.id) { $0.reactions = $0.reactions.toggling(reaction) }
+        }
+    }
+
     public func delete(_ comment: ReviewComment) async {
         await perform("delete comment") {
             try await self.service.deleteComment(id: comment.id)

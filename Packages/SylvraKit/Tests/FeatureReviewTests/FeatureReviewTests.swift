@@ -254,6 +254,9 @@ private struct FailingResolveService: ReviewService {
     func setResolved(_ resolved: Bool, threadID: String) async throws { throw GitHubError.notAuthenticated }
     func updateComment(id: String, body: String) async throws -> ReviewComment { throw GitHubError.notAuthenticated }
     func deleteComment(id: String) async throws {}
+    func setReaction(_ reaction: Reaction, added: Bool, commentID: String) async throws {
+        throw GitHubError.notAuthenticated
+    }
     func submitReview(pullRequestNodeID: String, reviewID: String?, event: ReviewEvent, body: String) async throws {}
 }
 
@@ -302,5 +305,37 @@ struct ToneCheckTests {
 
     @Test func flagsShouting() {
         #expect(ToneCheck.issues(in: "Please do NOT merge").map(\.reason) == [.emphasis])
+    }
+}
+
+@MainActor
+struct ReactionTests {
+    @Test func togglingAddsCountsAndRemovesEmptyGroups() {
+        let groups = [ReactionGroup(reaction: .eyes, count: 1)]
+        let added = groups.toggling(.thumbsUp)
+        #expect(added.map(\.reaction) == [.thumbsUp, .eyes])
+        #expect(added.first?.viewerHasReacted == true)
+        #expect(added.toggling(.thumbsUp) == groups)
+        let joined = groups.toggling(.eyes)
+        #expect(joined.first?.count == 2)
+        #expect(joined.toggling(.eyes) == groups)
+    }
+
+    @Test func reactsOptimisticallyAndRollsBackOnFailure() async throws {
+        let id = PullRequestID(owner: "acme", repository: "billing", number: 1234)
+        let model = ReviewScreenModel(service: DemoReviewService(snapshot: DemoReviewService.sample()))
+        await model.load(id)
+        let comment = try #require(model.snapshot?.threads.first?.comments.first)
+        await model.toggleReaction(.thumbsUp, on: comment)
+        let reacted = model.snapshot?.threads.first?.comments.first?.reactions.first { $0.reaction == .thumbsUp }
+        #expect(reacted?.count == 3)
+        #expect(reacted?.viewerHasReacted == true)
+
+        let failing = ReviewScreenModel(service: FailingResolveService())
+        await failing.load(id)
+        let other = try #require(failing.snapshot?.threads.first?.comments.first)
+        await failing.toggleReaction(.heart, on: other)
+        #expect(failing.snapshot?.threads.first?.comments.first?.reactions == other.reactions)
+        #expect(failing.errorMessage != nil)
     }
 }

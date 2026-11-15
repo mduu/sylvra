@@ -55,6 +55,17 @@ public actor DemoReviewService: ReviewService {
         snapshot.threads.removeAll { $0.comments.isEmpty }
     }
 
+    public func setReaction(_ reaction: Reaction, added: Bool, commentID: String) async throws {
+        for (threadIndex, thread) in snapshot.threads.enumerated() {
+            guard let index = thread.comments.firstIndex(where: { $0.id == commentID }) else { continue }
+            let current = snapshot.threads[threadIndex].comments[index].reactions
+            let reacted = current.first { $0.reaction == reaction }?.viewerHasReacted ?? false
+            if reacted != added { snapshot.threads[threadIndex].comments[index].reactions = current.toggling(reaction) }
+            return
+        }
+        throw DemoReviewError.notFound
+    }
+
     public func submitReview(pullRequestNodeID: String, reviewID: String?, event: ReviewEvent, body: String)
         async throws
     {
@@ -102,7 +113,10 @@ public actor DemoReviewService: ReviewService {
                     id: "demo-c1", author: jonas,
                     body: "Rounding each line before summing can drift from the invoice total by a few cents. "
                         + "Should we round **once** at the end instead?",
-                    createdAt: ago(5), url: url),
+                    createdAt: ago(5), url: url,
+                    reactions: [
+                        ReactionGroup(reaction: .thumbsUp, count: 2), ReactionGroup(reaction: .eyes, count: 1),
+                    ]),
                 ReviewComment(
                     id: "demo-c2", author: lena,
                     body: "Accounting wants per-line rounding to match the PDF (see BILL-311). "

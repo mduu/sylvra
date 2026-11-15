@@ -86,6 +86,12 @@ public struct GitHubReviewService: ReviewService {
             ReviewQueries.deleteComment, variables: ["id": .string(id)], as: EmptyResponse.self)
     }
 
+    public func setReaction(_ reaction: Reaction, added: Bool, commentID: String) async throws {
+        _ = try await client.graphQL(
+            added ? ReviewQueries.addReaction : ReviewQueries.removeReaction,
+            variables: ["id": .string(commentID), "content": .string(reaction.rawValue)], as: EmptyResponse.self)
+    }
+
     public func submitReview(pullRequestNodeID: String, reviewID: String?, event: ReviewEvent, body: String)
         async throws
     {
@@ -122,6 +128,7 @@ enum ReviewQueries {
         fragment CommentFields on PullRequestReviewComment {
           id body createdAt url state viewerCanUpdate viewerCanDelete
           author { login avatarUrl ... on User { name } }
+          reactionGroups { content viewerHasReacted reactors { totalCount } }
         }
 
         """
@@ -146,6 +153,18 @@ enum ReviewQueries {
           }
         }
         """ + threadFragments
+
+    static let addReaction = """
+        mutation($id: ID!, $content: ReactionContent!) {
+          addReaction(input: { subjectId: $id, content: $content }) { clientMutationId }
+        }
+        """
+
+    static let removeReaction = """
+        mutation($id: ID!, $content: ReactionContent!) {
+          removeReaction(input: { subjectId: $id, content: $content }) { clientMutationId }
+        }
+        """
 
     static let startReview = """
         mutation($id: ID!) {

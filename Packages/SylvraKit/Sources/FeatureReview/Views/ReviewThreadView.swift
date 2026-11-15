@@ -11,6 +11,7 @@ struct ReviewThreadActions {
     var cancelEditing: (ReviewComment) -> Void = { _ in }
     var saveEdit: (ReviewComment) -> Void = { _ in }
     var delete: (ReviewComment) -> Void = { _ in }
+    var react: (Reaction, ReviewComment) -> Void = { _, _ in }
     var open: (URL) -> Void = { _ in }
 }
 
@@ -147,6 +148,10 @@ struct ReviewCommentView: View {
                     editor(editText)
                 } else {
                     MarkdownBodyView(markdown: comment.body)
+                    // Pending comments can't get reactions until the review is submitted.
+                    if !comment.isPending {
+                        ReactionBarView(reactions: comment.reactions) { actions.react($0, comment) }
+                    }
                 }
             }
         }
@@ -229,4 +234,66 @@ struct StatusBadge: View {
     }
     .padding()
     .frame(width: 560)
+}
+
+/// Reaction pills under a comment plus an add-reaction picker (pure).
+struct ReactionBarView: View {
+    let reactions: [ReactionGroup]
+    let toggle: (Reaction) -> Void
+
+    var body: some View {
+        HStack(spacing: 4) {
+            ForEach(reactions, id: \.reaction) { group in
+                Button {
+                    toggle(group.reaction)
+                } label: {
+                    HStack(spacing: 3) {
+                        Text(verbatim: group.reaction.emoji)
+                        Text(verbatim: "\(group.count)").monospacedDigit()
+                    }
+                    .font(.caption)
+                    .padding(.horizontal, 7)
+                    .padding(.vertical, 2)
+                    .background(
+                        group.viewerHasReacted ? SylvraColor.brandPrimary.opacity(0.22) : SylvraColor.codeSurface,
+                        in: Capsule()
+                    )
+                    .overlay(
+                        Capsule().strokeBorder(
+                            group.viewerHasReacted ? SylvraColor.brandPrimary.opacity(0.6) : SylvraColor.codeHairline))
+                }
+                .buttonStyle(.plain)
+                .help(group.viewerHasReacted ? "Remove your reaction" : "React")
+            }
+            Menu {
+                ForEach(Reaction.allCases) { reaction in
+                    Button {
+                        toggle(reaction)
+                    } label: {
+                        Text(verbatim: reaction.emoji)
+                    }
+                }
+            } label: {
+                Image(systemName: "face.smiling")
+            }
+            .menuStyle(.button)
+            .buttonStyle(.borderless)
+            .menuIndicator(.hidden)
+            .fixedSize()
+            .foregroundStyle(.secondary)
+            .help("Add a reaction (posted on GitHub right away)")
+        }
+        .padding(.top, 2)
+    }
+}
+
+#Preview("Reactions") {
+    ReactionBarView(
+        reactions: [
+            ReactionGroup(reaction: .thumbsUp, count: 3, viewerHasReacted: true),
+            ReactionGroup(reaction: .eyes, count: 1),
+        ],
+        toggle: { _ in }
+    )
+    .padding()
 }
