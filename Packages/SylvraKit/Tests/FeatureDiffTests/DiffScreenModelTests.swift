@@ -52,4 +52,17 @@ struct DiffScreenModelTests {
         #expect(model.hunks(for: file).count == 1)
         #expect(model.hunks(for: file).first?.lines.first?.text == "import Foundation")
     }
+
+    @Test func returnsTextOfLinesOnEachSide() async {
+        let model = DiffScreenModel(loader: DemoDiffLoader())
+        await model.load(id, headSHA: nil)
+        let path = "Sources/Billing/InvoiceService.swift"
+        #expect(
+            model.text(at: CodeLocation(path: path, line: 8, side: .left))
+                == "        invoice.items.reduce(0) { $0 + $1.price }")
+        #expect(
+            model.text(at: CodeLocation(path: path, line: 10, side: .right, startLine: 9))
+                == "            sum + (item.price * item.quantity).rounded(2)\n        }")
+        #expect(model.text(at: CodeLocation(path: "missing", line: 1, side: .right)).isEmpty)
+    }
 }

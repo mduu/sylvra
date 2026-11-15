@@ -64,6 +64,21 @@ public final class DiffScreenModel {
         return file.hunks
     }
 
+    /// Text of the lines at a location (joined with newlines), used to pre-fill code suggestions.
+    public func text(at location: CodeLocation) -> String {
+        guard let file = files.first(where: { $0.path == location.path }) else { return "" }
+        let lines = (hunks(for: file) + file.hunks).lazy.flatMap(\.lines)
+        return location.lines.compactMap { number in
+            lines.first { line in
+                switch location.side {
+                case .left: line.kind != .added && line.oldNumber == number
+                case .right: line.kind != .removed && line.newNumber == number
+                }
+            }?.text
+        }
+        .joined(separator: "\n")
+    }
+
     public func load(_ id: PullRequestID?, headSHA: String?) async {
         guard let id else {
             diff = nil

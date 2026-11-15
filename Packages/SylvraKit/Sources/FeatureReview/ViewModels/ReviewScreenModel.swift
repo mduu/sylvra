@@ -1,0 +1,280 @@
+import Foundation
+import OSLog
+import Observation
+import SylvraCore
+
+/// A comment being written on a diff location.
+public struct CommentDraft: Equatable, Sendable {
+    public var location: CodeLocation
+    /// Text of the commented lines, used for *Insert suggestion*.
+    public var lineText: String
+    public var body: String = ""
+
+    public init(location: CodeLocation, lineText: String, body: String = "") {
+        self.location = location
+        self.lineText = lineText
+        self.body = body
+    }
+}
+
+/// State of the review: threads, drafts, the pending review and its submission.
+@MainActor
+@Observable
+public final class ReviewScreenModel {
+    public enum LoadState: Equatable {
+        case idle, loading, loaded, failed(String)
+    }
+
+    public private(set) var snapshot: ReviewSnapshot? {
+        didSet { threadsByAnchor = Dictionary(grouping: snapshot?.threads ?? [], by: \.location.anchor) }
+    }
+    public private(set) var loadState: LoadState = .idle
+    /// The new comment being written, shown below its line.
+    public var draft: CommentDraft?
+    /// Reply texts per thread ID.
+    public var replyDrafts: [String: String] = [:]
+    /// Edited bodies per comment ID while editing.
+    public var editDrafts: [String: String] = [:]
+    public var isSubmitSheetPresented = false
+    public var submitBody = ""
+    public var submitEvent: ReviewEvent = .comment
+    /// A write is in flight.
+    public private(set) var isWorking = false
+    public var errorMessage: String?
+
+    private var threadsByAnchor: [CodeLocation: [ReviewThread]] = [:]
+    /// Threads the reviewer expanded or collapsed against their default.
+    private var toggledThreadIDs: Set<String> = []
+    private var pullRequestID: PullRequestID?
+    private let service: any ReviewService
+    private let logger = Logger(subsystem: "ch.mduu.sylvra", category: "Review")
+
+    public init(service: any ReviewService) {
+        self.service = service
+    }
+
+    // MARK: - Queries
+
+    public var threads: [ReviewThread] { snapshot?.threads ?? [] }
+    public var hasPendingReview: Bool { snapshot?.pendingReviewID != nil }
+
+    /// Comments of the viewer's pending review, with their threads.
+    public var pendingComments: [(thread: ReviewThread, comment: ReviewComment)] {
+        threads.flatMap { thread in thread.comments.filter(\.isPending).map { (thread, $0) } }
+    }
+
+    public var pendingCount: Int { threads.reduce(0) { $0 + $1.comments.count(where: \.isPending) } }
+
+    public func threads(at location: CodeLocation) -> [ReviewThread] { threadsByAnchor[location.anchor] ?? [] }
+
+    public func isDraftAnchored(at location: CodeLocation) -> Bool { draft?.location.anchor == location.anchor }
+
+    public func isCollapsed(_ thread: ReviewThread) -> Bool {
+        thread.isCollapsedByDefault != toggledThreadIDs.contains(thread.id)
+    }
+
+    public func toggleCollapsed(_ thread: ReviewThread) {
+        if toggledThreadIDs.contains(thread.id) {
+            toggledThreadIDs.remove(thread.id)
+        } else {
+            toggledThreadIDs.insert(thread.id)
+        }
+    }
+
+    // MARK: - Loading
+
+    public func load(_ id: PullRequestID?) async {
+        // Switching pull requests discards per-PR state (a draft started before the first load is kept).
+        guard let id else {
+            if pullRequestID != nil { reset() }
+            return
+        }
+        if pullRequestID != id {
+            if pullRequestID != nil { reset() }
+            loadState = .loading
+        }
+        pullRequestID = id
+        do {
+            let loaded = try await service.loadReview(for: id)
+            guard !Task.isCancelled else { return }
+            snapshot = loaded
+            loadState = .loaded
+        } catch {
+            guard !Task.isCancelled else { return }
+            loadState = .failed(String(describing: error))
+        }
+    }
+
+    private func reset() {
+        snapshot = nil
+        loadState = .idle
+        draft = nil
+        replyDrafts = [:]
+        editDrafts = [:]
+        toggledThreadIDs = []
+        pullRequestID = nil
+    }
+
+    // MARK: - Composer
+
+    /// Starts a comment on a location (from the diff gutter). Keeps the text when only the range changes.
+    public func startComment(at location: CodeLocation, lineText: String) {
+        if let current = draft, current.location.path == location.path, current.location.side == location.side,
+            current.location.lines.overlaps(location.lines)
+        {
+            draft?.location = location
+            draft?.lineText = lineText
+        } else {
+            draft = CommentDraft(location: location, lineText: lineText)
+        }
+    }
+
+    public func cancelDraft() { draft = nil }
+
+    /// Appends a ```` ```suggestion ```` block with the commented lines to the draft.
+    public func insertSuggestion() {
+        guard let draft else { return }
+        self.draft?.body = SuggestionBlock.insert(code: draft.lineText, into: draft.body)
+    }
+
+    /// Adds the draft to the pending review, creating the pending review if needed.
+    public func addDraftToReview() async {
+        guard let draft, canPost(draft.body), let nodeID = snapshot?.pullRequestNodeID else { return }
+        await perform("add comment") {
+            let reviewID = try await self.ensurePendingReview(nodeID: nodeID)
+            let thread = try await self.service.addThread(
+                reviewID: reviewID, location: draft.location, body: draft.body)
+            self.snapshot?.threads.append(thread)
+            self.draft = nil
+        }
+    }
+
+    /// Posts the draft immediately as a single comment (only without a pending review, like GitHub).
+    public func postDraftNow() async {
+        guard let draft, canPost(draft.body), !hasPendingReview, let nodeID = snapshot?.pullRequestNodeID else {
+            return
+        }
+        await perform("post comment") {
+            try await self.service.postComment(pullRequestNodeID: nodeID, location: draft.location, body: draft.body)
+            self.draft = nil
+            try await self.reload()
+        }
+    }
+
+    // MARK: - Threads
+
+    /// Replies to a thread; part of the pending review if one exists, otherwise posted immediately.
+    public func reply(to thread: ReviewThread) async {
+        let body = replyDrafts[thread.id] ?? ""
+        guard canPost(body) else { return }
+        await perform("reply") {
+            let comment = try await self.service.reply(
+                threadID: thread.id, reviewID: self.snapshot?.pendingReviewID, body: body)
+            self.updateThread(thread.id) { $0.comments.append(comment) }
+            self.replyDrafts[thread.id] = nil
+        }
+    }
+
+    public func setResolved(_ resolved: Bool, thread: ReviewThread) async {
+        updateThread(thread.id) { $0.isResolved = resolved }
+        toggledThreadIDs.remove(thread.id)
+        await perform(resolved ? "resolve" : "unresolve") {
+            try await self.service.setResolved(resolved, threadID: thread.id)
+        } rollback: {
+            self.updateThread(thread.id) { $0.isResolved = !resolved }
+        }
+    }
+
+    public func beginEditing(_ comment: ReviewComment) { editDrafts[comment.id] = comment.body }
+
+    public func cancelEditing(_ comment: ReviewComment) { editDrafts[comment.id] = nil }
+
+    public func saveEdit(of comment: ReviewComment) async {
+        guard let body = editDrafts[comment.id], canPost(body) else { return }
+        await perform("edit comment") {
+            let updated = try await self.service.updateComment(id: comment.id, body: body)
+            self.updateComment(comment.id) { $0.body = updated.body }
+            self.editDrafts[comment.id] = nil
+        }
+    }
+
+    public func delete(_ comment: ReviewComment) async {
+        await perform("delete comment") {
+            try await self.service.deleteComment(id: comment.id)
+            guard var threads = self.snapshot?.threads else { return }
+            for index in threads.indices { threads[index].comments.removeAll { $0.id == comment.id } }
+            self.snapshot?.threads = threads.filter { !$0.comments.isEmpty }
+        }
+    }
+
+    // MARK: - Submit
+
+    /// Submits the pending review (or a review without inline comments) and reloads the threads.
+    public func submitReview() async {
+        guard let nodeID = snapshot?.pullRequestNodeID else { return }
+        if submitEvent == .requestChanges, submitBody.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            errorMessage = String(localized: "Requesting changes needs a summary.")
+            return
+        }
+        let reviewID = snapshot?.pendingReviewID
+        await perform("submit review") {
+            try await self.service.submitReview(
+                pullRequestNodeID: nodeID, reviewID: reviewID, event: self.submitEvent, body: self.submitBody)
+            self.snapshot?.pendingReviewID = nil
+            self.submitBody = ""
+            self.submitEvent = .comment
+            self.isSubmitSheetPresented = false
+            try await self.reload()
+        }
+    }
+
+    // MARK: - Helpers
+
+    private func canPost(_ body: String) -> Bool {
+        !isWorking && !body.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    private func ensurePendingReview(nodeID: String) async throws -> String {
+        if let id = snapshot?.pendingReviewID { return id }
+        let id = try await service.startPendingReview(pullRequestNodeID: nodeID)
+        snapshot?.pendingReviewID = id
+        return id
+    }
+
+    private func reload() async throws {
+        guard let pullRequestID else { return }
+        snapshot = try await service.loadReview(for: pullRequestID)
+    }
+
+    private func updateThread(_ id: String, _ change: (inout ReviewThread) -> Void) {
+        guard var thread = snapshot?.threads.first(where: { $0.id == id }),
+            let index = snapshot?.threads.firstIndex(where: { $0.id == id })
+        else { return }
+        change(&thread)
+        snapshot?.threads[index] = thread
+    }
+
+    private func updateComment(_ id: String, _ change: (inout ReviewComment) -> Void) {
+        guard let threads = snapshot?.threads,
+            let threadIndex = threads.firstIndex(where: { $0.comments.contains { $0.id == id } }),
+            let index = threads[threadIndex].comments.firstIndex(where: { $0.id == id })
+        else { return }
+        var comment = threads[threadIndex].comments[index]
+        change(&comment)
+        snapshot?.threads[threadIndex].comments[index] = comment
+    }
+
+    private func perform(
+        _ action: String, _ work: () async throws -> Void, rollback: (() -> Void)? = nil
+    ) async {
+        isWorking = true
+        defer { isWorking = false }
+        do {
+            try await work()
+        } catch {
+            logger.error("Review action '\(action, privacy: .public)' failed: \(String(describing: error))")
+            rollback?()
+            errorMessage = String(localized: "Couldn't \(action): \(error.localizedDescription)")
+        }
+    }
+}

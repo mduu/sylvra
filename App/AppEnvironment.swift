@@ -4,8 +4,10 @@ import FeatureDiff
 import FeatureInbox
 import FeatureOpenInIDE
 import FeaturePullRequest
+import FeatureReview
 import Foundation
 import Platform
+import SylvraCore
 
 /// Composition root: creates the services and feature models of the app.
 ///
@@ -16,6 +18,7 @@ import Platform
 /// - `--layout inline`: inline instead of side-by-side diff
 /// - `--focus`: hide the inbox sidebar; `--no-inspector`: hide the AI inspector
 /// - `--run-ai-review`: start an AI review as soon as a PR is selected
+/// - `--submit-review`: open the submit review sheet; `--compose path:line`: open the comment composer
 @MainActor
 final class AppEnvironment {
     let isDemo: Bool
@@ -30,6 +33,7 @@ final class AppEnvironment {
     let openInIDE: OpenInIDEModel
     let aiReview: AIReviewModel
     let activity = ActivityCenter()
+    let review: ReviewScreenModel
 
     init(arguments: [String] = CommandLine.arguments) {
         isDemo = arguments.contains("--demo")
@@ -55,6 +59,13 @@ final class AppEnvironment {
             files: { id in ReviewableFiles.make(from: try await diffLoader.loadDiff(for: id).files) },
             workspace: { id in try await checkout?.prepareWorktree(for: id) }
         )
+        review = ReviewScreenModel(service: isDemo ? DemoReviewService() : GitHubReviewService(client: gitHub))
+        review.isSubmitSheetPresented = arguments.contains("--submit-review")
+        if let compose = Self.value(of: "--compose", in: arguments)?.split(separator: ":"), compose.count == 2,
+            let line = Int(compose[1])
+        {
+            review.startComment(at: CodeLocation(path: String(compose[0]), line: line, side: .right), lineText: "")
+        }
         if Self.value(of: "--layout", in: arguments) == "inline" { diff.layout = .inline }
         if let tab = Self.value(of: "--tab", in: arguments).flatMap(PullRequestScreenModel.Tab.init(rawValue:)) {
             pullRequest.tab = tab

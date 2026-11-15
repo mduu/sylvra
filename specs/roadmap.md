@@ -12,7 +12,7 @@ Status: ✅ done · 🚧 in progress · ⏳ open
 | M3 | PR details: overview, description, refs, reviewers, merge state, checks, commits (copy SHA), open on GitHub | ✅ |
 | M4 | Diff engine: unified diff parser, hunks, intra-line diff, file classification (unit-tested) | ✅ |
 | M5 | Diff view: side-by-side / inline, focused / full file, file tree by namespace, change map, viewed toggle | ✅ |
-| M6 | Review: existing threads, reply, resolve, new comments with suggestions, pending review, submit | ⏳ |
+| M6 | Review: existing threads, reply, resolve, new comments with suggestions, pending review, submit | ✅ |
 | M7 | Open in IDE: worktree manager, main-clone option, Rider / VS Code / Xcode / default app | ✅ |
 | M8 | AI review: Claude Code provider, repo context discovery, structured findings, sharding, patterns, highlights | 🚧 (highlights in the diff after M6 merge) |
 | M9 | AI chat, agent language, multi-model | ⏳ |
@@ -36,3 +36,10 @@ Decisions made while building without the product owner present. Revisit when co
 - Main-clone checkout uses branch `review/pr-<n>` and asks before stashing (named stash).
 - AI review runs `claude --print --output-format json --json-schema … --tools Read Grep Glob` with the prompt on stdin, in the review worktree (read-only tools). Verified against Claude Code 2.1.
 - Agent language defaults to the system language (e.g. German); per-PR model/effort/agents overrides are stored in UserDefaults.
+- Review threads reach the diff the same way: `DiffScreen` has a `lineAccessory: (CodeLocation) -> View` slot and an `onStartComment` callback; `ReviewScreen` (FeatureReview) wraps the diff and owns loading, the toolbar counter and the submit sheet. `CodeLocation` lives in `SylvraCore`.
+- Threads (and the composer) render full width below the line in both layouts instead of in the left/right half, so cards stay readable in narrow windows.
+- *Comment now* is only offered without a pending review (like GitHub); it posts a review with event `COMMENT` containing one thread. Replies join the pending review when one exists, otherwise they post immediately.
+- Comment ranges: ⇧-click a second line (gutter `+` or line number) on the same side to extend the draft to a range. Drag-to-select and the `C` shortcut follow later.
+- Outdated threads are anchored to their `originalLine`; file-level threads (no line) are loaded but not shown yet.
+- Deferred to M11: reactions, live mini-diff for suggestions, Markdown block elements beyond prose and fenced code (lists, headings render as plain text), pagination beyond 100 threads / 50 comments per thread.
+- Launch arguments `--submit-review` (opens the submit sheet) and `--compose path:line` (opens the composer) exist for screenshots.

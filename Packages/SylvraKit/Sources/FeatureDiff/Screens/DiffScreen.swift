@@ -2,15 +2,31 @@ import SwiftUI
 import SylvraCore
 
 /// The diff of the selected pull request (container).
-public struct DiffScreen: View {
+///
+/// Slots provided by the app (slices don't import each other):
+/// - `lineAccessory` renders content below a line (e.g. review threads and the comment composer),
+/// - `onStartComment` is called with the location and its text when the reviewer starts a comment
+///   (gutter `+` or click on a line number; ⇧-click extends the range on the same side).
+public struct DiffScreen<LineAccessory: View>: View {
     @Bindable private var model: DiffScreenModel
     private let pullRequestID: PullRequestID?
     private let headSHA: String?
+    private let lineAccessory: (CodeLocation) -> LineAccessory
+    private let onStartComment: ((CodeLocation, String) -> Void)?
+    @State private var commentAnchor: CodeLocation?
 
-    public init(model: DiffScreenModel, pullRequestID: PullRequestID?, headSHA: String?) {
+    public init(
+        model: DiffScreenModel,
+        pullRequestID: PullRequestID?,
+        headSHA: String?,
+        @ViewBuilder lineAccessory: @escaping (CodeLocation) -> LineAccessory,
+        onStartComment: ((CodeLocation, String) -> Void)? = nil
+    ) {
         self.model = model
         self.pullRequestID = pullRequestID
         self.headSHA = headSHA
+        self.lineAccessory = lineAccessory
+        self.onStartComment = onStartComment
     }
 
     public var body: some View {
@@ -46,8 +62,18 @@ public struct DiffScreen: View {
                         ForEach(model.orderedFiles) { file in
                             Section {
                                 if !model.isCollapsed(file) {
-                                    DiffFileBodyView(hunks: model.hunks(for: file), layout: model.layout)
-                                        .transition(.opacity.combined(with: .move(edge: .top)))
+                                    DiffFileBodyView(
+                                        path: file.path,
+                                        hunks: model.hunks(for: file),
+                                        layout: model.layout,
+                                        accessory: lineAccessory,
+                                        onComment: onStartComment == nil
+                                            ? nil
+                                            : { side, line, extends in
+                                                startComment(path: file.path, side: side, line: line, extends: extends)
+                                            }
+                                    )
+                                    .transition(.opacity.combined(with: .move(edge: .top)))
                                 }
                             } header: {
                                 DiffFileHeaderView(
@@ -73,6 +99,17 @@ public struct DiffScreen: View {
         }
     }
 
+    private func startComment(path: String, side: CodeLocation.Side, line: Int, extends: Bool) {
+        var location = CodeLocation(path: path, line: line, side: side)
+        if extends, let anchor = commentAnchor, anchor.path == path, anchor.side == side {
+            let lines = anchor.lines
+            location = CodeLocation(
+                path: path, line: max(line, lines.upperBound), side: side, startLine: min(line, lines.lowerBound))
+        }
+        commentAnchor = location
+        onStartComment?(location, model.text(at: location))
+    }
+
     @ViewBuilder private var placeholder: some View {
         switch model.loadState {
         case .loading:
@@ -83,5 +120,11 @@ public struct DiffScreen: View {
         default:
             ContentUnavailableView("No diff", systemImage: "plus.forwardslash.minus")
         }
+    }
+}
+
+extension DiffScreen where LineAccessory == EmptyView {
+    public init(model: DiffScreenModel, pullRequestID: PullRequestID?, headSHA: String?) {
+        self.init(model: model, pullRequestID: pullRequestID, headSHA: headSHA) { _ in EmptyView() }
     }
 }

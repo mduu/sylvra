@@ -1,4 +1,5 @@
 import SwiftUI
+import SylvraCore
 
 /// Sticky header of a file in the diff (pure).
 struct DiffFileHeaderView: View {
@@ -41,9 +42,13 @@ struct DiffFileHeaderView: View {
 }
 
 /// The hunks of a file in the chosen layout (pure).
-struct DiffFileBodyView: View {
+/// `accessory` renders extra content (e.g. review threads) below a line; it is empty for most lines.
+struct DiffFileBodyView<Accessory: View>: View {
+    let path: String
     let hunks: [Hunk]
     let layout: DiffScreenModel.Layout
+    let accessory: (CodeLocation) -> Accessory
+    var onComment: CommentRequest?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -51,14 +56,35 @@ struct DiffFileBodyView: View {
                 HunkHeaderView(hunk: hunk)
                 switch layout {
                 case .inline:
-                    ForEach(Array(hunk.lines.enumerated()), id: \.offset) { _, line in InlineLineView(line: line) }
+                    ForEach(Array(hunk.lines.enumerated()), id: \.offset) { _, line in
+                        InlineLineView(line: line, onComment: onComment)
+                        inlineAccessories(line)
+                    }
                 case .sideBySide:
                     ForEach(Array(SideBySideRow.rows(for: hunk).enumerated()), id: \.offset) { _, row in
-                        SideBySideRowView(row: row)
+                        SideBySideRowView(row: row, onComment: onComment)
+                        sideBySideAccessories(row)
                     }
                 }
             }
         }
+    }
+
+    /// Context lines can carry threads on both sides; removed lines on the left, added lines on the right.
+    @ViewBuilder private func inlineAccessories(_ line: DiffLine) -> some View {
+        if line.kind != .added, let old = line.oldNumber {
+            accessory(CodeLocation(path: path, line: old, side: .left))
+        }
+        if line.kind != .removed, let new = line.newNumber {
+            accessory(CodeLocation(path: path, line: new, side: .right))
+        }
+    }
+
+    /// Accessories span the full width below the row (left side first): thread cards stay readable
+    /// in narrow windows.
+    @ViewBuilder private func sideBySideAccessories(_ row: SideBySideRow) -> some View {
+        if let old = row.left?.oldNumber { accessory(CodeLocation(path: path, line: old, side: .left)) }
+        if let new = row.right?.newNumber { accessory(CodeLocation(path: path, line: new, side: .right)) }
     }
 }
 
