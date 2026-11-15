@@ -17,16 +17,20 @@ struct RootScreen: View {
             InboxScreen(model: environment.inbox, selection: $selection)
                 .navigationSplitViewColumnWidth(min: 240, ideal: 290)
         } content: {
-            PullRequestScreen()
-                .navigationSplitViewColumnWidth(min: 260, ideal: 300)
+            PullRequestScreen(model: environment.pullRequest, pullRequest: selection)
+                .navigationSplitViewColumnWidth(min: 300, ideal: 360)
         } detail: {
             DiffScreen()
         }
-        .navigationTitle(selection.map { "\($0.id.repository) #\($0.id.number)" } ?? "Sylvra")
-        .navigationSubtitle(selection?.title ?? "")
+        .navigationTitle(Text(verbatim: selection.map { "\($0.id.repository) #\($0.id.number)" } ?? "Sylvra"))
+        .navigationSubtitle(Text(verbatim: selection?.title ?? ""))
         .inspector(isPresented: $isInspectorPresented) {
             FindingsInspectorScreen()
                 .inspectorColumnWidth(min: 260, ideal: 300)
+        }
+        .onChange(of: environment.inbox.snapshot) {
+            guard selection == nil, let wanted = environment.initialSelection else { return }
+            selection = environment.inbox.snapshot.sections.values.joined().first { $0.id.description == wanted }
         }
         .toolbar {
             ToolbarItem(placement: .primaryAction) {

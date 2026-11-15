@@ -1,0 +1,301 @@
+import Foundation
+import Platform
+import SylvraCore
+
+/// Loads PR details with one GraphQL request.
+public struct GitHubPullRequestDetailLoader: PullRequestDetailLoading {
+    private let client: GitHubClient
+
+    public init(client: GitHubClient) {
+        self.client = client
+    }
+
+    public func loadDetail(for id: PullRequestID) async throws -> PullRequestDetail {
+        let response = try await client.graphQL(
+            Self.query,
+            variables: ["owner": .string(id.owner), "name": .string(id.repository), "number": .int(id.number)],
+            as: DetailResponse.self
+        )
+        guard let node = response.repository?.pullRequest else {
+            throw GitHubError.graphQL(["Pull request \(id) not found"])
+        }
+        return node.detail
+    }
+
+    // swiftlint:disable line_length
+    static let query = """
+        query($owner: String!, $name: String!, $number: Int!) {
+          repository(owner: $owner, name: $name) {
+            pullRequest(number: $number) {
+              number title url isDraft createdAt updatedAt additions deletions changedFiles
+              headRefName baseRefName headRefOid baseRefOid reviewDecision mergeable mergeStateStatus state
+              body
+              repository { name owner { login } }
+              headRepositoryOwner { login }
+              author { login avatarUrl ... on User { name } }
+              labels(first: 20) { nodes { name color } }
+              assignees(first: 10) { nodes { login avatarUrl name } }
+              milestone { title }
+              closingIssuesReferences(first: 5) { nodes { number title url } }
+              reviewRequests(first: 20) { nodes { requestedReviewer { __typename ... on User { login avatarUrl name } ... on Team { name slug } } } }
+              latestReviews(first: 30) { nodes { state submittedAt author { login avatarUrl ... on User { name } } } }
+              commits(first: 100) { totalCount nodes { commit {
+                oid abbreviatedOid messageHeadline messageBody authoredDate url
+                signature { isValid }
+                author { name user { login avatarUrl name } }
+                statusCheckRollup { state }
+              } } }
+              checks: commits(last: 1) { nodes { commit { statusCheckRollup { state contexts(first: 50) { nodes {
+                __typename
+                ... on CheckRun { name status conclusion startedAt completedAt detailsUrl }
+                ... on StatusContext { context state targetUrl createdAt }
+              } } } } } }
+            }
+          }
+        }
+        """
+    // swiftlint:enable line_length
+}
+
+// MARK: - Response DTOs
+
+struct DetailResponse: Decodable, Sendable {
+    let repository: Repository?
+    struct Repository: Decodable, Sendable {
+        let pullRequest: DetailNode?
+    }
+}
+
+struct DetailNode: Decodable, Sendable {
+    let number: Int
+    let title: String
+    let url: URL?
+    let isDraft: Bool
+    let createdAt: Date
+    let updatedAt: Date
+    let additions: Int
+    let deletions: Int
+    let changedFiles: Int
+    let headRefName: String
+    let baseRefName: String
+    let headRefOid: String
+    let baseRefOid: String
+    let reviewDecision: String?
+    let mergeable: String?
+    let mergeStateStatus: String?
+    let state: String
+    let body: String
+    let repository: RepositoryNode
+    let headRepositoryOwner: LoginNode?
+    let author: GitHubActorNode?
+    let labels: Nodes<LabelNode>
+    let assignees: Nodes<GitHubActorNode>
+    let milestone: MilestoneNode?
+    let closingIssuesReferences: Nodes<IssueNode>
+    let reviewRequests: Nodes<ReviewRequestNode>
+    let latestReviews: Nodes<ReviewNode>
+    let commits: Nodes<CommitWrapper>
+    let checks: Nodes<CheckCommitWrapper>
+
+    struct Nodes<Element: Decodable & Sendable>: Decodable, Sendable {
+        let nodes: [Element?]
+        var values: [Element] { nodes.compactMap { $0 } }
+    }
+
+    struct RepositoryNode: Decodable, Sendable {
+        let name: String
+        let owner: LoginNode
+    }
+
+    struct LoginNode: Decodable, Sendable { let login: String }
+    struct LabelNode: Decodable, Sendable { let name: String; let color: String }
+    struct MilestoneNode: Decodable, Sendable { let title: String }
+    struct IssueNode: Decodable, Sendable { let number: Int; let title: String; let url: URL? }
+
+    struct ReviewRequestNode: Decodable, Sendable {
+        let requestedReviewer: Reviewer?
+        struct Reviewer: Decodable, Sendable {
+            let typename: String
+            let login: String?
+            let avatarUrl: URL?
+            let name: String?
+            let slug: String?
+            enum CodingKeys: String, CodingKey {
+                case typename = "__typename", login, avatarUrl, name, slug
+            }
+        }
+    }
+
+    struct ReviewNode: Decodable, Sendable {
+        let state: String
+        let author: GitHubActorNode?
+    }
+
+    struct CommitWrapper: Decodable, Sendable {
+        let commit: CommitNode
+    }
+
+    struct CommitNode: Decodable, Sendable {
+        let oid: String
+        let messageHeadline: String
+        let messageBody: String
+        let authoredDate: Date
+        let url: URL?
+        let signature: Signature?
+        let author: GitActor?
+        let statusCheckRollup: Rollup?
+
+        struct Signature: Decodable, Sendable { let isValid: Bool }
+        struct Rollup: Decodable, Sendable { let state: String }
+        struct GitActor: Decodable, Sendable {
+            let name: String?
+            let user: GitHubActorNode?
+        }
+    }
+
+    struct CheckCommitWrapper: Decodable, Sendable {
+        let commit: CheckCommit
+        struct CheckCommit: Decodable, Sendable {
+            let statusCheckRollup: CheckRollup?
+        }
+        struct CheckRollup: Decodable, Sendable {
+            let contexts: Nodes<CheckContext>
+        }
+    }
+
+    struct CheckContext: Decodable, Sendable {
+        let typename: String
+        let name: String?
+        let status: String?
+        let conclusion: String?
+        let startedAt: Date?
+        let completedAt: Date?
+        let detailsUrl: URL?
+        let context: String?
+        let state: String?
+        let targetUrl: URL?
+
+        enum CodingKeys: String, CodingKey {
+            case typename = "__typename", name, status, conclusion, startedAt, completedAt, detailsUrl
+            case context, state, targetUrl
+        }
+
+        var checkRun: PullRequestDetail.CheckRun? {
+            if typename == "CheckRun", let name {
+                let duration: Duration? = startedAt.flatMap { start in
+                    completedAt.map { .seconds($0.timeIntervalSince(start)) }
+                }
+                return .init(
+                    name: name, state: Self.state(status: status, conclusion: conclusion), duration: duration,
+                    url: detailsUrl)
+            }
+            if typename == "StatusContext", let context {
+                let state = state.flatMap { CheckState(rawValue: $0.lowercased()) } ?? .none
+                return .init(name: context, state: state, duration: nil, url: targetUrl)
+            }
+            return nil
+        }
+
+        static func state(status: String?, conclusion: String?) -> CheckState {
+            guard status == "COMPLETED" else { return .pending }
+            switch conclusion {
+            case "SUCCESS", "NEUTRAL", "SKIPPED": return .success
+            case "FAILURE", "TIMED_OUT", "STARTUP_FAILURE", "ACTION_REQUIRED", "CANCELLED": return .failure
+            default: return .none
+            }
+        }
+    }
+
+    // MARK: Mapping
+
+    var detail: PullRequestDetail {
+        let checkState = commits.values.last?.commit.statusCheckRollup.flatMap {
+            CheckState(rawValue: $0.state.lowercased())
+        }
+        let review = reviewDecision.flatMap(ReviewDecision.init(rawValue:)) ?? .none
+        let summary = PullRequestSummary(
+            id: PullRequestID(owner: repository.owner.login, repository: repository.name, number: number),
+            title: title,
+            author: author?.userRef ?? UserRef(login: "ghost"),
+            url: url,
+            isDraft: isDraft,
+            createdAt: createdAt,
+            updatedAt: updatedAt,
+            additions: additions,
+            deletions: deletions,
+            headRefName: headRefName,
+            baseRefName: baseRefName,
+            checkState: checkState ?? .none,
+            reviewDecision: review,
+            mergeability: mergeable.flatMap(Mergeability.init(rawValue:)) ?? .unknown
+        )
+        let checkRuns = (checks.values.last?.commit.statusCheckRollup?.contexts.values ?? []).compactMap(\.checkRun)
+            .sorted { lhs, rhs in lhs.state.sortOrder < rhs.state.sortOrder }
+        let prState = PullRequestDetail.State(rawValue: state) ?? .open
+        return PullRequestDetail(
+            summary: summary,
+            body: body,
+            state: prState,
+            headSHA: headRefOid,
+            baseSHA: baseRefOid,
+            headOwner: headRepositoryOwner?.login,
+            changedFiles: changedFiles,
+            labels: labels.values.map { .init(name: $0.name, color: $0.color) },
+            assignees: assignees.values.map(\.userRef),
+            milestone: milestone?.title,
+            linkedIssues: closingIssuesReferences.values.map { .init(number: $0.number, title: $0.title, url: $0.url) },
+            reviewers: reviewers,
+            mergeStatus: .derive(
+                state: prState, mergeStateStatus: mergeStateStatus, reviewDecision: review, checks: checkRuns,
+                isDraft: isDraft),
+            checks: checkRuns,
+            commits: commits.values.map(\.commit.model)
+        )
+    }
+
+    private var reviewers: [PullRequestDetail.Reviewer] {
+        var result: [PullRequestDetail.Reviewer] = latestReviews.values.compactMap { review in
+            guard let author = review.author else { return nil }
+            let status = PullRequestDetail.Reviewer.Status(rawValue: review.state) ?? .commented
+            return .init(name: author.login, user: author.userRef, isTeam: false, status: status)
+        }
+        for request in reviewRequests.values {
+            guard let reviewer = request.requestedReviewer else { continue }
+            if reviewer.typename == "Team", let slug = reviewer.slug {
+                result.append(
+                    .init(name: "@\(repository.owner.login)/\(slug)", user: nil, isTeam: true, status: .pending))
+            } else if let login = reviewer.login, !result.contains(where: { $0.name == login }) {
+                let user = UserRef(login: login, name: reviewer.name, avatarURL: reviewer.avatarUrl)
+                result.append(.init(name: login, user: user, isTeam: false, status: .pending))
+            }
+        }
+        return result
+    }
+}
+
+extension DetailNode.CommitNode {
+    var model: Commit {
+        Commit(
+            sha: oid,
+            subject: messageHeadline,
+            body: messageBody,
+            author: author?.user?.userRef ?? UserRef(login: author?.name ?? "unknown", name: author?.name),
+            authoredAt: authoredDate,
+            isVerified: signature?.isValid ?? false,
+            checkState: statusCheckRollup.flatMap { CheckState(rawValue: $0.state.lowercased()) } ?? .none,
+            url: url
+        )
+    }
+}
+
+extension CheckState {
+    /// Failing first, then running, then passing.
+    var sortOrder: Int {
+        switch self {
+        case .failure, .error: 0
+        case .pending, .expected: 1
+        case .success: 2
+        case .none: 3
+        }
+    }
+}
