@@ -15,7 +15,7 @@ final class TerminalViewStore: TerminalProcessHosting {
     func view(for session: TerminalSession, in model: TerminalModel) -> LocalProcessTerminalView {
         if let view = views[session.id] { return view }
         let view = LocalProcessTerminalView(frame: NSRect(x: 0, y: 0, width: 640, height: 240))
-        view.font = NSFont.monospacedSystemFont(ofSize: 12, weight: .regular)
+        view.font = TerminalFonts.preferred(size: 12)
         let delegate = SessionDelegate(id: session.id, model: model)
         view.processDelegate = delegate
         views[session.id] = view
@@ -60,5 +60,18 @@ private final class SessionDelegate: LocalProcessTerminalViewDelegate {
 
     nonisolated func processTerminated(source: TerminalView, exitCode: Int32?) {
         Task { @MainActor in self.model?.markExited(self.id, code: exitCode) }
+    }
+}
+
+enum TerminalFonts {
+    /// Prefers an installed Nerd Font (prompt themes use its powerline glyphs), else the system monospaced font.
+    static func preferred(size: CGFloat) -> NSFont {
+        let families = NSFontManager.shared.availableFontFamilies.filter { $0.contains("Nerd Font Mono") }
+        let preferred = ["JetBrainsMono", "MesloLG", "Hack", "FiraCode", "SauceCodePro", "CaskaydiaCove"]
+        let family = preferred.lazy.compactMap { name in families.first { $0.hasPrefix(name) } }.first ?? families.first
+        if let family, let font = NSFontManager.shared.font(withFamily: family, traits: [], weight: 5, size: size) {
+            return font
+        }
+        return NSFont.monospacedSystemFont(ofSize: size, weight: .regular)
     }
 }

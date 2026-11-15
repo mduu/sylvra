@@ -10,6 +10,10 @@ struct SylvraApp: App {
     @State private var environment = AppEnvironment()
     @AppStorage(AppearanceSetting.storageKey) private var appearance = AppearanceSetting.auto.rawValue
 
+    /// `--appearance=light|dark` overrides the setting (screenshots).
+    private let launchAppearance = CommandLine.arguments.first { $0.hasPrefix("--appearance=") }
+        .flatMap { AppearanceSetting(rawValue: String($0.dropFirst("--appearance=".count))) }
+
     init() {
         ProcessSignals.ignoreBrokenPipes()
     }
@@ -18,7 +22,8 @@ struct SylvraApp: App {
         // One main window: the feature models are shared, so a second window would show mixed state.
         Window("Sylvra", id: "main") {
             RootScreen(environment: environment)
-                .preferredColorScheme(AppearanceSetting(rawValue: appearance)?.colorScheme)
+                .preferredColorScheme(
+                    launchAppearance?.colorScheme ?? AppearanceSetting(rawValue: appearance)?.colorScheme)
         }
         .defaultSize(width: 1440, height: 900)
         .commands {
