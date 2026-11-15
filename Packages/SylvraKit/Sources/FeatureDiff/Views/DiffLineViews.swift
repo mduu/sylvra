@@ -3,8 +3,10 @@ import DesignSystem
 import SwiftUI
 import SylvraCore
 
-private let diffRowHeight: CGFloat = 20
-private let codeFont = Font.system(size: 12, design: .monospaced)
+private let diffRowHeight: CGFloat = 22
+private let codeFont = Font.system(size: 12.5, design: .monospaced)
+/// Unchanged code is slightly dimmed, so the change is in the light (focus lens, see specs/ux.md §7.2).
+private let contextOpacity = 0.62
 
 /// Request to start a comment on a line: side, line number and whether to extend the current range (⇧-click).
 typealias CommentRequest = (_ side: CodeLocation.Side, _ line: Int, _ extendsRange: Bool) -> Void
@@ -18,20 +20,30 @@ struct InlineLineView: View {
 
     var body: some View {
         HStack(spacing: 0) {
-            CommentGutter(isHovered: isHovered, action: commentAction)
             HStack(spacing: 0) {
-                LineNumber(line.oldNumber)
-                LineNumber(line.newNumber)
+                CommentGutter(isHovered: isHovered, action: commentAction)
+                LineNumber(line.oldNumber, kind: line.kind)
+                LineNumber(line.newNumber, kind: line.kind)
             }
+            .background(SylvraColor.codeGutter)
             .commentOnClick(commentAction)
-            Text(marker).frame(width: 16).foregroundStyle(.secondary)
-            Text(line.attributedText(language: language))
-                .lineLimit(1)
-                .frame(maxWidth: .infinity, alignment: .leading)
+            HStack(spacing: 0) {
+                ChangeBar(kind: line.kind)
+                Text(marker)
+                    .frame(width: 18)
+                    .foregroundStyle(DiffColors.accent(line.kind) ?? .secondary)
+                    .fontWeight(.semibold)
+                Text(line.attributedText(language: language))
+                    .lineLimit(1)
+                    .opacity(line.kind == .context ? contextOpacity : 1)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .frame(maxHeight: .infinity)
+            .background(DiffColors.background(line.kind))
         }
         .font(codeFont)
         .frame(height: diffRowHeight)
-        .background(DiffColors.background(line.kind))
+        .background(SylvraColor.codeSurface)
         .onHover { isHovered = $0 }
     }
 
@@ -61,7 +73,7 @@ struct SideBySideRowView: View {
     var body: some View {
         HStack(spacing: 0) {
             SideBySideHalf(line: row.left, number: row.left?.oldNumber, side: .left, onComment: onComment)
-            Divider()
+            Rectangle().fill(SylvraColor.codeHairline).frame(width: 1)
             SideBySideHalf(line: row.right, number: row.right?.newNumber, side: .right, onComment: onComment)
         }
         .font(codeFont)
@@ -79,19 +91,29 @@ private struct SideBySideHalf: View {
 
     var body: some View {
         HStack(spacing: 0) {
-            CommentGutter(isHovered: isHovered && line != nil, action: commentAction)
-            LineNumber(number).commentOnClick(commentAction)
+            HStack(spacing: 0) {
+                CommentGutter(isHovered: isHovered && line != nil, action: commentAction)
+                LineNumber(number, kind: line?.kind ?? .context)
+            }
+            .background(SylvraColor.codeGutter)
+            .commentOnClick(commentAction)
             if let line {
-                Text(line.attributedText(language: language))
-                    .lineLimit(1)
-                    .padding(.leading, 6)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                HStack(spacing: 0) {
+                    ChangeBar(kind: line.kind)
+                    Text(line.attributedText(language: language))
+                        .lineLimit(1)
+                        .opacity(line.kind == .context ? contextOpacity : 1)
+                        .padding(.leading, 8)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .frame(maxHeight: .infinity)
+                .background(DiffColors.background(line.kind))
             } else {
-                Spacer()
+                HatchPattern().frame(maxWidth: .infinity)
             }
         }
         .frame(maxWidth: .infinity)
-        .background(line.map { DiffColors.background($0.kind) } ?? DiffColors.emptyBackground)
+        .background(SylvraColor.codeSurface)
         .onHover { isHovered = $0 }
     }
 
@@ -136,33 +158,91 @@ extension View {
     }
 }
 
-/// `@@ … @@ section` separator (pure).
+/// Hunk separator: a hairline with a capsule naming the enclosing scope and line range (pure).
 struct HunkHeaderView: View {
     let hunk: Hunk
 
     var body: some View {
-        Text(hunk.section.isEmpty ? hunk.header : hunk.section)
-            .font(.system(size: 11, design: .monospaced))
-            .foregroundStyle(.secondary)
-            .lineLimit(1)
-            .padding(.horizontal, 12)
-            .frame(maxWidth: .infinity, minHeight: 24, alignment: .leading)
-            .background(DiffColors.hunkBackground)
+        HStack(spacing: 10) {
+            hairline.frame(width: 24)
+            HStack(spacing: 6) {
+                Image(systemName: "ellipsis")
+                    .font(.system(size: 10, weight: .bold))
+                    .foregroundStyle(SylvraColor.brandPrimary)
+                if !hunk.section.isEmpty {
+                    Text(hunk.section)
+                        .font(.system(size: 11.5, weight: .medium, design: .monospaced))
+                        .foregroundStyle(.primary.opacity(0.8))
+                        .lineLimit(1)
+                }
+                Text(verbatim: "lines \(hunk.newStart)–\(hunk.newStart + max(hunk.newCount - 1, 0))")
+                    .font(.system(size: 10.5).monospacedDigit())
+                    .foregroundStyle(.secondary)
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 3)
+            .background(SylvraColor.brandPrimary.opacity(0.10), in: Capsule())
+            .overlay(Capsule().strokeBorder(SylvraColor.brandPrimary.opacity(0.22)))
+            hairline
+        }
+        .padding(.horizontal, 10)
+        .frame(maxWidth: .infinity, minHeight: 34)
+        .background(SylvraColor.codeSurface)
+    }
+
+    private var hairline: some View {
+        Rectangle().fill(SylvraColor.codeHairline).frame(height: 1)
+    }
+}
+
+/// Glowing bar at the gutter edge of changed lines (pure).
+private struct ChangeBar: View {
+    let kind: DiffLine.Kind
+
+    var body: some View {
+        if let accent = DiffColors.accent(kind) {
+            Capsule()
+                .fill(accent)
+                .frame(width: 3)
+                .padding(.vertical, 1)
+                .shadow(color: accent.opacity(0.7), radius: 3)
+        } else {
+            Color.clear.frame(width: 3)
+        }
+    }
+}
+
+/// Subtle diagonal hatching for the empty side of a side-by-side row (pure).
+private struct HatchPattern: View {
+    var body: some View {
+        Canvas { context, size in
+            var path = Path()
+            var x: CGFloat = -size.height
+            while x < size.width {
+                path.move(to: CGPoint(x: x, y: size.height))
+                path.addLine(to: CGPoint(x: x + size.height, y: 0))
+                x += 7
+            }
+            context.stroke(path, with: .color(.secondary.opacity(0.10)), lineWidth: 1)
+        }
     }
 }
 
 private struct LineNumber: View {
     let number: Int?
+    let kind: DiffLine.Kind
 
-    init(_ number: Int?) {
+    init(_ number: Int?, kind: DiffLine.Kind) {
         self.number = number
+        self.kind = kind
     }
 
     var body: some View {
         Text(number.map(String.init) ?? "")
-            .foregroundStyle(.tertiary)
-            .frame(width: 36, alignment: .trailing)
-            .padding(.trailing, 6)
+            .font(.system(size: 11, weight: kind == .context ? .regular : .semibold, design: .monospaced))
+            .foregroundStyle(DiffColors.accent(kind).map { AnyShapeStyle($0.opacity(0.9)) } ?? AnyShapeStyle(.tertiary))
+            .frame(width: 34, alignment: .trailing)
+            .padding(.trailing, 8)
     }
 }
 

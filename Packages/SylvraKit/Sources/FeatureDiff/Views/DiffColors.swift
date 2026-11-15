@@ -1,25 +1,36 @@
 import AppKit
+import DesignSystem
 import SwiftUI
 
 /// Muted diff colors (not brand colors, see specs/ux.md §3.1).
 enum DiffColors {
-    static let addedBackground = Color.green.opacity(0.12)
-    static let removedBackground = Color.red.opacity(0.11)
-    static let addedHighlight = Color.green.opacity(0.32)
-    static let removedHighlight = Color.red.opacity(0.30)
-    static let hunkBackground = Color.secondary.opacity(0.08)
+    static var added: Color { SylvraColor.diffAdded }
+    static var removed: Color { SylvraColor.diffRemoved }
     static let emptyBackground = Color.secondary.opacity(0.04)
 
-    static func background(_ kind: DiffLine.Kind) -> Color {
+    static func accent(_ kind: DiffLine.Kind) -> Color? {
         switch kind {
-        case .added: addedBackground
-        case .removed: removedBackground
-        case .context: .clear
+        case .added: added
+        case .removed: removed
+        case .context: nil
         }
     }
 
+    /// Soft gradient for changed lines: strongest at the gutter edge, fading into the code.
+    static func background(_ kind: DiffLine.Kind) -> AnyShapeStyle {
+        guard let accent = accent(kind) else { return AnyShapeStyle(Color.clear) }
+        return AnyShapeStyle(
+            LinearGradient(
+                stops: [
+                    .init(color: accent.opacity(0.20), location: 0),
+                    .init(color: accent.opacity(0.09), location: 0.35),
+                    .init(color: accent.opacity(0.06), location: 1),
+                ],
+                startPoint: .leading, endPoint: .trailing))
+    }
+
     static func highlight(_ kind: DiffLine.Kind) -> Color {
-        kind == .added ? addedHighlight : removedHighlight
+        (kind == .added ? added : removed).opacity(0.38)
     }
 }
 
@@ -49,6 +60,8 @@ extension DiffLine {
         for highlight in highlights {
             if let range = clamp(highlight) {
                 string.addAttribute(.backgroundColor, value: NSColor(DiffColors.highlight(kind)), range: range)
+                string.addAttribute(
+                    .font, value: NSFont.monospacedSystemFont(ofSize: 12.5, weight: .semibold), range: range)
             }
         }
         return (try? AttributedString(string, including: \.appKit)) ?? AttributedString(text)

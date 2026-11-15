@@ -22,6 +22,19 @@ public enum SylvraColor {
     /// Terminal text selection.
     public static let terminalSelection = dynamic(light: 0x4B2A8A, dark: 0x3A2270)
 
+    // MARK: Diff surface
+
+    /// Background of code in the diff (a calm, slightly violet canvas).
+    public static let codeSurface = dynamic(light: 0xFFFFFF, dark: 0x130B26)
+    /// Gutter behind line numbers.
+    public static let codeGutter = dynamic(light: 0xF6F3FC, dark: 0x0F0820)
+    /// Hairlines inside the diff.
+    public static let codeHairline = dynamic(light: 0xE6E0F2, dark: 0x2A1F45)
+    /// Added lines (fresh teal-green, harmonizes with violet).
+    public static let diffAdded = dynamic(light: 0x1E9E6A, dark: 0x4BD39A)
+    /// Removed lines (soft coral).
+    public static let diffRemoved = dynamic(light: 0xD8435E, dark: 0xF2738A)
+
     private static func dynamic(light: UInt32, dark: UInt32) -> Color {
         Color(
             nsColor: NSColor(name: nil) { appearance in
