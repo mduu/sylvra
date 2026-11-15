@@ -15,12 +15,15 @@ struct SylvraApp: App {
                 .preferredColorScheme(AppearanceSetting(rawValue: appearance)?.colorScheme)
         }
         .defaultSize(width: 1440, height: 900)
+        .commands { TerminalCommands(terminal: environment.terminal) }
 
         Settings {
             SettingsScreen {
                 AIReviewSettingsView(model: environment.aiReview)
             } notifications: {
                 NotificationSettingsView(center: environment.activity)
+            } terminal: {
+                TerminalToolsSettingsPane(customTools: environment.customTools)
             }
             .preferredColorScheme(AppearanceSetting(rawValue: appearance)?.colorScheme)
         }

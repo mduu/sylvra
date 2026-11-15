@@ -28,7 +28,9 @@ struct RootScreen: View {
                 .navigationSplitViewColumnWidth(min: 240, ideal: 290)
         } content: {
             PullRequestScreen(model: environment.pullRequest, pullRequest: selection) {
-                DiffFileNavigatorPanel(model: environment.diff)
+                DiffFileNavigatorPanel(model: environment.diff) { item in
+                    NavigatorToolsMenu(environment: environment, item: item, pullRequest: selection?.id)
+                }
             }
             .navigationSplitViewColumnWidth(min: 300, ideal: 360)
         } detail: {
@@ -43,6 +45,7 @@ struct RootScreen: View {
                     onStartComment: { environment.review.startComment(at: $0, lineText: $1) }
                 )
             }
+            .terminalPanel(environment, selection: selection)
         }
         .navigationTitle(Text(verbatim: selection.map { "\($0.id.repository) #\($0.id.number)" } ?? "Sylvra"))
         .navigationSubtitle(Text(verbatim: selection?.title ?? ""))
@@ -99,6 +102,9 @@ struct RootScreen: View {
             }
             ToolbarItem(placement: .primaryAction) {
                 OpenInIDEToolbarPanel(model: environment.openInIDE, pullRequestID: selection?.id)
+            }
+            ToolbarItem(placement: .primaryAction) {
+                TerminalToolbarMenu(environment: environment, pullRequest: selection?.id)
             }
             ToolbarItem(placement: .primaryAction) {
                 AIReviewToolbarPanel(
