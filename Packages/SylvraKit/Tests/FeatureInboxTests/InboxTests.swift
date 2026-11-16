@@ -6,14 +6,33 @@ import Testing
 @testable import FeatureInbox
 
 struct GitHubInboxLoaderTests {
-    @Test func queriesOneSectionPerRequest() {
-        for section in InboxSection.allCases {
-            let query = GitHubInboxLoader.query(for: section, pageSize: 5)
-            #expect(query.contains("\(section.rawValue): search("))
-            #expect(query.components(separatedBy: "search(").count == 2)
-            #expect(query.contains("fragment PR on PullRequest"))
-        }
-        #expect(GitHubInboxLoader.query(for: .requestedFromMe, pageSize: 5).contains("user-review-requested:@me"))
+    @Test func buildsOneAliasedSearchPerChunk() {
+        let query = GitHubInboxLoader.query(searchCount: 2, pageSize: 5)
+        #expect(query.hasPrefix("query($q0: String!, $q1: String!)"))
+        #expect(query.contains("s1: search(query: $q1, type: ISSUE, first: 5)"))
+        #expect(query.contains("fragment PR on PullRequest"))
+        #expect(GitHubInboxLoader.variables(["a", "b"]) == ["q0": .string("a"), "q1": .string("b")])
+    }
+
+    @Test func scopeLimitsOnlyBroadSections() {
+        let scope = InboxScope(repositories: [InboxRepository(owner: "acme", name: "billing")])
+        #expect(scope.searchQueries(for: .involved).first?.hasSuffix(" repo:acme/billing") == true)
+        #expect(scope.searchQueries(for: .requestedFromMe).first?.contains("repo:") == false)
+        #expect(scope.searchQueries(for: .myPullRequests).first?.contains("repo:") == false)
+        #expect(InboxScope.all.searchQueries(for: .myTeams).first?.contains("repo:") == false)
+    }
+
+    @Test func scopeSplitsLongRepositoryListsIntoShortQueries() {
+        let repositories = (1...30).map { InboxRepository(owner: "digitec-galaxus", name: "service-number-\($0)") }
+        let queries = InboxScope(repositories: repositories).searchQueries(for: .myTeams)
+        #expect(queries.count > 1)
+        #expect(queries.allSatisfy { $0.count <= InboxScope.maxQueryLength })
+        let mentioned = queries.flatMap { $0.split(separator: " ").filter { $0.hasPrefix("repo:") } }
+        #expect(mentioned.count == 30)
+    }
+
+    @Test func repositoriesCompareCaseInsensitively() {
+        #expect(InboxRepository(owner: "Acme", name: "Billing") == InboxRepository(owner: "acme", name: "billing"))
     }
 
     @Test func recentlyClosedUsesSevenDayWindow() throws {
@@ -65,9 +84,34 @@ struct InboxScreenModelTests {
         #expect(visible.map(\.title) == ["Migrate auth to passkeys"])
     }
 
+    @Test func scopeFiltersBroadSectionsAndPersists() async throws {
+        let defaults = try #require(UserDefaults(suiteName: "InboxScopeTests-\(UUID().uuidString)"))
+        let model = InboxScreenModel(
+            loader: DemoInboxLoader(), repositorySearcher: DemoRepositorySearcher(), defaults: defaults)
+        await model.refresh()
+        #expect(model.suggestedRepositories.count == 5)
+
+        await model.addRepository(InboxRepository(owner: "acme", name: "identity"))
+        #expect(model.snapshot.pullRequests(in: .myTeams).map(\.id.repository) == ["identity"])
+        #expect(model.snapshot.pullRequests(in: .requestedFromMe).count == 2)
+        #expect(model.snapshot.pullRequests(in: .involved).isEmpty)
+        #expect(!model.suggestedRepositories.contains(InboxRepository(owner: "acme", name: "identity")))
+
+        let restored = InboxScreenModel(loader: DemoInboxLoader(), defaults: defaults)
+        #expect(restored.scope.repositories.map(\.fullName) == ["acme/identity"])
+
+        await model.showAllRepositories()
+        #expect(model.snapshot.pullRequests(in: .myTeams).count == 3)
+    }
+
+    @Test func demoSearchFindsRepositories() async throws {
+        let found = try await DemoRepositorySearcher().searchRepositories(matching: "org:acme bill")
+        #expect(found.map(\.name) == ["billing", "billing-legacy"])
+    }
+
     @Test func reportsFailures() async {
         struct Failing: InboxLoading {
-            func loadInbox() async throws -> InboxSnapshot { throw GitHubError.notAuthenticated }
+            func loadInbox(scope: InboxScope) async throws -> InboxSnapshot { throw GitHubError.notAuthenticated }
         }
         let model = InboxScreenModel(loader: Failing())
         await model.refresh()

@@ -38,15 +38,39 @@ public struct InboxScreen: View {
         .searchable(text: $model.searchText, placement: .sidebar, prompt: Text("Search PRs"))
         .overlay { overlay }
         .safeAreaInset(edge: .bottom) {
-            if case .failed = model.loadState, !model.snapshot.isEmpty {
-                Label("Offline — showing the last loaded pull requests", systemImage: "wifi.exclamationmark")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .padding(6)
+            VStack(spacing: 0) {
+                if case .failed = model.loadState, !model.snapshot.isEmpty {
+                    Label("Offline — showing the last loaded pull requests", systemImage: "wifi.exclamationmark")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .padding(6)
+                }
+                if model.snapshot.isRestrictedBySSO == true {
+                    ssoHint
+                }
+                if model.repositorySearcher != nil {
+                    scopeFooter
+                }
             }
+        }
+        .sheet(isPresented: $model.isChoosingRepositories) {
+            InboxRepositoriesSheet(model: model)
         }
         .task { await model.keepRefreshing() }
         .toolbar {
+            if model.repositorySearcher != nil {
+                ToolbarItem {
+                    Button {
+                        model.isChoosingRepositories = true
+                    } label: {
+                        Label(
+                            "Inbox repositories",
+                            systemImage: model.scope.isAll
+                                ? "line.3.horizontal.decrease.circle" : "line.3.horizontal.decrease.circle.fill")
+                    }
+                    .help("Choose the repositories your inbox searches")
+                }
+            }
             ToolbarItem {
                 Button {
                     Task { await model.refresh() }
@@ -56,6 +80,46 @@ public struct InboxScreen: View {
                 .keyboardShortcut("r", modifiers: .command)
             }
         }
+    }
+
+    private var ssoHint: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 6) {
+            Image(systemName: "lock.shield").foregroundStyle(SylvraColor.accentGold)
+            Text(
+                // swiftlint:disable:next line_length
+                "Some organizations hide their pull requests: your GitHub CLI token isn't authorized for their single sign-on. Run `gh auth refresh` or authorize “GitHub CLI” under github.com → Settings → Applications."
+            )
+            .fixedSize(horizontal: false, vertical: true)
+        }
+        .font(.caption)
+        .foregroundStyle(.secondary)
+        .padding(10)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(SylvraColor.accentGold.opacity(0.08))
+    }
+
+    private var scopeFooter: some View {
+        Button {
+            model.isChoosingRepositories = true
+        } label: {
+            HStack(spacing: 6) {
+                Image(systemName: "square.stack.3d.up")
+                Text(
+                    model.scope.isAll
+                        ? String(localized: "All repositories")
+                        : String(localized: "\(model.scope.repositories.count) repositories"))
+                Spacer()
+                Text("Edit").foregroundStyle(SylvraColor.brandPrimary)
+            }
+            .font(.caption)
+            .foregroundStyle(.secondary)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .background(SylvraColor.surfaceSidebar)
+        .help("Choose the repositories your inbox searches")
     }
 
     @ViewBuilder private var overlay: some View {
@@ -69,13 +133,25 @@ public struct InboxScreen: View {
                 Text(message)
             } actions: {
                 Button("Try again") { Task { await model.refresh() } }
+                if model.repositorySearcher != nil, model.scope.isAll {
+                    Button("Choose repositories…") { model.isChoosingRepositories = true }
+                        .help("Searching fewer repositories helps when your organizations are large")
+                }
             }
         case .loaded where model.snapshot.isEmpty:
-            ContentUnavailableView(
-                "Nothing to review",
-                systemImage: "leaf",
-                description: Text("Enjoy the quiet.")
-            )
+            ContentUnavailableView {
+                Label("Nothing to review", systemImage: "leaf")
+            } description: {
+                Text(
+                    model.scope.isAll
+                        ? "Enjoy the quiet." : "Add repositories to see your teams' pull requests here.")
+            } actions: {
+                if model.repositorySearcher != nil {
+                    Button("Add repository…", systemImage: "plus") { model.isChoosingRepositories = true }
+                        .buttonStyle(.borderedProminent)
+                        .tint(SylvraColor.brandPrimary)
+                }
+            }
         default:
             EmptyView()
         }

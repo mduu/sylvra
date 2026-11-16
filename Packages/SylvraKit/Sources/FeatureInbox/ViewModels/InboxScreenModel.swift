@@ -17,14 +17,33 @@ public final class InboxScreenModel {
     public private(set) var snapshot = InboxSnapshot(sections: [:], loadedAt: .distantPast)
     public private(set) var loadState: LoadState = .idle
     public var searchText = ""
+    /// Repositories the broad sections search (persisted; empty = all).
+    public private(set) var scope: InboxScope
+    /// Shows the sheet for choosing the inbox repositories.
+    public var isChoosingRepositories = false
 
     private let loader: any InboxLoading
     private let cache: JSONCache?
+    private let defaults: UserDefaults?
+    /// Repository search for the chooser; `nil` hides it.
+    public let repositorySearcher: (any RepositorySearching)?
 
-    /// - Parameter cache: shows the last loaded inbox immediately at launch (`nil` in demo mode and tests).
-    public init(loader: any InboxLoading, cache: JSONCache? = nil) {
+    static let scopeKey = "inbox.scope"
+
+    /// - Parameters:
+    ///   - cache: shows the last loaded inbox immediately at launch (`nil` in demo mode and tests).
+    ///   - defaults: stores the chosen repositories (`nil` in tests: nothing is persisted).
+    public init(
+        loader: any InboxLoading, cache: JSONCache? = nil, repositorySearcher: (any RepositorySearching)? = nil,
+        defaults: UserDefaults? = nil
+    ) {
         self.loader = loader
         self.cache = cache
+        self.repositorySearcher = repositorySearcher
+        self.defaults = defaults
+        scope =
+            defaults?.data(forKey: Self.scopeKey).flatMap { try? JSONDecoder().decode(InboxScope.self, from: $0) }
+            ?? .all
         if let cached = cache?.load(InboxSnapshot.self, key: "inbox") {
             snapshot = cached
             loadState = .loaded
@@ -48,12 +67,46 @@ public final class InboxScreenModel {
     public func refresh() async {
         if snapshot.isEmpty { loadState = .loading }
         do {
-            snapshot = try await loader.loadInbox()
+            snapshot = try await loader.loadInbox(scope: scope)
             loadState = .loaded
             cache?.save(snapshot, key: "inbox")
         } catch {
             loadState = .failed(Self.message(for: error))
         }
+    }
+
+    // MARK: - Repositories
+
+    public func addRepository(_ repository: InboxRepository) async {
+        guard !scope.repositories.contains(repository) else { return }
+        var repositories = scope.repositories + [repository]
+        repositories.sort { $0.id < $1.id }
+        await setScope(InboxScope(repositories: repositories))
+    }
+
+    public func removeRepository(_ repository: InboxRepository) async {
+        await setScope(InboxScope(repositories: scope.repositories.filter { $0 != repository }))
+    }
+
+    /// Back to all repositories.
+    public func showAllRepositories() async {
+        await setScope(.all)
+    }
+
+    /// Repositories that appear in the current inbox but aren't chosen yet (suggestions for the chooser).
+    public var suggestedRepositories: [InboxRepository] {
+        var seen = Set(scope.repositories)
+        return snapshot.sections.values.flatMap { $0 }
+            .sorted { $0.updatedAt > $1.updatedAt }
+            .map { InboxRepository(owner: $0.id.owner, name: $0.id.repository) }
+            .filter { seen.insert($0).inserted }
+    }
+
+    private func setScope(_ newScope: InboxScope) async {
+        guard newScope != scope else { return }
+        scope = newScope
+        if let data = try? JSONEncoder().encode(newScope) { defaults?.set(data, forKey: Self.scopeKey) }
+        await refresh()
     }
 
     /// Refreshes periodically while the task is alive (cancelled with the view).

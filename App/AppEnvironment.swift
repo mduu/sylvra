@@ -54,7 +54,7 @@ final class AppEnvironment {
         autoTurnsIntoComment = arguments.contains("--turn-into-comment")
         gitHub = GitHubClient(tokenProvider: GitHubCLITokenProvider())
         let inboxLoader: any InboxLoading = isDemo ? DemoInboxLoader() : GitHubInboxLoader(client: gitHub)
-        inbox = InboxScreenModel(loader: inboxLoader, cache: isDemo ? nil : JSONCache())
+        inbox = Self.makeInbox(loader: inboxLoader, gitHub: gitHub, isDemo: isDemo, arguments: arguments)
         let detailLoader: any PullRequestDetailLoading =
             isDemo ? DemoPullRequestDetailLoader() : GitHubPullRequestDetailLoader(client: gitHub)
         pullRequest = PullRequestScreenModel(loader: detailLoader)
@@ -101,6 +101,17 @@ final class AppEnvironment {
 
     /// `--flag=value` (preferred: a separate bare value would be opened as a document by AppKit, and the
     /// main window would not appear) or `--flag value`.
+    private static func makeInbox(
+        loader: any InboxLoading, gitHub: GitHubClient, isDemo: Bool, arguments: [String]
+    ) -> InboxScreenModel {
+        let inbox = InboxScreenModel(
+            loader: loader, cache: isDemo ? nil : JSONCache(),
+            repositorySearcher: isDemo ? DemoRepositorySearcher() : GitHubRepositorySearcher(client: gitHub),
+            defaults: isDemo ? nil : .standard)
+        inbox.isChoosingRepositories = arguments.contains("--choose-repositories")
+        return inbox
+    }
+
     private static func value(of flag: String, in arguments: [String]) -> String? {
         if let inline = arguments.first(where: { $0.hasPrefix(flag + "=") }) {
             return String(inline.dropFirst(flag.count + 1))

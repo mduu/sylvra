@@ -127,6 +127,10 @@ Screens follow the container / presentational split described in `architecture.m
 5. *My PRs* — my own open PRs.
 6. *Recently closed* — last 7 days.
 
+**Inbox repositories**: the user adds the repositories that matter (search by name, e.g. `org:acme billing`, or pick from repositories already in the inbox). *My teams*, *Involved* and *Recently closed* only search these; *Requested from me* and *My PRs* always search all repositories so nothing addressed to the user is missed. No repositories chosen = all repositories. Reason: accounts in large organizations don't need every repository, and one broad search can exceed GitHub's time limit (502). Entry points: filter button in the sidebar toolbar, footer "All repositories · Edit", *Add repository…* in the empty inbox and *Choose repositories…* when loading fails.
+
+If GitHub reports `X-GitHub-SSO: partial-results`, the sidebar explains that the GitHub CLI token isn't authorized for an organization's single sign-on.
+
 **PR row**:
 
 ```
@@ -313,7 +317,7 @@ Built single-key shortcuts (active whenever no text is being edited — composer
 
 ## 16. States
 
-- **Empty inbox**: a calm illustration (a violet clearing with a golden leaf), "Nothing to review. Enjoy the quiet."
+- **Empty inbox**: a calm illustration (a violet clearing with a golden leaf), "Nothing to review. Enjoy the quiet." with an *Add repository…* button
 - **Loading**: skeletons, never spinners in the middle of content.
 - **Offline / rate-limited**: subtle banner, cached data stays usable.
 - **Agent missing / not logged in**: inline guidance; AI features disabled, everything else works.

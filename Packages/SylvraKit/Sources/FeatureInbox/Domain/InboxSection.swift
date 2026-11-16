@@ -49,10 +49,15 @@ public enum InboxSection: String, CaseIterable, Identifiable, Sendable, Codable 
 public struct InboxSnapshot: Sendable, Equatable, Codable {
     public var sections: [InboxSection: [PullRequestSummary]]
     public var loadedAt: Date
+    /// Some organizations hid their results because the token lacks SSO authorization (`nil` = no).
+    public var isRestrictedBySSO: Bool?
 
-    public init(sections: [InboxSection: [PullRequestSummary]], loadedAt: Date = .now) {
+    public init(
+        sections: [InboxSection: [PullRequestSummary]], loadedAt: Date = .now, isRestrictedBySSO: Bool? = nil
+    ) {
         self.sections = sections
         self.loadedAt = loadedAt
+        self.isRestrictedBySSO = isRestrictedBySSO
     }
 
     public func pullRequests(in section: InboxSection) -> [PullRequestSummary] {

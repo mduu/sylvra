@@ -109,4 +109,14 @@ struct GitHubClientTests {
         }
         #expect(transport.requests.count == 1)
     }
+
+    @Test func recordsSSOPartialResults() async throws {
+        let transport = FakeTransport()
+        transport.body = Data(#"{"data":{"viewer":{"login":"a","name":null,"avatarUrl":null}}}"#.utf8)
+        transport.headers = ["X-GitHub-SSO": "partial-results; organizations=21955855,20582480"]
+        let github = client(transport)
+        _ = try await github.viewer()
+        #expect(await github.ssoRestrictedOrganizations == ["21955855", "20582480"])
+        #expect(GitHubClient.ssoOrganizations("required; url=https://github.com/orgs/x/sso").isEmpty)
+    }
 }

@@ -64,6 +64,9 @@ public actor GitHubClient {
 
     /// Remaining GraphQL / REST budget as reported by the last response.
     public private(set) var rateLimitRemaining: Int?
+    /// GitHub left out results of these organizations (IDs) because the token isn't authorized
+    /// for their SAML single sign-on (`X-GitHub-SSO: partial-results`).
+    public private(set) var ssoRestrictedOrganizations: Set<String> = []
 
     public init(
         baseURL: URL? = GitHubClient.defaultEndpoint,
@@ -164,6 +167,9 @@ public actor GitHubClient {
         if let remaining = response.value(forHTTPHeaderField: "X-RateLimit-Remaining") {
             rateLimitRemaining = Int(remaining)
         }
+        if let sso = response.value(forHTTPHeaderField: "X-GitHub-SSO") {
+            ssoRestrictedOrganizations.formUnion(Self.ssoOrganizations(sso))
+        }
         if response.statusCode == 401 {
             cachedToken = nil
             throw GitHubError.notAuthenticated
@@ -180,6 +186,13 @@ public actor GitHubClient {
 }
 
 extension GitHubClient {
+    /// Organization IDs of `X-GitHub-SSO: partial-results; organizations=21955855,20582480`.
+    static func ssoOrganizations(_ header: String) -> [String] {
+        guard header.contains("partial-results") else { return [] }
+        guard let list = header.components(separatedBy: "organizations=").dropFirst().first else { return ["?"] }
+        return list.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
+    }
+
     /// Short plain-text excerpt of an error body (HTML error pages are reduced to their text).
     static func plainText(_ data: Data) -> String {
         let raw = String(bytes: data.prefix(2000), encoding: .utf8) ?? ""

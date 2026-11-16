@@ -5,8 +5,14 @@ import SylvraCore
 public struct DemoInboxLoader: InboxLoading {
     public init() {}
 
-    public func loadInbox() async throws -> InboxSnapshot {
-        InboxSnapshot(sections: Self.sections)
+    public func loadInbox(scope: InboxScope) async throws -> InboxSnapshot {
+        var sections = Self.sections
+        for section in InboxSection.allCases where section.followsScope && !scope.isAll {
+            sections[section] = sections[section]?.filter {
+                scope.contains(owner: $0.id.owner, name: $0.id.repository)
+            }
+        }
+        return InboxSnapshot(sections: sections)
     }
 
     public static let sections: [InboxSection: [PullRequestSummary]] = [
@@ -71,5 +77,26 @@ public struct DemoInboxLoader: InboxLoading {
             reviewDecision: review,
             mergeability: .mergeable
         )
+    }
+}
+
+/// Fixture repository search for demo mode and previews.
+public struct DemoRepositorySearcher: RepositorySearching {
+    public init() {}
+
+    public static let repositories: [InboxRepository] = [
+        InboxRepository(owner: "acme", name: "billing", summary: "Invoices, pricing and VAT"),
+        InboxRepository(owner: "acme", name: "billing-legacy", summary: "Old billing system (read-only)"),
+        InboxRepository(owner: "acme", name: "payments", summary: "Payment providers and webhooks"),
+        InboxRepository(owner: "acme", name: "identity", summary: "Sign-in, passkeys and sessions"),
+        InboxRepository(owner: "acme", name: "catalog", summary: "Products, images and search"),
+        InboxRepository(owner: "acme", name: "ios-app", summary: "The iOS app"),
+    ]
+
+    public func searchRepositories(matching text: String) async throws -> [InboxRepository] {
+        let words = text.split(separator: " ").filter { !$0.contains(":") }
+        return Self.repositories.filter { repository in
+            words.allSatisfy { repository.fullName.localizedCaseInsensitiveContains($0) }
+        }
     }
 }
