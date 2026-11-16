@@ -15,6 +15,9 @@ public final class InboxScreenModel {
     }
 
     public private(set) var snapshot = InboxSnapshot(sections: [:], loadedAt: .distantPast)
+    /// Called after a refresh with pull requests where someone acted after the reviewer's last comment
+    /// (wired by the app for notifications).
+    @ObservationIgnored public var onNewActivity: (([PullRequestSummary]) -> Void)?
     public private(set) var loadState: LoadState = .idle
     public var searchText = ""
     /// Repositories the broad sections search (persisted; empty = all).
@@ -97,9 +100,14 @@ public final class InboxScreenModel {
     public func refresh() async {
         if snapshot.isEmpty { loadState = .loading }
         do {
-            snapshot = try await loader.loadInbox(scope: scope)
-            loadState = .loaded
-            cache?.save(snapshot, key: "inbox")
+            let loaded = try await loader.loadInbox(scope: scope)
+            let previous = snapshot
+            // Unchanged results leave the list alone (no re-render while the reviewer scrolls).
+            if !loaded.hasSameContent(as: previous) { snapshot = loaded }
+            if loadState != .loaded { loadState = .loaded }
+            cache?.save(loaded, key: "inbox")
+            let active = loaded.newActivity(comparedTo: previous)
+            if !active.isEmpty { onNewActivity?(active) }
             await refreshRepositoryCounts()
         } catch is CancellationError {
             if snapshot.isEmpty { loadState = .idle }

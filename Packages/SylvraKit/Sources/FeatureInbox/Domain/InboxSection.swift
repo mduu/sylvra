@@ -69,4 +69,25 @@ public struct InboxSnapshot: Sendable, Equatable, Codable {
     }
 
     public var isEmpty: Bool { sections.values.allSatisfy(\.isEmpty) }
+
+    /// Same pull requests and flags; only `loadedAt` may differ.
+    public func hasSameContent(as other: InboxSnapshot) -> Bool {
+        sections == other.sections && isRestrictedBySSO == other.isRestrictedBySSO && viewerLogin == other.viewerLogin
+    }
+
+    /// Pull requests where someone else acted after the reviewer's last comment or review, and that activity
+    /// is newer than in `previous`. Only pull requests `previous` already knew count (no burst after launch).
+    public func newActivity(comparedTo previous: InboxSnapshot) -> [PullRequestSummary] {
+        let before = Dictionary(
+            previous.sections.values.joined().map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+        var seen = Set<PullRequestID>()
+        return InboxSection.allCases.filter { $0 != .recentlyClosed }.flatMap { pullRequests(in: $0) }
+            .filter { pullRequest in
+                guard seen.insert(pullRequest.id).inserted, let activity = pullRequest.viewerActivity,
+                    activity.hasNewActivity, let others = activity.othersLastActivityAt,
+                    let old = before[pullRequest.id]
+                else { return false }
+                return others > (old.viewerActivity?.othersLastActivityAt ?? .distantFuture)
+            }
+    }
 }

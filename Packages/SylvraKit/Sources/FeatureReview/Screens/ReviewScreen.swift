@@ -18,7 +18,11 @@ public struct ReviewScreen<Content: View>: View {
 
     public var body: some View {
         content
-            .task(id: pullRequestID) { await model.load(pullRequestID) }
+            .task(id: pullRequestID) {
+                await model.load(pullRequestID)
+                // Replies by others appear without reopening the pull request.
+                await model.keepRefreshingThreads()
+            }
             .toolbar {
                 if pullRequestID != nil, model.snapshot != nil {
                     ToolbarItem(placement: .primaryAction) {

@@ -9,13 +9,14 @@ extension DiffScreenModel {
         guard let id = pullRequestID, let loaded = progress,
             let latest = try? await loader.loadReviewProgress(for: id), pullRequestID == id
         else { return }
-        if latest.headSHA != loaded.headSHA { hasNewCommits = true }
+        // Only a change is assigned: every assignment re-renders the diff.
+        if latest.headSHA != loaded.headSHA, !hasNewCommits { hasNewCommits = true }
     }
 
     func loadProgress(_ id: PullRequestID) async {
         guard let loaded = try? await loader.loadReviewProgress(for: id), pullRequestID == id else { return }
-        progress = loaded
-        hasNewCommits = false
+        if progress != loaded { progress = loaded }
+        if hasNewCommits { hasNewCommits = false }
     }
 
     func loadSinceReview() async {

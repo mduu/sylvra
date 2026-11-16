@@ -124,19 +124,7 @@ struct RootScreen: View {
                 environment.aiReview.findings(for: selection?.id)
                 .first { $0.id == id }?.title
         }
-        .onAppear {
-            // A click on an AI highlight in the diff opens that finding (card in the diff, row in the inspector).
-            environment.diff.selectFinding = { id in
-                guard let id = UUID(uuidString: id) else { return }
-                isInspectorPresented = true
-                withAnimation(.snappy) { environment.aiReview.showFinding(id) }
-            }
-            environment.review.discussHandler = { location, code, question in
-                discuss(location, code: code, question: question)
-            }
-            keyboard.handler = { key in handleKey(key) }
-            keyboard.start()
-        }
+        .onAppear(perform: connectModels)
         .onDisappear { keyboard.stop() }
         .sheet(item: $overlay) { overlay in
             switch overlay {
@@ -320,6 +308,12 @@ extension RootScreen {
 
     /// Chat answer → short, factual draft comment on the discussed code (edited before posting).
     private func useAsComment(_ answer: String, at location: CodeLocation) {
+        // About an existing discussion ("Ask AI" on a thread): the suggestion goes into its reply field.
+        if let thread = environment.review.threads(at: location).first(where: \.viewerCanReply) {
+            environment.review.setReplyDraft(ReviewScreenModel.suggestedReply(in: answer), for: thread.id)
+            if location.side == .right { environment.diff.focus(path: location.path, line: location.line) }
+            return
+        }
         environment.review.draft = CommentDraft(
             location: location, lineText: environment.diff.text(at: location), body: answer)
         if location.side == .right { environment.diff.focus(path: location.path, line: location.line) }
@@ -347,4 +341,33 @@ extension RootScreen {
 
 #Preview {
     RootScreen(environment: AppEnvironment(arguments: ["--demo"]))
+}
+
+extension RootScreen {
+    /// Wires the slices' callbacks to each other (they never import each other).
+    fileprivate func connectModels() {
+        // A click on an AI highlight in the diff opens that finding (card in the diff, row in the inspector).
+        environment.diff.selectFinding = { id in
+            guard let id = UUID(uuidString: id) else { return }
+            isInspectorPresented = true
+            withAnimation(.snappy) { environment.aiReview.showFinding(id) }
+        }
+        // Replies after the reviewer's comments: notify; a click on the notification opens the PR.
+        environment.inbox.onNewActivity = { environment.activity.notifyNewActivity(on: $0) }
+        environment.notifications.open = { id in
+            NSApplication.shared.activate()
+            selectedID = id
+        }
+        environment.notifications.install()
+        environment.review.threadDiscussionHandler = { thread in
+            discuss(
+                thread.location, code: environment.diff.text(at: thread.location),
+                question: environment.review.aiQuestion(about: thread))
+        }
+        environment.review.discussHandler = { location, code, question in
+            discuss(location, code: code, question: question)
+        }
+        keyboard.handler = { key in handleKey(key) }
+        keyboard.start()
+    }
 }

@@ -46,6 +46,7 @@ final class AppEnvironment {
     let aiReview: AIReviewModel
     let chat: AIChatModel
     let activity = ActivityCenter()
+    let notifications = NotificationRouter()
     let review: ReviewScreenModel
     let terminal = TerminalModel()
     let bottomPanel = BottomPanelState()

@@ -26,7 +26,7 @@ public final class ReviewScreenModel {
         case idle, loading, loaded, failed(String)
     }
 
-    public private(set) var snapshot: ReviewSnapshot? {
+    public internal(set) var snapshot: ReviewSnapshot? {
         didSet { threadsByAnchor = Dictionary(grouping: snapshot?.threads ?? [], by: \.location.anchor) }
     }
     public private(set) var loadState: LoadState = .idle
@@ -46,8 +46,8 @@ public final class ReviewScreenModel {
     private var threadsByAnchor: [CodeLocation: [ReviewThread]] = [:]
     /// Threads the reviewer expanded or collapsed against their default.
     private var toggledThreadIDs: Set<String> = []
-    private var pullRequestID: PullRequestID?
-    private let service: any ReviewService
+    var pullRequestID: PullRequestID?
+    let service: any ReviewService
     private let logger = SylvraLog.logger("review")
 
     public init(service: any ReviewService) {
@@ -58,13 +58,6 @@ public final class ReviewScreenModel {
 
     public var threads: [ReviewThread] { snapshot?.threads ?? [] }
     public var hasPendingReview: Bool { snapshot?.pendingReviewID != nil }
-
-    /// Comments of the viewer's pending review, with their threads.
-    public var pendingComments: [(thread: ReviewThread, comment: ReviewComment)] {
-        threads.flatMap { thread in thread.comments.filter(\.isPending).map { (thread, $0) } }
-    }
-
-    public var pendingCount: Int { threads.reduce(0) { $0 + $1.comments.count(where: \.isPending) } }
 
     public func threads(at location: CodeLocation) -> [ReviewThread] { threadsByAnchor[location.anchor] ?? [] }
 
@@ -98,8 +91,9 @@ public final class ReviewScreenModel {
         do {
             let loaded = try await service.loadReview(for: id)
             guard !Task.isCancelled else { return }
-            snapshot = loaded
-            loadState = .loaded
+            // Unchanged threads keep the screen as it is (no re-render, no scroll jumps).
+            if snapshot != loaded { snapshot = loaded }
+            if loadState != .loaded { loadState = .loaded }
         } catch {
             guard !Task.isCancelled else { return }
             loadState = .failed(String(describing: error))
@@ -127,6 +121,8 @@ public final class ReviewScreenModel {
     public var rewriter: Rewriter?
     /// Hands the draft's lines and text to a private AI discussion (wired by the app).
     public var discussHandler: ((_ location: CodeLocation, _ code: String, _ question: String) -> Void)?
+    /// Asks the AI agent about a review thread (wired by the app; `nil` hides "Ask AI").
+    public var threadDiscussionHandler: ((ReviewThread) -> Void)?
     /// What the AI is doing with the draft right now (`nil`: nothing).
     public private(set) var rewritingStyle: CommentRewriteStyle?
     public var isRewriting: Bool { rewritingStyle != nil }

@@ -13,6 +13,8 @@ struct ReviewThreadActions {
     var delete: (ReviewComment) -> Void = { _ in }
     var react: (Reaction, ReviewComment) -> Void = { _, _ in }
     var open: (URL) -> Void = { _ in }
+    /// Asks the AI agent privately about the discussion (`nil` hides the button).
+    var askAI: (() -> Void)?
 }
 
 /// A review thread inline in the diff (pure): comments, reply field, resolve.
@@ -96,6 +98,13 @@ struct ReviewThreadView: View {
                 if thread.viewerCanResolve {
                     Button(thread.isResolved ? "Unresolve" : "Resolve") { actions.setResolved(!thread.isResolved) }
                         .disabled(isWorking)
+                }
+                if let askAI = actions.askAI {
+                    Button(action: askAI) {
+                        Label("Ask AI", systemImage: "sparkles")
+                    }
+                    .foregroundStyle(AIAccent.border)
+                    .help("Ask the AI agent privately what it thinks of this discussion — nothing is posted")
                 }
                 Spacer()
                 if !replyText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {

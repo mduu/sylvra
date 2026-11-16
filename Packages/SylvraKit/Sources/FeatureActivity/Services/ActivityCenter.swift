@@ -1,18 +1,20 @@
 import AppKit
 import Foundation
 import Observation
+import SylvraCore
 import UserNotifications
 
 /// Background work the user should see (see specs/architecture.md §11).
 public struct ActivityJob: Identifiable, Hashable, Sendable {
     public enum Kind: String, CaseIterable, Sendable {
-        case aiReview, checkout, refresh
+        case aiReview, checkout, refresh, replies
 
         public var title: String {
             switch self {
             case .aiReview: String(localized: "AI reviews")
             case .checkout: String(localized: "Opening in IDE")
             case .refresh: String(localized: "Refreshing pull requests")
+            case .replies: String(localized: "Replies after your comments")
             }
         }
     }
@@ -54,6 +56,20 @@ public final class ActivityCenter {
         Task { await Self.post(title: job.title, body: message) }
     }
 
+    /// Someone acted on pull requests after the reviewer's last comment: one notification per pull request,
+    /// also while Sylvra is in front (the reviewer may be looking at another pull request). A click opens it.
+    public func notifyNewActivity(on pullRequests: [PullRequestSummary]) {
+        guard notificationsEnabled(for: .replies) else { return }
+        for pullRequest in pullRequests.prefix(5) {
+            let title = String(localized: "New activity on \(pullRequest.id.repository) #\(pullRequest.id.number)")
+            Task {
+                await Self.post(
+                    title: title, body: pullRequest.title, identifier: "activity-\(pullRequest.id)",
+                    pullRequest: pullRequest.id.description)
+            }
+        }
+    }
+
     // MARK: Settings
 
     public func notificationsEnabled(for kind: ActivityJob.Kind) -> Bool {
@@ -69,13 +85,16 @@ public final class ActivityCenter {
 
     private static func key(_ kind: ActivityJob.Kind) -> String { "notifications.\(kind.rawValue)" }
 
-    private static func post(title: String, body: String) async {
+    private static func post(
+        title: String, body: String, identifier: String = UUID().uuidString, pullRequest: String? = nil
+    ) async {
         let center = UNUserNotificationCenter.current()
         guard (try? await center.requestAuthorization(options: [.alert, .sound])) == true else { return }
         let content = UNMutableNotificationContent()
         content.title = title
         content.body = body
         content.sound = .default
-        try? await center.add(UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: nil))
+        if let pullRequest { content.userInfo = [NotificationRouter.pullRequestKey: pullRequest] }
+        try? await center.add(UNNotificationRequest(identifier: identifier, content: content, trigger: nil))
     }
 }

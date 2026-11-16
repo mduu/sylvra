@@ -253,8 +253,9 @@ public final class DiffScreenModel {
         do {
             let loaded = try await loader.loadDiff(for: id)
             guard !Task.isCancelled else { return }
-            diff = loaded
-            loadState = .loaded
+            // A reload with the same diff (e.g. a refresh) must not re-render it.
+            if diff != loaded { diff = loaded }
+            if loadState != .loaded { loadState = .loaded }
             await loadProgress(id)
             if scope == .fullFile { await loadFullFiles() }
             if scope == .sinceLastReview { await loadSinceReview() }

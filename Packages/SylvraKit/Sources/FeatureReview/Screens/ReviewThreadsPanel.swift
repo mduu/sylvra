@@ -84,7 +84,8 @@ public struct ReviewThreadsPanel: View {
             saveEdit: { comment in Task { await model.saveEdit(of: comment) } },
             delete: { comment in Task { await model.delete(comment) } },
             react: { reaction, comment in Task { await model.toggleReaction(reaction, on: comment) } },
-            open: { openURL($0) }
+            open: { openURL($0) },
+            askAI: model.threadDiscussionHandler.map { handler in { handler(thread) } }
         )
     }
 }

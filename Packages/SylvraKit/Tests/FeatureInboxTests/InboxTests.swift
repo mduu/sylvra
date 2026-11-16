@@ -108,6 +108,30 @@ struct GitHubInboxLoaderTests {
         #expect(InboxScreenModel.waitingLast([first, second], in: .requestedFromMe).map(\.id.number) == [1, 2])
     }
 
+    /// Notifications: only pull requests whose activity after the reviewer's comment is new since the last refresh.
+    @Test func findsNewActivityAfterTheReviewersComment() {
+        let now = Date.now
+        func pr(_ number: Int, others: Date?, mine: Date? = now.addingTimeInterval(-3_600)) -> PullRequestSummary {
+            let base = DemoInboxLoader.pr("r", number, "PR", "ann", "Ann", hoursAgo: 1, 1, 1, .success)
+            return PullRequestSummary(
+                id: base.id, title: base.title, author: base.author, createdAt: base.createdAt,
+                updatedAt: base.updatedAt, additions: 1, deletions: 1, headRefName: "", baseRefName: "",
+                viewerActivity: ViewerActivity(lastActionAt: mine, othersLastActivityAt: others))
+        }
+        let before = InboxSnapshot(sections: [
+            .involved: [pr(1, others: now.addingTimeInterval(-7_200)), pr(2, others: now.addingTimeInterval(-60))]
+        ])
+        let after = InboxSnapshot(sections: [
+            .involved: [
+                pr(1, others: now), pr(2, others: now.addingTimeInterval(-60)), pr(3, others: now),
+            ]
+        ])
+        #expect(after.newActivity(comparedTo: before).map(\.id.number) == [1])
+        #expect(after.newActivity(comparedTo: InboxSnapshot(sections: [:])).isEmpty)
+        #expect(before.hasSameContent(as: InboxSnapshot(sections: before.sections, loadedAt: .distantFuture)))
+        #expect(!after.hasSameContent(as: before))
+    }
+
     @Test func ignoresNonPullRequestNodes() throws {
         let node = try GitHubJSON.decoder.decode(PullRequestNode.self, from: Data("{}".utf8))
         #expect(node.summary == nil)
