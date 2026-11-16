@@ -59,15 +59,11 @@ public struct PullRequestScreen<Files: View, OverviewTop: View, Summary: View>: 
             VStack(alignment: .leading, spacing: 12) {
                 PullRequestHeaderView(detail: detail) { open(detail.summary.url) }
                 summary
-                Picker("Section", selection: $model.tab) {
-                    Text("Overview").tag(PullRequestScreenModel.Tab.overview)
-                    Text("Files \(detail.changedFiles)").tag(PullRequestScreenModel.Tab.files)
-                    Text("Commits \(detail.commits.count)").tag(PullRequestScreenModel.Tab.commits)
-                    Text("Checks \(detail.checks.count)").tag(PullRequestScreenModel.Tab.checks)
-                    Text("Comments \(detail.commentCount)").tag(PullRequestScreenModel.Tab.comments)
+                // Segments when they fit; a narrow column (laptop) gets a menu instead of clipped tabs.
+                ViewThatFits(in: .horizontal) {
+                    tabPicker(detail).pickerStyle(.segmented).fixedSize()
+                    tabPicker(detail).pickerStyle(.menu).fixedSize()
                 }
-                .pickerStyle(.segmented)
-                .labelsHidden()
             }
             .padding([.horizontal, .top], 16)
             .padding(.bottom, 10)
@@ -80,6 +76,17 @@ public struct PullRequestScreen<Files: View, OverviewTop: View, Summary: View>: 
                 .animation(.snappy, value: model.tab)
             }
         }
+    }
+
+    private func tabPicker(_ detail: PullRequestDetail) -> some View {
+        Picker("Section", selection: $model.tab) {
+            Text("Overview").tag(PullRequestScreenModel.Tab.overview)
+            Text("Files \(detail.changedFiles)").tag(PullRequestScreenModel.Tab.files)
+            Text("Commits \(detail.commits.count)").tag(PullRequestScreenModel.Tab.commits)
+            Text("Checks \(detail.checks.count)").tag(PullRequestScreenModel.Tab.checks)
+            Text("Comments \(detail.commentCount)").tag(PullRequestScreenModel.Tab.comments)
+        }
+        .labelsHidden()
     }
 
     @ViewBuilder private func tabContent(_ detail: PullRequestDetail) -> some View {
