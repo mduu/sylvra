@@ -118,7 +118,8 @@ struct TerminalSplit<Content: View>: View {
                     }
                 }
                 .frame(height: terminalHeight)
-                .transition(.move(edge: .bottom).combined(with: .opacity))
+                // A slide-in from the bottom made Metal API validation fail (draw with zero instances).
+                .transition(.opacity)
             }
         }
         .animation(.snappy, value: isPanelPresented)
