@@ -84,7 +84,7 @@ public final class InboxScreenModel {
             let pullRequests = snapshot.pullRequests(in: section).filter {
                 matchesSearch($0) && activeFilter.matches($0)
             }
-            return pullRequests.isEmpty ? nil : (section, pullRequests)
+            return pullRequests.isEmpty ? nil : (section, Self.waitingLast(pullRequests, in: section))
         }
     }
 
@@ -129,15 +129,31 @@ public final class InboxScreenModel {
             (snapshot.pullRequests(in: .requestedFromMe) + snapshot.pullRequests(in: .myTeams)).map(\.id))
         let viewer = snapshot.viewerLogin?.lowercased()
         let visible = browser.pullRequests.filter(activeFilter.matches)
+        let requested = Set(snapshot.pullRequests(in: .requestedFromMe).map(\.id))
+        let isDone = { (pullRequest: PullRequestSummary) in
+            pullRequest.isWaitingOnOthers && !requested.contains(pullRequest.id)
+        }
+        let open = visible.filter { !isDone($0) && $0.author.login.lowercased() != viewer }
         let groups: [(String, [PullRequestSummary])] = [
-            (String(localized: "Waiting for you"), visible.filter { waiting.contains($0.id) }),
+            (String(localized: "Waiting for you"), open.filter { waiting.contains($0.id) }),
             (String(localized: "Yours"), visible.filter { $0.author.login.lowercased() == viewer }),
-            (
-                String(localized: "Open"),
-                visible.filter { !waiting.contains($0.id) && $0.author.login.lowercased() != viewer }
-            ),
+            (String(localized: "Open"), open.filter { !waiting.contains($0.id) }),
+            (String(localized: "Waiting on others"), visible.filter(isDone)),
         ]
         return groups.filter { !$0.1.isEmpty }.map { (title: $0.0, pullRequests: $0.1) }
+    }
+
+    /// Whether a row shows "waiting on others": the reviewer acted last. A personal review request always
+    /// means work, even after an earlier comment.
+    public nonisolated static func showsWaiting(_ pullRequest: PullRequestSummary, in section: InboxSection?) -> Bool {
+        section != .requestedFromMe && pullRequest.isWaitingOnOthers
+    }
+
+    /// Pull requests waiting on others move to the end of their section (stable otherwise).
+    nonisolated static func waitingLast(_ pullRequests: [PullRequestSummary], in section: InboxSection)
+        -> [PullRequestSummary]
+    {
+        pullRequests.filter { !showsWaiting($0, in: section) } + pullRequests.filter { showsWaiting($0, in: section) }
     }
 
     /// Pull requests of the browsed repository the client-side filters hide.

@@ -122,9 +122,12 @@ public struct InboxScreen: View {
     private func sectionView(_ entry: (section: InboxSection, pullRequests: [PullRequestSummary])) -> some View {
         Section(isExpanded: expansion(entry.section.rawValue)) {
             ForEach(entry.pullRequests) { pullRequest in
-                InboxRowView(pullRequest: pullRequest)
-                    .tag(pullRequest.id)
-                    .contextMenu { rowMenu(pullRequest) }
+                InboxRowView(
+                    pullRequest: pullRequest,
+                    isWaitingOnOthers: InboxScreenModel.showsWaiting(pullRequest, in: entry.section)
+                )
+                .tag(pullRequest.id)
+                .contextMenu { rowMenu(pullRequest) }
             }
         } header: {
             SectionHeading(

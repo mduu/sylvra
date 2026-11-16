@@ -28,6 +28,15 @@ struct InvolvementCardView: View {
                 }
                 .font(.caption)
                 .foregroundStyle(.secondary)
+                if involvement.activity.isWaitingOnOthers {
+                    Label("Nothing new since — waiting on others", systemImage: "hourglass")
+                        .font(.caption.weight(.medium))
+                        .foregroundStyle(.secondary)
+                } else if involvement.activity.hasNewActivity {
+                    Label("New activity since your last comment", systemImage: "circle.fill")
+                        .font(.caption.weight(.medium))
+                        .foregroundStyle(SylvraColor.brandPrimary)
+                }
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)

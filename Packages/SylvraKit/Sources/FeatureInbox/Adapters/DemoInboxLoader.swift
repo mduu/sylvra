@@ -37,7 +37,7 @@ public struct DemoInboxLoader: InboxLoading {
         .involved: [
             pr(
                 "billing", 1229, "Split pricing module", "twagner", "Tim Wagner", hoursAgo: 75, 420, 388, .success,
-                .approved)
+                .approved, respondedHoursAgo: 20)
         ],
         .myPullRequests: [
             pr(
@@ -61,9 +61,14 @@ public struct DemoInboxLoader: InboxLoading {
         _ deletions: Int,
         _ checks: CheckState,
         _ review: ReviewDecision = .reviewRequired,
-        draft: Bool = false
+        draft: Bool = false,
+        respondedHoursAgo: Double? = nil
     ) -> PullRequestSummary {
         let updated = Date.now.addingTimeInterval(-hoursAgo * 3600)
+        // The reviewer's last comment; others were last active at `updated`.
+        let activity = respondedHoursAgo.map {
+            ViewerActivity(lastActionAt: Date.now.addingTimeInterval(-$0 * 3600), othersLastActivityAt: updated)
+        }
         return PullRequestSummary(
             id: PullRequestID(owner: "acme", repository: repository, number: number),
             title: title,
@@ -78,7 +83,8 @@ public struct DemoInboxLoader: InboxLoading {
             baseRefName: "main",
             checkState: checks,
             reviewDecision: review,
-            mergeability: .mergeable
+            mergeability: .mergeable,
+            viewerActivity: activity
         )
     }
 }
@@ -142,6 +148,16 @@ public struct DemoRepositoryPullRequestLoader: RepositoryPullRequestLoading {
             pullRequests: Array(all[start..<end]), totalCount: all.count, nextCursor: end < all.count ? "\(end)" : nil)
     }
 
+    /// Every sixth generated PR waits on others (the reviewer responded after the last activity), the one
+    /// three later has new activity after the reviewer's comment.
+    static func respondedHoursAgo(index: Int, hoursAgo: Double) -> Double? {
+        switch index % 6 {
+        case 1: max(hoursAgo - 4, 1)
+        case 4: hoursAgo + 6
+        default: nil
+        }
+    }
+
     static func pullRequests(in repository: InboxRepository) -> [PullRequestSummary] {
         let known = DemoInboxLoader.sections.values.joined().filter {
             $0.id.repository == repository.name && $0.id.number != 812
@@ -153,7 +169,8 @@ public struct DemoRepositoryPullRequestLoader: RepositoryPullRequestLoading {
             return DemoInboxLoader.pr(
                 repository.name, 1299 - index * 3, titles[index % titles.count], person.0, person.1,
                 hoursAgo: Double(10 + index * 9), 20 + index * 17 % 400, index * 7 % 90,
-                index % 5 == 2 ? .failure : .success, index % 4 == 0 ? .approved : .reviewRequired, draft: isDraft)
+                index % 5 == 2 ? .failure : .success, index % 4 == 0 ? .approved : .reviewRequired, draft: isDraft,
+                respondedHoursAgo: Self.respondedHoursAgo(index: index, hoursAgo: Double(10 + index * 9)))
         }
         return (Array(known) + generated).sorted { $0.updatedAt > $1.updatedAt }
     }

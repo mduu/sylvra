@@ -61,6 +61,8 @@ public struct PullRequestSummary: Identifiable, Hashable, Sendable, Codable {
     public let mergeability: Mergeability
     /// The author is a GitHub App (bot account).
     public let authorIsBot: Bool
+    /// Whether the signed-in reviewer acted last (`nil`: unknown, or the reviewer's own pull request).
+    public let viewerActivity: ViewerActivity?
 
     public init(
         id: PullRequestID,
@@ -77,7 +79,8 @@ public struct PullRequestSummary: Identifiable, Hashable, Sendable, Codable {
         checkState: CheckState = .none,
         reviewDecision: ReviewDecision = .none,
         mergeability: Mergeability = .unknown,
-        authorIsBot: Bool = false
+        authorIsBot: Bool = false,
+        viewerActivity: ViewerActivity? = nil
     ) {
         self.id = id
         self.title = title
@@ -94,7 +97,11 @@ public struct PullRequestSummary: Identifiable, Hashable, Sendable, Codable {
         self.reviewDecision = reviewDecision
         self.mergeability = mergeability
         self.authorIsBot = authorIsBot
+        self.viewerActivity = viewerActivity
     }
+
+    /// The reviewer already commented or reviewed and nothing happened since.
+    public var isWaitingOnOthers: Bool { viewerActivity?.isWaitingOnOthers ?? false }
 
     /// Bot accounts: GitHub Apps and conventionally named service users (`dg-renovate`, `ci-bot`).
     public var isByBot: Bool {

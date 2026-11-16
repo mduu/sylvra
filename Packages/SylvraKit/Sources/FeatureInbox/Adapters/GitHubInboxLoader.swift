@@ -116,7 +116,10 @@ struct PullRequestNode: Decodable, Sendable {
           headRefName baseRefName reviewDecision mergeable
           repository { name owner { login } }
           author { __typename login avatarUrl ... on User { name } }
-          commits(last: 1) { nodes { commit { statusCheckRollup { state } } } }
+          commits(last: 1) { nodes { commit { committedDate statusCheckRollup { state } } } }
+          viewerDidAuthor
+          comments(last: 10) { nodes { createdAt viewerDidAuthor author { __typename } } }
+          reviews(last: 10) { nodes { submittedAt viewerDidAuthor author { __typename } } }
         }
         """
 
@@ -135,6 +138,26 @@ struct PullRequestNode: Decodable, Sendable {
     let repository: Repository?
     let author: AuthorNode?
     let commits: Commits?
+    let viewerDidAuthor: Bool?
+    let comments: Activities?
+    let reviews: Activities?
+
+    /// Comments or reviews; `date` is `createdAt` or `submittedAt` (pending reviews have none).
+    struct Activities: Decodable, Sendable {
+        let nodes: [Activity?]
+        struct Activity: Decodable, Sendable {
+            let createdAt: Date?
+            let submittedAt: Date?
+            let viewerDidAuthor: Bool?
+            let author: Author?
+            var date: Date? { submittedAt ?? createdAt }
+            var isByBot: Bool { author?.typename == "Bot" }
+        }
+        struct Author: Decodable, Sendable {
+            let typename: String?
+            enum CodingKeys: String, CodingKey { case typename = "__typename" }
+        }
+    }
 
     struct AuthorNode: Decodable, Sendable {
         let typename: String?
@@ -158,7 +181,10 @@ struct PullRequestNode: Decodable, Sendable {
     struct Commits: Decodable, Sendable {
         let nodes: [Node?]
         struct Node: Decodable, Sendable { let commit: Commit }
-        struct Commit: Decodable, Sendable { let statusCheckRollup: Rollup? }
+        struct Commit: Decodable, Sendable {
+            let committedDate: Date?
+            let statusCheckRollup: Rollup?
+        }
         struct Rollup: Decodable, Sendable { let state: String }
     }
 
@@ -181,7 +207,21 @@ struct PullRequestNode: Decodable, Sendable {
             checkState: rollup.flatMap(CheckState.init(rawValue:)) ?? .none,
             reviewDecision: reviewDecision.flatMap(ReviewDecision.init(rawValue:)) ?? .none,
             mergeability: mergeable.flatMap(Mergeability.init(rawValue:)) ?? .unknown,
-            authorIsBot: author?.typename == "Bot"
+            authorIsBot: author?.typename == "Bot",
+            viewerActivity: viewerActivity
         )
+    }
+
+    /// The reviewer's last review or comment against everyone else's latest commit, review or comment.
+    var viewerActivity: ViewerActivity? {
+        guard viewerDidAuthor != true, comments != nil || reviews != nil else { return nil }
+        let activities = (comments?.nodes ?? []) + (reviews?.nodes ?? [])
+        let mine = activities.compactMap { $0?.viewerDidAuthor == true ? $0?.date : nil }.max()
+        let others = activities.compactMap { activity -> Date? in
+            guard let activity, activity.viewerDidAuthor != true, !activity.isByBot else { return nil }
+            return activity.date
+        }
+        let lastCommit = commits?.nodes.last??.commit.committedDate
+        return ViewerActivity(lastActionAt: mine, othersLastActivityAt: (others + [lastCommit].compactMap { $0 }).max())
     }
 }

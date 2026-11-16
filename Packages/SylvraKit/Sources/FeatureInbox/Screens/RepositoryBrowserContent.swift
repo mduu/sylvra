@@ -54,9 +54,12 @@ struct RepositoryBrowserContent<RowMenu: View>: View {
         ForEach(groups, id: \.title) { group in
             Section {
                 ForEach(group.pullRequests) { pullRequest in
-                    InboxRowView(pullRequest: pullRequest)
-                        .tag(pullRequest.id)
-                        .contextMenu { rowMenu(pullRequest) }
+                    InboxRowView(
+                        pullRequest: pullRequest,
+                        isWaitingOnOthers: group.title == String(localized: "Waiting on others")
+                    )
+                    .tag(pullRequest.id)
+                    .contextMenu { rowMenu(pullRequest) }
                 }
             } header: {
                 SectionHeading(

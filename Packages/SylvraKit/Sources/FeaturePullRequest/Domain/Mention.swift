@@ -36,14 +36,23 @@ public struct Involvement: Hashable, Sendable {
     /// Comments and reviews the user wrote themselves.
     public var ownCommentCount: Int
     public var lastOwnCommentAt: Date?
+    /// Latest commit, comment or review by someone else (bots excluded).
+    public var othersLastActivityAt: Date?
 
     public init(
-        login: String? = nil, mentions: [Mention] = [], ownCommentCount: Int = 0, lastOwnCommentAt: Date? = nil
+        login: String? = nil, mentions: [Mention] = [], ownCommentCount: Int = 0, lastOwnCommentAt: Date? = nil,
+        othersLastActivityAt: Date? = nil
     ) {
         self.login = login
         self.mentions = mentions
         self.ownCommentCount = ownCommentCount
         self.lastOwnCommentAt = lastOwnCommentAt
+        self.othersLastActivityAt = othersLastActivityAt
+    }
+
+    /// Who acted last, for "waiting on others" / "new activity".
+    public var activity: ViewerActivity {
+        ViewerActivity(lastActionAt: lastOwnCommentAt, othersLastActivityAt: othersLastActivityAt)
     }
 
     public var isEmpty: Bool { mentions.isEmpty && ownCommentCount == 0 }

@@ -62,6 +62,52 @@ struct GitHubInboxLoaderTests {
         #expect(summary.size == .s)
     }
 
+    /// Regression: PRs where the reviewer commented last looked like any other open PR.
+    @Test func decodesWhoActedLast() throws {
+        func node(_ extra: String) throws -> PullRequestSummary? {
+            let json = """
+                {"number": 7, "title": "Fix it", "createdAt": "2026-11-01T10:00:00Z",
+                 "updatedAt": "2026-11-02T10:00:00Z", "repository": {"name": "r", "owner": {"login": "o"}},
+                 \(extra)}
+                """
+            return try GitHubJSON.decoder.decode(PullRequestNode.self, from: Data(json.utf8)).summary
+        }
+        let waiting = try node(
+            """
+            "viewerDidAuthor": false,
+            "commits": {"nodes": [{"commit": {"committedDate": "2026-11-01T12:00:00Z"}}]},
+            "comments": {"nodes": [
+              {"createdAt": "2026-11-02T09:00:00Z", "viewerDidAuthor": true, "author": {"__typename": "User"}},
+              {"createdAt": "2026-11-02T11:00:00Z", "viewerDidAuthor": false, "author": {"__typename": "Bot"}}]},
+            "reviews": {"nodes": [
+              {"submittedAt": "2026-11-01T15:00:00Z", "viewerDidAuthor": false, "author": {"__typename": "User"}},
+              {"submittedAt": null, "viewerDidAuthor": true, "author": {"__typename": "User"}}]}
+            """)
+        #expect(waiting?.isWaitingOnOthers == true)
+        let answered = try node(
+            """
+            "viewerDidAuthor": false,
+            "commits": {"nodes": [{"commit": {"committedDate": "2026-11-02T12:00:00Z"}}]},
+            "comments": {"nodes": [
+              {"createdAt": "2026-11-02T09:00:00Z", "viewerDidAuthor": true, "author": {"__typename": "User"}}]}
+            """)
+        #expect(answered?.isWaitingOnOthers == false)
+        #expect(answered?.viewerActivity?.hasNewActivity == true)
+        let own = try node(#""viewerDidAuthor": true, "comments": {"nodes": []}"#)
+        #expect(own?.viewerActivity == nil)
+    }
+
+    @Test func movesWaitingPullRequestsToTheEndExceptPersonalRequests() {
+        let now = Date.now
+        let waiting = ViewerActivity(lastActionAt: now, othersLastActivityAt: now.addingTimeInterval(-60))
+        let first = DemoInboxLoader.pr("r", 1, "A", "ann", "Ann", hoursAgo: 1, 1, 1, .success, respondedHoursAgo: 0)
+        let second = DemoInboxLoader.pr("r", 2, "B", "bob", "Bob", hoursAgo: 2, 1, 1, .success)
+        #expect(first.isWaitingOnOthers)
+        #expect(waiting.isWaitingOnOthers && !waiting.hasNewActivity)
+        #expect(InboxScreenModel.waitingLast([first, second], in: .involved).map(\.id.number) == [2, 1])
+        #expect(InboxScreenModel.waitingLast([first, second], in: .requestedFromMe).map(\.id.number) == [1, 2])
+    }
+
     @Test func ignoresNonPullRequestNodes() throws {
         let node = try GitHubJSON.decoder.decode(PullRequestNode.self, from: Data("{}".utf8))
         #expect(node.summary == nil)
@@ -220,7 +266,11 @@ struct RepositoryBrowserTests {
         model.openRepository(billing)
         await model.browser?.load(matching: "", excludingAuthors: [])
         let groups = model.browserGroups
-        #expect(groups.map(\.title) == ["Waiting for you", "Yours", "Open"])
+        #expect(groups.map(\.title) == ["Waiting for you", "Yours", "Open", "Waiting on others"])
+        let waitingFlags = groups[3].pullRequests.map(\.isWaitingOnOthers)
+        let openFlags = groups[2].pullRequests.map(\.isWaitingOnOthers)
+        #expect(!waitingFlags.contains(false))
+        #expect(!openFlags.contains(true))
         #expect(groups[0].pullRequests.map(\.id.number) == [1234])
         #expect(groups[1].pullRequests.allSatisfy { $0.author.login == "mduu" })
         #expect(model.summary(for: groups[2].pullRequests[0].id) != nil)

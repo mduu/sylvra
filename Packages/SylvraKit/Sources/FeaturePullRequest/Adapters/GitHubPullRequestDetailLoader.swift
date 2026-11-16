@@ -155,9 +155,15 @@ struct DetailNode: Decodable, Sendable {
             (comments?.values ?? []) + (reviews?.values ?? [])
             + (reviewThreads?.values.flatMap(\.comments.values) ?? [])
         let mine = own.filter { $0.author?.login.lowercased() == login.lowercased() }
+        let others = own.filter {
+            guard let other = $0.author?.login.lowercased() else { return false }
+            return other != login.lowercased() && !other.hasSuffix("[bot]")
+        }
+        let lastCommit = commits.values.map(\.commit.authoredDate).max()
         return Involvement(
             login: login, mentions: mentions.sorted { $0.date > $1.date }, ownCommentCount: mine.count,
-            lastOwnCommentAt: mine.map(\.date).max())
+            lastOwnCommentAt: mine.map(\.date).max(),
+            othersLastActivityAt: (others.map(\.date) + [lastCommit].compactMap { $0 }).max())
     }
 
     struct Nodes<Element: Decodable & Sendable>: Decodable, Sendable {
