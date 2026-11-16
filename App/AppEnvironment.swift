@@ -33,6 +33,10 @@ final class AppEnvironment {
     let showsInspector: Bool
     let autoRunsAIReview: Bool
     let autoTurnsIntoComment: Bool
+    /// Screenshots: review this commit (1-based) on its own (`--commit=2`).
+    let initialCommit: Int?
+    /// Screenshots: open the report of the first failing check (`--open-check`).
+    let opensFailingCheck: Bool
     let gitHub: GitHubClient
     let inbox: InboxScreenModel
     let pullRequest: PullRequestScreenModel
@@ -52,6 +56,8 @@ final class AppEnvironment {
         showsInspector = !arguments.contains("--no-inspector")
         autoRunsAIReview = arguments.contains("--run-ai-review")
         autoTurnsIntoComment = arguments.contains("--turn-into-comment")
+        initialCommit = Self.value(of: "--commit", in: arguments).flatMap(Int.init)
+        opensFailingCheck = arguments.contains("--open-check")
         gitHub = GitHubClient(tokenProvider: GitHubCLITokenProvider())
         let inboxLoader: any InboxLoading = isDemo ? DemoInboxLoader() : GitHubInboxLoader(client: gitHub)
         inbox = Self.makeInbox(loader: inboxLoader, gitHub: gitHub, isDemo: isDemo, arguments: arguments)

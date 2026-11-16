@@ -11,47 +11,59 @@ Sylvra is a native macOS app for reviewing **your team's GitHub pull requests**,
 Sylvra is **not a Git client** and not a code generator. It helps you understand a change, find what matters and write clear, factual review comments. You stay the reviewer.
 
 <p align="center">
-  <img src="docs/screenshots/app-22-overview.png" alt="Sylvra: inbox, pull request, diff with reading order, review thread with reactions and an inline AI finding, AI inspector" width="100%">
+  <img src="docs/screenshots/app-30-overview.png" alt="Sylvra: inbox with filters and repositories, pull request with AI summary and change map, diff with a review thread and an inline AI finding, AI inspector" width="100%">
 </p>
 
 *The name is a coined word from Latin* silva */ English* sylvan *— forest, wooded.*
 
 ## What it focuses on
 
-### 1. Understand the change quickly
-- **Inbox** of PRs that need you: review requests to you and your teams, PRs you're involved in, your own PRs.
-- **PR at a glance**: description, reviewers, merge status in plain words, checks, commits.
-- **Change map** and file tree (with viewed state synced to GitHub).
-- **AI summary and reading order**: which files to read first and where the risky areas are. The diff sorts itself accordingly.
-- **Since my last review**: only what changed since you last reviewed, plus a banner when someone pushes.
+### 1. Find what needs you
+- **Inbox** of PRs that need you: review requests to you and your teams, PRs you're involved in, your own PRs, recently closed.
+- **Your repositories** below the inbox, with their number of open PRs. Open one to browse *all* its open PRs (waiting for you, yours, the rest), searched on GitHub and loaded while you scroll — usable even for a monolith with hundreds of open PRs.
+- **Filters**: hide bots (Renovate, Dependabot …), specific authors or other people's drafts; quick chips for author, *needs review*, *CI failing* and small PRs. Right-click a PR to hide its author.
+- **Why you're involved**: where you were @-mentioned (description, comments, code comments with file and line).
+- Works with large organizations: you choose the repositories, searches stay small, GitHub timeouts are retried and SSO restrictions are explained.
 
-### 2. A diff made for reading
-- Side by side with ribbons between old and new, or inline; changed hunks or full files.
+### 2. Understand the change quickly
+- **PR at a glance**: description, reviewers, merge status in plain words, change map, checks, commits.
+- **AI summary and reading order** pinned above the tabs, visible during the whole review. The diff sorts itself by the reading order.
+- **Since my last review**: only what changed since you last reviewed, plus a banner when someone pushes.
+- **Commit by commit**: select a commit and review only its changes; step through with `⌥]` / `⌥[`.
+- **Failing checks explained**: click a check to read what it reported (summary, annotations with file and line) without leaving the app.
+
+### 3. A diff made for reading
+- Side by side with a ribbon between old and new, or inline; changed hunks or full files.
 - Syntax highlighting, intra-line changes, reveal hidden context step by step (+20 / all).
-- Review threads inline under the line they belong to, with emoji reactions.
+- Review threads and AI findings inline under the lines they belong to, with emoji reactions; the change ribbon keeps running through them.
 - Keyboard first: `j`/`k` files, `n`/`p` changes, `v` viewed, `⌘F` find, `⌘K` command palette, `?` for all shortcuts.
 
-### 3. AI as a reviewer's assistant, never as the reviewer
+### 4. AI as a reviewer's assistant, never as the reviewer
 - **One-click AI review** with your locally installed Claude Code, using your repo's `AGENTS.md`, `CLAUDE.md` and specs as context.
 - **Several models in parallel** (e.g. Opus + Fable); findings are merged and show who found them. Large PRs are split across agents.
-- **Findings in the diff**: highlighted lines and a card below them with rationale and the suggestion as a mini diff.
+- **Findings in the diff**: highlighted lines — click one to open its card with rationale and the suggestion as a mini diff.
 - **Patterns**: which conventions the change follows, violates or introduces.
 - **Discuss code privately**: ask Claude about selected lines in a private chat.
 - The AI agents run **read-only** and **never post anything**. A finding becomes a comment only when you turn it into one.
 
-### 4. Factual, short review comments
+### 5. Factual, short review comments
 - Comments with code suggestions, replies, resolve, pending reviews and submit.
 - **Writing help**: rephrase factually (observation → effect → suggestion), make it shorter, undo.
 - **English or German per comment**: switching translates the draft.
 - **Tone check** while you type: flags dismissive, absolute or loaded wording ("obviously", "always", "falsch" …) and offers a factual rephrase.
 
-### 5. Into the code when needed
+### 6. Into the code when needed
 - **Open in IDE** (Rider, VS Code, Xcode or the default app) in a Sylvra-managed worktree, so your working copy stays untouched.
 - **Terminal panel** and your own **custom tools** on files and folders.
+- **Log window** (Help → Show Log, `⌥⌘L`) with the errors of the current run, ready to copy.
 
 <p align="center">
+  <img src="docs/screenshots/app-26-repository-browser.png" alt="All open pull requests of a repository, grouped and filtered" width="49%">
+  <img src="docs/screenshots/app-31-commit-by-commit.png" alt="Reviewing commit 2 of 4 on its own" width="49%">
+</p>
+<p align="center">
+  <img src="docs/screenshots/app-32-check-report.png" alt="What a failing check reported, with annotations" width="49%">
   <img src="docs/screenshots/app-21-tone-check.png" alt="Comment composer with tone check" width="49%">
-  <img src="docs/screenshots/app-17-violet-light.png" alt="Sylvra in light mode" width="49%">
 </p>
 
 ## Principles
@@ -63,7 +75,7 @@ Sylvra is **not a Git client** and not a code generator. It helps you understand
 
 ## Status
 
-A personal project, used and developed for my own reviews. There is **no release yet**: build it from source. Expect rough edges.
+A personal project, used and developed for my own daily reviews (version 0.5). There are no published releases: build it from source, or build your own signed DMG (see below). Expect rough edges.
 
 ## Requirements
 
