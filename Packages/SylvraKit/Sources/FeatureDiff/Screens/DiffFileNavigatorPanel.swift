@@ -147,15 +147,28 @@ public struct DiffFileNavigatorPanel<ItemMenu: View>: View {
         return order.map { ($0, byFolder[$0] ?? []) }
     }
 
-    private var tiles: [ChangeMapView.Tile] {
-        groups.filter { !$0.files.allSatisfy(\.kind.isNoise) }
-            .map { group in
-                ChangeMapView.Tile(
-                    folder: group.folder,
-                    additions: group.files.reduce(0) { $0 + $1.additions },
-                    deletions: group.files.reduce(0) { $0 + $1.deletions })
+    private var tiles: [ChangeMapView.Tile] { ChangeMapView.tiles(for: model.orderedFiles) }
+}
+
+/// The change map on its own (container), e.g. at the top of the PR overview.
+public struct ChangeMapPanel: View {
+    private let model: DiffScreenModel
+
+    public init(model: DiffScreenModel) {
+        self.model = model
+    }
+
+    public var body: some View {
+        let tiles = ChangeMapView.tiles(for: model.orderedFiles)
+        if !tiles.isEmpty {
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Change map").font(.caption.weight(.semibold)).textCase(.uppercase).foregroundStyle(.secondary)
+                ChangeMapView(tiles: tiles) { folder in
+                    model.selectedPath = model.orderedFiles.first { $0.directory == folder }?.path
+                }
+                .frame(height: 120)
             }
-            .sorted { $0.weight > $1.weight }
+        }
     }
 }
 

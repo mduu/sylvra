@@ -47,6 +47,23 @@ struct ChangeMapView: View {
         return SylvraColor.brandPrimary.mix(with: Color(red: 0.55, green: 0.24, blue: 0.40), by: 1 - share)
     }
 
+    /// One tile per folder with changed lines (generated files and lockfiles left out), largest first.
+    static func tiles(for files: [FileDiff]) -> [Tile] {
+        var order: [String] = []
+        var byFolder: [String: [FileDiff]] = [:]
+        for file in files where !file.kind.isNoise {
+            if byFolder[file.directory] == nil { order.append(file.directory) }
+            byFolder[file.directory, default: []].append(file)
+        }
+        return order.map { folder in
+            let group = byFolder[folder] ?? []
+            return Tile(
+                folder: folder, additions: group.reduce(0) { $0 + $1.additions },
+                deletions: group.reduce(0) { $0 + $1.deletions })
+        }
+        .sorted { $0.weight > $1.weight }
+    }
+
     /// Slice-and-dice layout, alternating direction, largest first.
     static func layout(_ tiles: [Tile], in rect: CGRect) -> [CGRect] {
         guard !tiles.isEmpty else { return [] }

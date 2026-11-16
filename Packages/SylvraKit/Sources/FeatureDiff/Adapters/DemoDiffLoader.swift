@@ -63,6 +63,18 @@ public struct DemoDiffLoader: DiffLoading {
 
     public func setViewed(_ viewed: Bool, path: String, pullRequestNodeID: String) async throws {}
 
+    /// The demo PR's four commits, each touching part of the files (matches `DemoPullRequestDetailLoader`).
+    public func loadCommitDiff(for id: PullRequestID, sha: String) async throws -> [FileDiff] {
+        let paths: [String] =
+            switch sha.prefix(7) {
+            case "9a1f04c": ["Sources/Export/CSVEncoder.swift"]
+            case "3be7d12": ["Sources/Export/ExportFormat.swift", "Sources/Billing/InvoiceService.swift"]
+            case "c40e9a8": ["Sources/Billing/Invoice.swift"]
+            default: ["Tests/BillingTests/InvoiceServiceTests.swift", "Package.resolved"]
+            }
+        return UnifiedDiffParser.parse(Self.diff).filter { paths.contains($0.path) }
+    }
+
     static let invoiceServiceHead = """
         import Foundation
 

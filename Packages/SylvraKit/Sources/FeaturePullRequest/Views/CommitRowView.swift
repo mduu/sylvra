@@ -4,8 +4,13 @@ import SwiftUI
 import SylvraCore
 
 /// One commit: avatar, subject, author, CI and copyable SHA (pure).
+/// With `select`, a click reviews this commit on its own; the chevron shows the message body.
 struct CommitRowView: View {
     let commit: Commit
+    /// Position in the PR (1-based), shown when commits can be selected.
+    var number: Int?
+    var isSelected = false
+    var select: (() -> Void)?
     let copySHA: (_ full: Bool) -> Void
     let open: () -> Void
     @State private var isExpanded = false
@@ -14,6 +19,15 @@ struct CommitRowView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(alignment: .top, spacing: 8) {
+                if let number {
+                    Text(number, format: .number)
+                        .font(.caption.weight(.semibold).monospacedDigit())
+                        .foregroundStyle(isSelected ? AnyShapeStyle(.white) : AnyShapeStyle(.secondary))
+                        .frame(width: 20, height: 20)
+                        .background(
+                            isSelected ? AnyShapeStyle(SylvraColor.brandPrimary) : AnyShapeStyle(.quaternary),
+                            in: Circle())
+                }
                 AvatarView(commit.author, size: 22)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(commit.subject)
@@ -33,6 +47,15 @@ struct CommitRowView: View {
                     .lineLimit(1)
                 }
                 Spacer(minLength: 4)
+                if select != nil, !commit.body.isEmpty {
+                    Button {
+                        withAnimation(.snappy) { isExpanded.toggle() }
+                    } label: {
+                        Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
+                    }
+                    .buttonStyle(.borderless)
+                    .help(isExpanded ? "Hide commit message" : "Show commit message")
+                }
                 Button {
                     copySHA(NSEvent.modifierFlags.contains(.option))
                     withAnimation(.snappy) { didCopy = true }
@@ -60,13 +83,52 @@ struct CommitRowView: View {
                     .padding(.leading, 30)
             }
         }
+        .padding(6)
+        .background(
+            isSelected ? AnyShapeStyle(SylvraColor.brandTint) : AnyShapeStyle(.clear),
+            in: RoundedRectangle(cornerRadius: 8)
+        )
         .contentShape(Rectangle())
-        .onTapGesture { if !commit.body.isEmpty { withAnimation(.snappy) { isExpanded.toggle() } } }
+        .onTapGesture {
+            if let select {
+                select()
+            } else if !commit.body.isEmpty {
+                withAnimation(.snappy) { isExpanded.toggle() }
+            }
+        }
+        .help(select == nil ? "" : String(localized: "Review this commit on its own"))
         .contextMenu {
+            if let select { Button("Review this commit", action: select) }
             Button("Copy SHA") { copySHA(false) }
             Button("Copy full SHA") { copySHA(true) }
             Button("Open on GitHub", action: open)
         }
+    }
+}
+
+/// "All changes" entry above the commits: back from reviewing a single commit (pure).
+struct AllChangesRowView: View {
+    let isSelected: Bool
+    let select: () -> Void
+
+    var body: some View {
+        Button(action: select) {
+            HStack(spacing: 8) {
+                Image(systemName: "square.stack.3d.down.right")
+                    .foregroundStyle(isSelected ? SylvraColor.brandPrimary : .secondary)
+                    .frame(width: 20)
+                Text("All changes").font(.callout.weight(.medium))
+                Spacer()
+                if isSelected { Image(systemName: "checkmark").foregroundStyle(SylvraColor.brandPrimary) }
+            }
+            .padding(6)
+            .background(
+                isSelected ? AnyShapeStyle(SylvraColor.brandTint) : AnyShapeStyle(.clear),
+                in: RoundedRectangle(cornerRadius: 8)
+            )
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
     }
 }
 

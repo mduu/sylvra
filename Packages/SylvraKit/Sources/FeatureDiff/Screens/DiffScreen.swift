@@ -51,6 +51,19 @@ public struct DiffScreen<LineAccessory: View>: View {
             }
             .animation(.snappy, value: model.isSearchPresented)
             .safeAreaInset(edge: .top) {
+                if let commit = model.selectedCommit, let position = model.commitPosition {
+                    CommitModeBar(
+                        commit: commit, number: position.number, count: position.count,
+                        isLoading: model.isLoadingCommit,
+                        previous: { Task { await model.selectCommit(offset: -1) } },
+                        next: { Task { await model.selectCommit(offset: 1) } },
+                        showAll: { Task { await model.showCommit(nil) } }
+                    )
+                    .transition(.move(edge: .top).combined(with: .opacity))
+                }
+            }
+            .animation(.snappy, value: model.selectedCommit)
+            .safeAreaInset(edge: .top) {
                 ReviewProgressBar(
                     progress: model.progress,
                     hasNewCommits: model.hasNewCommits,
@@ -117,6 +130,9 @@ public struct DiffScreen<LineAccessory: View>: View {
                     .pickerStyle(.segmented)
                     .labelStyle(.iconOnly)
                     .help("Changed lines only, the full file, or only what changed since your last review")
+                    if !model.commits.isEmpty {
+                        commitMenu
+                    }
                 }
             }
     }
@@ -129,23 +145,8 @@ public struct DiffScreen<LineAccessory: View>: View {
                         ForEach(model.orderedFiles) { file in
                             Section {
                                 if !model.isCollapsed(file) {
-                                    DiffFileBodyView(
-                                        path: file.path,
-                                        hunks: model.hunks(for: file),
-                                        layout: model.layout,
-                                        accessory: lineAccessory,
-                                        highlight: { model.highlight(path: file.path, newLine: $0) },
-                                        onComment: onStartComment == nil
-                                            ? nil
-                                            : { side, line, extends in
-                                                startComment(path: file.path, side: side, line: line, extends: extends)
-                                            },
-                                        hiddenAbove: model.scope == .fullFile ? [] : model.hiddenAbove(file),
-                                        expand: { hunk, count in
-                                            Task { await model.expandContext(file, hunk: hunk, by: count) }
-                                        }
-                                    )
-                                    .transition(.opacity.combined(with: .move(edge: .top)))
+                                    fileBody(file)
+                                        .transition(.opacity.combined(with: .move(edge: .top)))
                                 }
                             } header: {
                                 DiffFileHeaderView(
@@ -194,6 +195,59 @@ public struct DiffScreen<LineAccessory: View>: View {
         } else {
             placeholder
         }
+    }
+
+    private var isCommitMode: Bool { model.selectedCommit != nil }
+
+    /// A file's lines. A single commit's line numbers differ from the PR's: threads, AI highlights,
+    /// comments and head context only apply to all changes.
+    private func fileBody(_ file: FileDiff) -> some View {
+        let commitMode = isCommitMode
+        let comment: CommentRequest? =
+            onStartComment == nil || commitMode
+            ? nil
+            : { side, line, extends in startComment(path: file.path, side: side, line: line, extends: extends) }
+        let expand: ((Int, Int?) -> Void)? =
+            commitMode ? nil : { hunk, count in Task { await model.expandContext(file, hunk: hunk, by: count) } }
+        let hidden: [Int] = model.scope == .fullFile || commitMode ? [] : model.hiddenAbove(file)
+        return DiffFileBodyView(
+            path: file.path,
+            hunks: model.hunks(for: file),
+            layout: model.layout,
+            accessory: { (location: CodeLocation) -> LineAccessory? in
+                commitMode ? nil : lineAccessory(location)
+            },
+            highlight: { commitMode ? nil : model.highlight(path: file.path, newLine: $0) },
+            onComment: comment,
+            hiddenAbove: hidden,
+            expand: expand
+        )
+    }
+
+    /// All changes or one commit at a time.
+    private var commitMenu: some View {
+        Menu {
+            Button("All changes") { Task { await model.showCommit(nil) } }
+            Divider()
+            ForEach(Array(model.commits.enumerated()), id: \.element.id) { index, commit in
+                Button {
+                    Task { await model.showCommit(commit) }
+                } label: {
+                    if commit == model.selectedCommit {
+                        Label("\(index + 1). \(commit.subject)", systemImage: "checkmark")
+                    } else {
+                        Text(verbatim: "\(index + 1). \(commit.subject)")
+                    }
+                }
+            }
+        } label: {
+            Label(
+                "Commits",
+                systemImage: isCommitMode
+                    ? "point.topleft.down.to.point.bottomright.curvepath.fill"
+                    : "point.topleft.down.to.point.bottomright.curvepath")
+        }
+        .help("Review commit by commit (⌥] / ⌥[)")
     }
 
     private func startComment(path: String, side: CodeLocation.Side, line: Int, extends: Bool) {

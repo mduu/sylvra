@@ -84,6 +84,12 @@ extension GitHubDiffLoader {
             accept: "application/vnd.github.v3.diff")
         return UnifiedDiffParser.parse(String(decoding: data, as: UTF8.self))
     }
+
+    public func loadCommitDiff(for id: PullRequestID, sha: String) async throws -> [FileDiff] {
+        let data = try await client.rest(
+            path: "repos/\(id.owner)/\(id.repository)/commits/\(sha)", accept: "application/vnd.github.v3.diff")
+        return UnifiedDiffParser.parse(String(decoding: data, as: UTF8.self))
+    }
 }
 
 enum GitHubDiffError: Error { case notFound }

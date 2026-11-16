@@ -55,8 +55,19 @@ public final class DiffScreenModel {
     }
 
     public var files: [FileDiff] {
-        scope == .sinceLastReview ? (sinceReviewFiles ?? []) : (diff?.files ?? [])
+        if selectedCommit != nil { return commitFiles ?? [] }
+        return scope == .sinceLastReview ? (sinceReviewFiles ?? []) : (diff?.files ?? [])
     }
+
+    // MARK: - Commit by commit
+
+    /// The PR's commits, oldest first (set by the app from the PR details).
+    public var commits: [Commit] = []
+    /// The commit shown on its own; `nil` shows all changes of the PR.
+    public internal(set) var selectedCommit: Commit?
+    /// Files changed by `selectedCommit`.
+    public internal(set) var commitFiles: [FileDiff]?
+    public internal(set) var isLoadingCommit = false
 
     // MARK: - Since last review / new pushes
 
@@ -175,6 +186,8 @@ public final class DiffScreenModel {
 
     /// Hunks to show for a file in the current scope (with context the reviewer revealed).
     public func hunks(for file: FileDiff) -> [Hunk] {
+        // Full files and revealed context come from head; a single commit's lines may differ.
+        if selectedCommit != nil { return file.hunks }
         if scope == .fullFile, let full = fullFileHunks[file.path] { return [full] }
         guard let revealed = revealedContext[file.path], let lines = headLines[file.path] else { return file.hunks }
         return ContextExpander.expand(file.hunks, revealed: revealed, headLines: lines)
@@ -217,6 +230,8 @@ public final class DiffScreenModel {
             sinceReviewFiles = nil
             revealedContext = [:]
             headLines = [:]
+            selectedCommit = nil
+            commitFiles = nil
             if scope == .sinceLastReview { scope = .focused }
             loadState = .loading
         }

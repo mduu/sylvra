@@ -4,19 +4,28 @@ import SwiftUI
 import SylvraCore
 
 /// The PR column (container): loads details for the selected PR and handles copy / open actions.
-/// `files` is a slot for the file navigator, provided by the app (slices don't import each other).
-public struct PullRequestScreen<Files: View>: View {
+/// Slots provided by the app (slices don't import each other): `files` (file navigator) and `overviewTop`
+/// (e.g. the change map). Selecting a commit reviews it on its own (`selectCommit`, `nil` = all changes).
+public struct PullRequestScreen<Files: View, OverviewTop: View>: View {
     @Bindable private var model: PullRequestScreenModel
     private let pullRequest: PullRequestSummary?
     private let files: Files
+    private let overviewTop: OverviewTop
+    private let selectedCommitSHA: String?
+    private let selectCommit: ((Commit?) -> Void)?
     @Environment(\.openURL) private var openURL
 
     public init(
         model: PullRequestScreenModel, pullRequest: PullRequestSummary?,
-        @ViewBuilder files: () -> Files = { EmptyView() }
+        selectedCommitSHA: String? = nil, selectCommit: ((Commit?) -> Void)? = nil,
+        @ViewBuilder overviewTop: () -> OverviewTop,
+        @ViewBuilder files: () -> Files
     ) {
         self.model = model
         self.pullRequest = pullRequest
+        self.selectedCommitSHA = selectedCommitSHA
+        self.selectCommit = selectCommit
+        self.overviewTop = overviewTop()
         self.files = files()
     }
 
@@ -48,20 +57,12 @@ public struct PullRequestScreen<Files: View>: View {
 
                 switch model.tab {
                 case .overview:
+                    overviewTop
                     OverviewView(detail: detail, open: open)
                 case .files:
                     files
                 case .commits:
-                    LazyVStack(alignment: .leading, spacing: 12) {
-                        ForEach(detail.commits) { commit in
-                            CommitRowView(
-                                commit: commit,
-                                copySHA: { copy($0 ? commit.sha : commit.shortSHA) },
-                                open: { open(commit.url ?? commitURL(detail, commit)) }
-                            )
-                            Divider()
-                        }
-                    }
+                    commitList(detail)
                 case .checks:
                     LazyVStack(alignment: .leading, spacing: 6) {
                         ForEach(detail.checks) { check in
@@ -73,6 +74,30 @@ public struct PullRequestScreen<Files: View>: View {
             }
             .padding(16)
             .animation(.snappy, value: model.tab)
+        }
+    }
+
+    /// Commits oldest first; selecting one shows only its changes in the diff.
+    private func commitList(_ detail: PullRequestDetail) -> some View {
+        LazyVStack(alignment: .leading, spacing: 8) {
+            if let selectCommit {
+                AllChangesRowView(isSelected: selectedCommitSHA == nil) { selectCommit(nil) }
+                Text("Select a commit to review it on its own (⌥] / ⌥[ step through).")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Divider()
+            }
+            ForEach(Array(detail.commits.enumerated()), id: \.element.id) { index, commit in
+                CommitRowView(
+                    commit: commit,
+                    number: selectCommit == nil ? nil : index + 1,
+                    isSelected: commit.sha == selectedCommitSHA,
+                    select: selectCommit.map { select in { select(commit) } },
+                    copySHA: { copy($0 ? commit.sha : commit.shortSHA) },
+                    open: { open(commit.url ?? commitURL(detail, commit)) }
+                )
+                Divider()
+            }
         }
     }
 
@@ -110,6 +135,16 @@ public struct PullRequestScreen<Files: View>: View {
         URL(
             string: "https://github.com/\(detail.summary.id.owner)/\(detail.summary.id.repository)/commit/\(commit.sha)"
         )
+    }
+}
+
+extension PullRequestScreen where Files == EmptyView, OverviewTop == EmptyView {
+    public init(model: PullRequestScreenModel, pullRequest: PullRequestSummary?) {
+        self.init(model: model, pullRequest: pullRequest) {
+            EmptyView()
+        } files: {
+            EmptyView()
+        }
     }
 }
 

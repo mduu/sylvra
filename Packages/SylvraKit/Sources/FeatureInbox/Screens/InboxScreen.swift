@@ -102,27 +102,12 @@ public struct InboxScreen: View {
         return Text("Search PRs")
     }
 
+    /// Open work first, then the repositories, then what was closed recently (history at the bottom).
     @ViewBuilder private var inboxContent: some View {
-        ForEach(model.visibleSections, id: \.section) { entry in
-            Section(isExpanded: expansion(entry.section.rawValue)) {
-                ForEach(entry.pullRequests) { pullRequest in
-                    InboxRowView(pullRequest: pullRequest)
-                        .tag(pullRequest.id)
-                        .contextMenu { rowMenu(pullRequest) }
-                }
-            } header: {
-                HStack {
-                    Text(entry.section.title)
-                    Spacer()
-                    Text(entry.pullRequests.count, format: .number)
-                        .foregroundStyle(
-                            entry.section == .requestedFromMe && !entry.pullRequests.isEmpty
-                                ? AnyShapeStyle(SylvraColor.accentGold) : AnyShapeStyle(.secondary))
-                }
-            }
-        }
+        let sections = model.visibleSections
+        ForEach(sections.filter { $0.section != .recentlyClosed }, id: \.section, content: sectionView)
         if model.repositoryLoader != nil {
-            if model.loadState == .loaded, model.visibleSections.isEmpty {
+            if model.loadState == .loaded, sections.isEmpty {
                 Section {
                     Label("Nothing waiting for you. Enjoy the quiet.", systemImage: "leaf")
                         .foregroundStyle(.secondary)
@@ -130,6 +115,26 @@ public struct InboxScreen: View {
                 }
             }
             repositoriesSection
+        }
+        ForEach(sections.filter { $0.section == .recentlyClosed }, id: \.section, content: sectionView)
+    }
+
+    private func sectionView(_ entry: (section: InboxSection, pullRequests: [PullRequestSummary])) -> some View {
+        Section(isExpanded: expansion(entry.section.rawValue)) {
+            ForEach(entry.pullRequests) { pullRequest in
+                InboxRowView(pullRequest: pullRequest)
+                    .tag(pullRequest.id)
+                    .contextMenu { rowMenu(pullRequest) }
+            }
+        } header: {
+            HStack {
+                Text(entry.section.title)
+                Spacer()
+                Text(entry.pullRequests.count, format: .number)
+                    .foregroundStyle(
+                        entry.section == .requestedFromMe && !entry.pullRequests.isEmpty
+                            ? AnyShapeStyle(SylvraColor.accentGold) : AnyShapeStyle(.secondary))
+            }
         }
     }
 

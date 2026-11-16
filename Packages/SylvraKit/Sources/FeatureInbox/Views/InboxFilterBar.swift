@@ -43,6 +43,18 @@ struct InboxFilterBar: View {
             }
         }
         .padding(.vertical, 6)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        // Rows scrolling underneath blur away; the sidebar tint keeps the bar part of the sidebar.
+        .background {
+            ZStack {
+                Rectangle().fill(.ultraThickMaterial)
+                SylvraColor.surfaceSidebar.opacity(0.55)
+            }
+            .ignoresSafeArea(edges: .horizontal)
+        }
+        .overlay(alignment: .bottom) {
+            Rectangle().fill(SylvraColor.codeHairline).frame(height: 1)
+        }
     }
 
     private var preferencesMenu: some View {

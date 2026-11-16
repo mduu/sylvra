@@ -43,4 +43,13 @@ public protocol DiffLoading: Sendable {
     func loadReviewProgress(for id: PullRequestID) async throws -> ReviewProgress
     /// Diff between two commits of the PR (e.g. last reviewed commit → head).
     func loadDiff(for id: PullRequestID, from base: String, to head: String) async throws -> [FileDiff]
+    /// Changes of a single commit (commit-by-commit review).
+    func loadCommitDiff(for id: PullRequestID, sha: String) async throws -> [FileDiff]
+}
+
+extension DiffLoading {
+    /// Default: the commit compared with its parent.
+    public func loadCommitDiff(for id: PullRequestID, sha: String) async throws -> [FileDiff] {
+        try await loadDiff(for: id, from: "\(sha)^", to: sha)
+    }
 }

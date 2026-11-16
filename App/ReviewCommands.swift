@@ -15,6 +15,8 @@ struct ReviewActions {
     var showPalette: () -> Void = {}
     var showShortcuts: () -> Void = {}
     var find: () -> Void = {}
+    var nextCommit: () -> Void = {}
+    var previousCommit: () -> Void = {}
 }
 
 extension FocusedValues {
@@ -34,6 +36,8 @@ struct ReviewCommands: Commands {
             Button("Previous File") { actions?.previousFile() }.keyboardShortcut("[", modifiers: .command)
             Button("Next Change  (n)") { actions?.nextChange() }
             Button("Previous Change  (p)") { actions?.previousChange() }
+            Button("Next Commit") { actions?.nextCommit() }.keyboardShortcut("]", modifiers: .option)
+            Button("Previous Commit") { actions?.previousCommit() }.keyboardShortcut("[", modifiers: .option)
             Divider()
             Button("Next AI Finding") { actions?.nextFinding() }.keyboardShortcut(
                 .downArrow, modifiers: [.command, .option])
