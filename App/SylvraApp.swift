@@ -38,7 +38,8 @@ struct SylvraApp: App {
         .defaultSize(width: 1440, height: 900)
         .commands {
             ReviewCommands()
-            TerminalCommands(terminal: environment.terminal)
+            TerminalCommands(terminal: environment.terminal, panel: environment.bottomPanel)
+            CommandLogCommands(panel: environment.bottomPanel)
             DiagnosticCommands()
         }
 

@@ -103,7 +103,10 @@ public actor GitHubClient {
 
         // Mutations are never retried: a gateway timeout doesn't tell whether they were applied.
         let isMutation = query.trimmingCharacters(in: .whitespacesAndNewlines).hasPrefix("mutation")
-        let data = try await perform(request, retryTransient: !isMutation)
+        let log = LogContext(
+            title: "GraphQL " + CommandLogText.graphQLOperation(query),
+            request: Self.describe(variables), showsResponse: true)
+        let data = try await perform(request, retryTransient: !isMutation, log: log)
         let envelope: GraphQLEnvelope<Response>
         do {
             envelope = try GitHubJSON.decoder.decode(GraphQLEnvelope<Response>.self, from: data)
@@ -126,7 +129,45 @@ public actor GitHubClient {
     ) async throws -> Data {
         var request = try await authorizedRequest(path: path, query: query)
         request.setValue(accept, forHTTPHeaderField: "Accept")
-        return try await perform(request, retryTransient: true)
+        let query = query.isEmpty ? "" : "?" + query.map { "\($0.name)=\($0.value ?? "")" }.joined(separator: "&")
+        // Diffs and file contents are code: the panel only shows their size.
+        let isCode = accept.contains("diff") || accept.contains("raw") || path.contains("/contents/")
+        let log = LogContext(title: "GET /\(path)\(query)", request: nil, showsResponse: !isCode)
+        return try await perform(request, retryTransient: true, log: log)
+    }
+
+    /// How a request appears in the Commands panel.
+    private struct LogContext {
+        let title: String
+        let request: String?
+        let showsResponse: Bool
+    }
+
+    private static func describe(_ variables: [String: GraphQLValue]) -> String? {
+        guard !variables.isEmpty else { return nil }
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]
+        return (try? encoder.encode(variables)).map { String(decoding: $0, as: UTF8.self) }
+    }
+
+    private func record(_ log: LogContext, started: Date, result: Result<Data, any Error>) {
+        let entry: CommandLogEntry
+        switch result {
+        case .success(let data):
+            entry = CommandLogEntry(
+                kind: .github, title: log.title, startedAt: started, duration: Date.now.timeIntervalSince(started),
+                status: "200", isFailure: false, request: log.request,
+                response: log.showsResponse
+                    ? CommandLogText.jsonPreview(data) : CommandLogText.sizeOnly(data.count, reason: "code, not shown"))
+        case .failure(let error):
+            if error is CancellationError { return }
+            let status: String =
+                if case GitHubError.http(let code, _) = error { "\(code)" } else { "failed" }
+            entry = CommandLogEntry(
+                kind: .github, title: log.title, startedAt: started, duration: Date.now.timeIntervalSince(started),
+                status: status, isFailure: true, request: log.request, response: String(describing: error))
+        }
+        CommandLog.record(entry)
     }
 
     /// Gateway errors GitHub returns when a request times out or the backend is busy.
@@ -157,7 +198,19 @@ public actor GitHubClient {
     }
 
     /// Sends the request; transient gateway errors are retried with the configured back-off.
-    private func perform(_ request: URLRequest, retryTransient: Bool) async throws -> Data {
+    private func perform(_ request: URLRequest, retryTransient: Bool, log: LogContext) async throws -> Data {
+        let started = Date.now
+        do {
+            let data = try await performWithRetries(request, retryTransient: retryTransient)
+            record(log, started: started, result: .success(data))
+            return data
+        } catch {
+            record(log, started: started, result: .failure(error))
+            throw error
+        }
+    }
+
+    private func performWithRetries(_ request: URLRequest, retryTransient: Bool) async throws -> Data {
         var attempt = 0
         while true {
             do {

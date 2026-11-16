@@ -71,13 +71,17 @@ struct TerminalSplit<Content: View>: View {
 
     @State private var terminalHeight: CGFloat = 260
 
+    private var isPanelPresented: Bool {
+        environment.terminal.isPresented || environment.bottomPanel.showsCommands
+    }
+
     // A plain VStack with a drag handle instead of `VSplitView`: an AppKit split view inside the
     // NavigationSplitView detail made the window's constraint pass loop and crash with all columns visible.
     var body: some View {
         VStack(spacing: 0) {
             content
                 .frame(maxHeight: .infinity)
-            if environment.terminal.isPresented {
+            if isPanelPresented {
                 Rectangle()
                     .fill(.separator)
                     .frame(height: 1)
@@ -88,14 +92,36 @@ struct TerminalSplit<Content: View>: View {
                         DragGesture().onChanged { value in
                             terminalHeight = min(max(terminalHeight - value.translation.height, 120), 600)
                         })
-                TerminalPanel(model: environment.terminal) {
-                    PullRequestToolsMenu(environment: environment, pullRequest: selection?.id)
+                Group {
+                    if environment.bottomPanel.showsCommands {
+                        CommandLogPanel {
+                            BottomPanelSwitch(
+                                title: "Terminal", systemImage: "terminal", help: "Show the terminal (⌃`)"
+                            ) {
+                                environment.bottomPanel.showsCommands = false
+                                environment.terminal.show()
+                            }
+                            Button("Close", systemImage: "xmark") { environment.bottomPanel.showsCommands = false }
+                                .labelStyle(.iconOnly)
+                                .buttonStyle(.borderless)
+                                .help("Hide the commands (⌥⌘K)")
+                        }
+                    } else {
+                        TerminalPanel(model: environment.terminal) {
+                            PullRequestToolsMenu(environment: environment, pullRequest: selection?.id)
+                            BottomPanelSwitch(
+                                title: "Commands", systemImage: "list.bullet.rectangle",
+                                help: "GitHub requests and commands Sylvra ran (⌥⌘K)"
+                            ) { environment.bottomPanel.showsCommands = true }
+                        }
+                    }
                 }
                 .frame(height: terminalHeight)
                 .transition(.move(edge: .bottom).combined(with: .opacity))
             }
         }
-        .animation(.snappy, value: environment.terminal.isPresented)
+        .animation(.snappy, value: isPanelPresented)
+        .animation(.snappy, value: environment.bottomPanel.showsCommands)
         // Errors while the panel is hidden (e.g. a tool from a context menu); the panel shows its own otherwise.
         .alert(
             "Terminal",
@@ -201,11 +227,20 @@ struct TerminalToolbarMenu: View {
 /// View menu commands for the terminal.
 struct TerminalCommands: Commands {
     let terminal: TerminalModel
+    let panel: BottomPanelState
 
     var body: some Commands {
         CommandGroup(after: .sidebar) {
-            Button(terminal.isPresented ? "Hide Terminal" : "Show Terminal") { terminal.toggle() }
-                .keyboardShortcut("`", modifiers: .control)
+            Button(terminal.isPresented ? "Hide Terminal" : "Show Terminal") {
+                // From the Commands list, ⌃` switches to the terminal instead of hiding it.
+                if panel.showsCommands {
+                    panel.showsCommands = false
+                    terminal.show()
+                } else {
+                    terminal.toggle()
+                }
+            }
+            .keyboardShortcut("`", modifiers: .control)
             Button("New Terminal Tab") { terminal.openTab() }
         }
     }

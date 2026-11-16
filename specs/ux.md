@@ -109,6 +109,7 @@ flowchart LR
 - **Diff** — the code.
 - **Inspector** — AI findings, patterns, chat. Its header (run status) and tabs stay fixed; only the tab content scrolls.
 - **Terminal panel** — bottom panel, toggle with ⌃\`.
+- **Commands panel** — shares the bottom panel (⌥⌘K, or *Commands* in the terminal header): every GitHub request (GraphQL operation or REST path, variables, status, duration, JSON preview) and every command (git, gh, agent CLIs) of the session, newest first, filterable, failures in red. In memory only; tokens never appear, diffs, file contents and agent output only as their size.
 
 Columns are collapsible. *Focus mode* (⌃⌘F) hides sidebar and PR column for maximum diff space.
 

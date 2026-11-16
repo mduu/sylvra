@@ -19,11 +19,25 @@ public struct SystemProcessRunner: ProcessRunning {
         _ executable: URL, arguments: [String], workingDirectory: URL?, input: Data?
     ) async throws -> ProcessResult {
         let box = ProcessBox()
-        return try await withTaskCancellationHandler {
-            try await launch(
-                executable, arguments: arguments, workingDirectory: workingDirectory, input: input, box: box)
-        } onCancel: {
-            box.terminate()
+        let invocation = ProcessLogEntry.Invocation(
+            executable: executable, arguments: arguments, workingDirectory: workingDirectory, input: input,
+            started: .now)
+        do {
+            let result = try await withTaskCancellationHandler {
+                try await launch(
+                    executable, arguments: arguments, workingDirectory: workingDirectory, input: input, box: box)
+            } onCancel: {
+                box.terminate()
+            }
+            CommandLog.record(
+                ProcessLogEntry.make(
+                    invocation, result: .success(result), isCancelled: Task.isCancelled))
+            return result
+        } catch {
+            CommandLog.record(
+                ProcessLogEntry.make(
+                    invocation, result: .failure(error), isCancelled: Task.isCancelled))
+            throw error
         }
     }
 

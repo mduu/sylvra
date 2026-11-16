@@ -25,7 +25,7 @@ import SylvraCore
 ///   finding becomes a comment draft
 /// - `--submit-review`: open the submit review sheet; `--compose=path:line`: open the comment composer
 ///   (`--draft=text` prefills it)
-/// - `--terminal`: show the terminal panel with one tab
+/// - `--terminal`: show the terminal panel with one tab; `--commands`: show the Commands list
 @MainActor
 final class AppEnvironment {
     let isDemo: Bool
@@ -48,6 +48,7 @@ final class AppEnvironment {
     let activity = ActivityCenter()
     let review: ReviewScreenModel
     let terminal = TerminalModel()
+    let bottomPanel = BottomPanelState()
     let customTools = CustomToolStore()
 
     // swiftlint:disable:next function_body_length
@@ -101,6 +102,7 @@ final class AppEnvironment {
             review.draft?.body = Self.value(of: "--draft", in: arguments) ?? ""
         }
         if arguments.contains("--terminal") { terminal.show() }
+        if arguments.contains("--commands") { bottomPanel.showsCommands = true }
         if Self.value(of: "--layout", in: arguments) == "inline" { diff.layout = .inline }
         if let scope = Self.value(of: "--scope", in: arguments).flatMap(DiffScreenModel.Scope.init(rawValue:)) {
             diff.scope = scope
