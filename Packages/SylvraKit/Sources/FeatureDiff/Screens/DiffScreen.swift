@@ -17,8 +17,6 @@ public struct DiffScreen<LineAccessory: View>: View {
     private let onRefresh: (() async -> Void)?
     @State private var diffIsWide = true
     @State private var diffWidth: CGFloat = 800
-    /// The row at the top of the diff (see `scrollPosition`).
-    @State private var topRowID: String?
     @State private var commentAnchor: CodeLocation?
 
     public init(
@@ -164,15 +162,13 @@ public struct DiffScreen<LineAccessory: View>: View {
                             }
                         }
                     }
-                    // Keeps the row at the top in place when content above changes height (cards, comment
-                    // boxes, threads opening or closing) instead of keeping the pixel offset.
-                    .scrollTargetLayout()
+                    // No `scrollPosition(id:)`: with pinned file headers the remembered top row was often a
+                    // header, and every re-render (e.g. a refresh) jumped back to the top of that file.
                     // A new layout, scope or commit builds all rows from scratch: rows the lazy stack kept from
                     // the previous mode (and animations between modes) left files rendered in a mix of modes.
                     .id(renderMode)
                     .animation(.snappy, value: model.revealedContext)
                 }
-                .scrollPosition(id: $topRowID, anchor: .top)
                 .onChange(of: renderMode) {
                     guard let path = model.selectedPath else { return }
                     Task { @MainActor in proxy.scrollTo(path, anchor: .top) }
