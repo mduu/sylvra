@@ -52,11 +52,12 @@ public struct FindingsInspectorScreen: View {
                         .padding(.bottom, 14)
                         .animation(.snappy, value: model.selectedFindingID)
                     }
-                    .onChange(of: model.selectedFindingID) { _, selected in
-                        guard let selected else { return }
-                        // A highlight clicked in the diff: show the finding here as well.
-                        model.tab = .findings
-                        withAnimation(.snappy) { proxy.scrollTo(selected, anchor: .top) }
+                    .onChange(of: model.findingRequest) {
+                        guard let selected = model.selectedFindingID else { return }
+                        // A highlight clicked in the diff: show the finding here as well (after the tab switch).
+                        Task { @MainActor in
+                            withAnimation(.snappy) { proxy.scrollTo(selected, anchor: .top) }
+                        }
                     }
                 }
             } else {

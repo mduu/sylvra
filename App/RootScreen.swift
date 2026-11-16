@@ -127,7 +127,9 @@ struct RootScreen: View {
         .onAppear {
             // A click on an AI highlight in the diff opens that finding (card in the diff, row in the inspector).
             environment.diff.selectFinding = { id in
-                withAnimation(.snappy) { environment.aiReview.selectedFindingID = UUID(uuidString: id) }
+                guard let id = UUID(uuidString: id) else { return }
+                isInspectorPresented = true
+                withAnimation(.snappy) { environment.aiReview.showFinding(id) }
             }
             environment.review.discussHandler = { location, code, question in
                 discuss(location, code: code, question: question)

@@ -161,8 +161,14 @@ public struct DiffScreen<LineAccessory: View>: View {
                             }
                         }
                     }
-                    .animation(.snappy, value: model.layout)
+                    // A new layout, scope or commit builds all rows from scratch: rows the lazy stack kept from
+                    // the previous mode (and animations between modes) left files rendered in a mix of modes.
+                    .id(renderMode)
                     .animation(.snappy, value: model.revealedContext)
+                }
+                .onChange(of: renderMode) {
+                    guard let path = model.selectedPath else { return }
+                    Task { @MainActor in proxy.scrollTo(path, anchor: .top) }
                 }
                 .onGeometryChange(for: Bool.self) {
                     $0.size.width >= 760  // room for two thread lanes of ~320 pt
@@ -196,33 +202,6 @@ public struct DiffScreen<LineAccessory: View>: View {
         } else {
             placeholder
         }
-    }
-
-    private var isCommitMode: Bool { model.selectedCommit != nil }
-
-    /// A file's lines. A single commit's line numbers differ from the PR's: threads, AI highlights,
-    /// comments and head context only apply to all changes.
-    private func fileBody(_ file: FileDiff) -> some View {
-        let commitMode = isCommitMode
-        let comment: CommentRequest? =
-            onStartComment == nil || commitMode
-            ? nil
-            : { side, line, extends in startComment(path: file.path, side: side, line: line, extends: extends) }
-        let expand: ((Int, Int?) -> Void)? =
-            commitMode ? nil : { hunk, count in Task { await model.expandContext(file, hunk: hunk, by: count) } }
-        let hidden: [Int] = model.scope == .fullFile || commitMode ? [] : model.hiddenAbove(file)
-        return DiffFileBodyView(
-            path: file.path,
-            hunks: model.hunks(for: file),
-            layout: model.layout,
-            accessory: { (location: CodeLocation) -> LineAccessory? in
-                commitMode ? nil : lineAccessory(location)
-            },
-            highlight: { commitMode ? nil : model.highlight(path: file.path, newLine: $0) },
-            onComment: comment,
-            hiddenAbove: hidden,
-            expand: expand
-        )
     }
 
     /// All changes or one commit at a time.
@@ -278,5 +257,39 @@ public struct DiffScreen<LineAccessory: View>: View {
 extension DiffScreen where LineAccessory == EmptyView {
     public init(model: DiffScreenModel, pullRequestID: PullRequestID?, headSHA: String?) {
         self.init(model: model, pullRequestID: pullRequestID, headSHA: headSHA) { _ in EmptyView() }
+    }
+}
+
+extension DiffScreen {
+    private var isCommitMode: Bool { model.selectedCommit != nil }
+
+    /// Everything that changes what a row shows for the same line.
+    private var renderMode: String {
+        "\(model.layout)|\(model.scope)|\(model.selectedCommit?.sha ?? "")"
+    }
+
+    /// A file's lines. A single commit's line numbers differ from the PR's: threads, AI highlights,
+    /// comments and head context only apply to all changes.
+    private func fileBody(_ file: FileDiff) -> some View {
+        let commitMode = isCommitMode
+        let comment: CommentRequest? =
+            onStartComment == nil || commitMode
+            ? nil
+            : { side, line, extends in startComment(path: file.path, side: side, line: line, extends: extends) }
+        let expand: ((Int, Int?) -> Void)? =
+            commitMode ? nil : { hunk, count in Task { await model.expandContext(file, hunk: hunk, by: count) } }
+        let hidden: [Int] = model.scope == .fullFile || commitMode ? [] : model.hiddenAbove(file)
+        return DiffFileBodyView(
+            path: file.path,
+            hunks: model.hunks(for: file),
+            layout: model.layout,
+            accessory: { (location: CodeLocation) -> LineAccessory? in
+                commitMode ? nil : lineAccessory(location)
+            },
+            highlight: { commitMode ? nil : model.highlight(path: file.path, newLine: $0) },
+            onComment: comment,
+            hiddenAbove: hidden,
+            expand: expand
+        )
     }
 }

@@ -31,6 +31,15 @@ public final class AIReviewModel {
     private var runTask: Task<Void, Never>?
     public var selectedFindingID: UUID?
     public var tab: Tab = .findings
+    /// Changes with every `showFinding` so the inspector scrolls to it, also when it's already selected.
+    public private(set) var findingRequest = UUID()
+
+    /// Selects a finding and asks the inspector to show it (e.g. its highlight was clicked in the diff).
+    public func showFinding(_ id: UUID) {
+        selectedFindingID = id
+        tab = .findings
+        findingRequest = UUID()
+    }
     public private(set) var dismissed: Set<UUID> = []
     public var defaultSettings: ReviewSettings {
         didSet { save(defaultSettings, key: "aiReview.defaultSettings") }
@@ -167,8 +176,7 @@ public final class AIReviewModel {
         guard !findings.isEmpty else { return nil }
         let current = findings.firstIndex { $0.id == selectedFindingID } ?? (offset > 0 ? -1 : findings.count)
         let finding = findings[min(max(current + offset, 0), findings.count - 1)]
-        selectedFindingID = finding.id
-        tab = .findings
+        showFinding(finding.id)
         return finding
     }
 

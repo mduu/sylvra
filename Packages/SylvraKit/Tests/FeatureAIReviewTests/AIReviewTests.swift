@@ -176,6 +176,20 @@ struct AIReviewModelTests {
         model.dismiss(first)
         #expect(!model.visibleFindings(for: id).contains(first))
     }
+
+    /// Regression: clicking the highlight of the already selected finding didn't bring it back into view.
+    @Test func showingAFindingAlwaysRequestsTheInspector() async throws {
+        let model = model()
+        await model.run(id, title: "t", body: "")
+        let first = try #require(model.visibleFindings(for: id).first)
+        model.tab = .patterns
+        model.showFinding(first.id)
+        let request = model.findingRequest
+        #expect(model.selectedFindingID == first.id)
+        #expect(model.tab == .findings)
+        model.showFinding(first.id)
+        #expect(model.findingRequest != request)
+    }
 }
 
 @MainActor

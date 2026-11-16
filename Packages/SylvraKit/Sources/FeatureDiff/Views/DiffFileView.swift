@@ -214,7 +214,7 @@ struct DiffFileBodyView<Accessory: View>: View {
                             .overlay {
                                 AIHighlightOverlay(
                                     highlight: line.kind == .removed ? nil : line.newNumber.flatMap(highlight),
-                                    gutterWidth: inlineGutterWidth)
+                                    line: line.newNumber, gutterWidth: inlineGutterWidth)
                             }
                             .overlay { searchOverlay(texts: [line.text], newLine: line.newNumber) }
                         inlineAccessories(line, continuation: continuation)
@@ -229,9 +229,11 @@ struct DiffFileBodyView<Accessory: View>: View {
                             }
                             .overlay(alignment: .trailing) {
                                 GeometryReader { geometry in
-                                    AIHighlightOverlay(highlight: row.right?.newNumber.flatMap(highlight))
-                                        .frame(width: geometry.size.width / 2)
-                                        .frame(maxWidth: .infinity, alignment: .trailing)
+                                    AIHighlightOverlay(
+                                        highlight: row.right?.newNumber.flatMap(highlight), line: row.right?.newNumber
+                                    )
+                                    .frame(width: geometry.size.width / 2)
+                                    .frame(maxWidth: .infinity, alignment: .trailing)
                                 }
                             }
                         sideBySideAccessories(row, continuation: continuation)

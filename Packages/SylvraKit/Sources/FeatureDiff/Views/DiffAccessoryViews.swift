@@ -54,6 +54,8 @@ struct GutterStrip: View {
 /// Xcode-style AI highlight: a soft gradient fading to the right, a gold edge and ✦ for the selected finding (pure).
 struct AIHighlightOverlay: View {
     let highlight: LineHighlight?
+    /// The new-side line the overlay sits on: the edge gradient spans the finding's whole range.
+    var line: Int?
     /// Clicks on the gutter keep starting comments.
     var gutterWidth: CGFloat = halfGutterWidth
     @Environment(\.diffSelectFinding) private var selectFinding
@@ -64,9 +66,7 @@ struct AIHighlightOverlay: View {
             ZStack(alignment: .leading) {
                 AIAccent.lineGradient(
                     opacity: highlight.isSelected ? 0.45 : 0.18 + 0.22 * highlight.intensity + (isHovered ? 0.12 : 0))
-                Rectangle()
-                    .fill(highlight.isSelected ? AnyShapeStyle(SylvraColor.accentGold) : AnyShapeStyle(AIAccent.border))
-                    .frame(width: 3)
+                edge(highlight)
             }
             .overlay(alignment: .trailing) {
                 Image(systemName: "sparkle")
@@ -81,7 +81,7 @@ struct AIHighlightOverlay: View {
             .overlay {
                 // Clicking the AI edge or the code of a highlighted line opens its finding; the line numbers in
                 // between keep their comment action.
-                if !highlight.isSelected, let id = highlight.findingID, let selectFinding {
+                if let id = highlight.findingID, let selectFinding {
                     HStack(spacing: 0) {
                         tapArea { selectFinding(id) }.frame(width: 8)
                         Color.clear.frame(width: max(gutterWidth - 8, 0)).allowsHitTesting(false)
@@ -91,6 +91,27 @@ struct AIHighlightOverlay: View {
             }
             .transition(.opacity)
         }
+    }
+
+    /// One gradient stretched over all lines of the finding (each row shows its slice), instead of the
+    /// full gradient repeating on every line.
+    private func edge(_ highlight: LineHighlight) -> some View {
+        GeometryReader { geometry in
+            let span = Self.span(of: line, in: highlight.lines)
+            Rectangle()
+                .fill(highlight.isSelected ? AnyShapeStyle(SylvraColor.accentGold) : AnyShapeStyle(AIAccent.edge))
+                .frame(width: 3, height: geometry.size.height * CGFloat(span.count))
+                .offset(y: -geometry.size.height * CGFloat(span.index))
+        }
+        .frame(width: 3)
+        .clipped()
+    }
+
+    /// Position of `line` in the highlighted range (row index and number of rows).
+    nonisolated static func span(of line: Int?, in lines: ClosedRange<Int>) -> (index: Int, count: Int) {
+        let count = max(lines.count, 1)
+        guard let line else { return (0, 1) }
+        return (min(max(line - lines.lowerBound, 0), count - 1), count)
     }
 
     private func tapArea(_ action: @escaping () -> Void) -> some View {

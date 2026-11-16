@@ -60,3 +60,14 @@ struct FocusTests {
         #expect(DiffScreenModel.nearestShownLine(to: 5, in: []) == nil)
     }
 }
+
+/// Regression: the AI edge repeated its whole gradient on every line; each row now shows its slice.
+struct HighlightSpanTests {
+    @Test func positionsALineInTheFindingsRange() {
+        let middle = AIHighlightOverlay.span(of: 12, in: 10...14)
+        #expect(middle.index == 2 && middle.count == 5)
+        #expect(AIHighlightOverlay.span(of: 30, in: 10...14).index == 4)
+        let unknown = AIHighlightOverlay.span(of: nil, in: 10...14)
+        #expect(unknown.index == 0 && unknown.count == 1)
+    }
+}
