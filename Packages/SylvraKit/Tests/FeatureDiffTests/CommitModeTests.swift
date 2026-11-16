@@ -64,3 +64,36 @@ struct CommitModeTests {
         #expect(tiles.map(\.weight) == tiles.map(\.weight).sorted(by: >))
     }
 }
+
+struct ChangeMapTooltipTests {
+    @Test func tooltipNamesTheFullFolderAndLines() {
+        let tile = ChangeMapView.Tile(folder: "Sources/Billing/Pricing", additions: 9, deletions: 3)
+        #expect(ChangeMapView.tooltip(for: tile) == "Sources/Billing/Pricing · +9 −3")
+        #expect(ChangeMapView.name(of: tile) == "Pricing")
+        #expect(ChangeMapView.name(of: .init(folder: "", additions: 1, deletions: 0)) == "/")
+    }
+}
+
+@MainActor
+struct RevealTests {
+    @Test func revealsCollapsedFilesAndLeavesCommitsWithoutThem() async {
+        let id = PullRequestID(owner: "acme", repository: "billing", number: 1234)
+        let model = DiffScreenModel(loader: DemoDiffLoader())
+        await model.load(id, headSHA: "e08b5a1")
+        let viewed = "Sources/Billing/Invoice.swift"
+        #expect(model.files.first { $0.path == viewed }.map(model.isCollapsed) == true)
+
+        await model.reveal(viewed)
+        #expect(model.selectedPath == viewed)
+        #expect(model.focusedLine?.line == 11)
+        #expect(model.files.first { $0.path == viewed }.map(model.isCollapsed) == false)
+
+        model.commits = [
+            Commit(sha: "9a1f04c", subject: "CSV", author: UserRef(login: "a"), authoredAt: .now)
+        ]
+        await model.showCommit(model.commits[0])
+        await model.reveal("Sources/Billing/InvoiceService.swift")
+        #expect(model.selectedCommit == nil)
+        #expect(model.selectedPath == "Sources/Billing/InvoiceService.swift")
+    }
+}

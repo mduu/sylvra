@@ -47,7 +47,7 @@ struct RootScreen: View {
                 selectCommit: { commit in Task { await environment.diff.showCommit(commit) } },
                 summary: {
                     AISummaryPanel(model: environment.aiReview, pullRequestID: selection?.id) { path in
-                        environment.diff.selectedPath = path
+                        Task { await environment.diff.reveal(path) }
                     }
                 },
                 overviewTop: { ChangeMapPanel(model: environment.diff) },

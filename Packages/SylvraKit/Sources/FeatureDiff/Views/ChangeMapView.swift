@@ -22,9 +22,14 @@ struct ChangeMapView: View {
                     select(tile.folder)
                 } label: {
                     VStack(alignment: .leading, spacing: 1) {
-                        Text(tile.folder.isEmpty ? "/" : (tile.folder as NSString).lastPathComponent)
-                            .font(.caption.weight(.semibold))
-                        if frame.height > 34 {
+                        // Tiny tiles show only their color; the tooltip names them.
+                        if frame.width >= 34, frame.height >= 20 {
+                            Text(Self.name(of: tile))
+                                .font(.caption.weight(.semibold))
+                                .minimumScaleFactor(0.75)
+                                .truncationMode(.middle)
+                        }
+                        if frame.height > 34, frame.width >= 48 {
                             Text(verbatim: "+\(tile.additions) −\(tile.deletions)").font(.caption2).opacity(0.85)
                         }
                     }
@@ -33,9 +38,11 @@ struct ChangeMapView: View {
                     .padding(6)
                     .frame(width: max(frame.width - 3, 0), height: max(frame.height - 3, 0), alignment: .topLeading)
                     .background(color(for: tile).gradient, in: RoundedRectangle(cornerRadius: 7))
+                    .contentShape(RoundedRectangle(cornerRadius: 7))
+                    .help(Self.tooltip(for: tile))
                 }
                 .buttonStyle(.plain)
-                .help(tile.folder)
+                .accessibilityLabel(Self.tooltip(for: tile))
                 .position(x: frame.midX, y: frame.midY)
             }
         }
@@ -47,8 +54,17 @@ struct ChangeMapView: View {
         return SylvraColor.brandPrimary.mix(with: Color(red: 0.55, green: 0.24, blue: 0.40), by: 1 - share)
     }
 
+    nonisolated static func name(of tile: Tile) -> String {
+        tile.folder.isEmpty ? "/" : (tile.folder as NSString).lastPathComponent
+    }
+
+    /// Full folder path and changed lines, e.g. "Sources/Billing · +9 −3 lines".
+    nonisolated static func tooltip(for tile: Tile) -> String {
+        "\(tile.folder.isEmpty ? "/" : tile.folder) · +\(tile.additions) −\(tile.deletions)"
+    }
+
     /// One tile per folder with changed lines (generated files and lockfiles left out), largest first.
-    static func tiles(for files: [FileDiff]) -> [Tile] {
+    nonisolated static func tiles(for files: [FileDiff]) -> [Tile] {
         var order: [String] = []
         var byFolder: [String: [FileDiff]] = [:]
         for file in files where !file.kind.isNoise {
