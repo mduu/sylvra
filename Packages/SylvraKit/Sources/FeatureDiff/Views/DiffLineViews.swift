@@ -4,6 +4,10 @@ import SwiftUI
 import SylvraCore
 
 let diffRowHeight: CGFloat = 22
+/// Gutter of one side-by-side half: comment button (20) + line number (34 + 8).
+let halfGutterWidth: CGFloat = 62
+/// Gutter of the inline layout: comment button + old and new line numbers.
+let inlineGutterWidth: CGFloat = 104
 private let codeFont = Font.system(size: 12.5, design: .monospaced)
 /// Unchanged code is slightly dimmed, so the change is in the light (focus lens, see specs/ux.md §7.2).
 private let contextOpacity = 0.62

@@ -135,13 +135,13 @@ struct DiffFileBodyView<Accessory: View>: View {
     /// One lazily built row; unique string IDs (nested offset-based IDs collided and dropped rows).
     private enum Row: Identifiable {
         case header(Int, Hunk)
-        case inline(Int, Int, DiffLine)
+        case inline(Int, Int, DiffLine, HalfContinuation)
         case sideBySide(Int, Int, SideBySideRow, ConnectorSegment?, Continuation)
 
         var id: String {
             switch self {
             case .header(let hunk, _): "h\(hunk)"
-            case .inline(let hunk, let index, _): "i\(hunk)-\(index)"
+            case .inline(let hunk, let index, _, _): "i\(hunk)-\(index)"
             case .sideBySide(let hunk, let index, _, _, _): "s\(hunk)-\(index)"
             }
         }
@@ -151,7 +151,11 @@ struct DiffFileBodyView<Accessory: View>: View {
         hunks.enumerated().flatMap { hunkIndex, hunk -> [Row] in
             let lines: [Row] =
                 switch layout {
-                case .inline: hunk.lines.enumerated().map { .inline(hunkIndex, $0, $1) }
+                case .inline:
+                    hunk.lines.enumerated().map { index, line in
+                        let next = hunk.lines.indices.contains(index + 1) ? hunk.lines[index + 1] : nil
+                        return .inline(hunkIndex, index, line, .between(line, and: next, hasNext: next != nil))
+                    }
                 case .sideBySide:
                     {
                         let rows = SideBySideRow.rows(for: hunk)
@@ -179,17 +183,22 @@ struct DiffFileBodyView<Accessory: View>: View {
                         hunk: hunk,
                         hiddenLines: hiddenAbove.indices.contains(index) ? hiddenAbove[index] : 0,
                         expand: expand.map { expand in { count in expand(index, count) } })
-                case .inline(_, _, let line):
+                case .inline(_, _, let line, let continuation):
                     VStack(spacing: 0) {
                         InlineLineView(line: line, onComment: onComment)
                             .overlay {
                                 AIHighlightOverlay(
-                                    highlight: line.kind == .removed ? nil : line.newNumber.flatMap(highlight))
+                                    highlight: line.kind == .removed ? nil : line.newNumber.flatMap(highlight),
+                                    gutterWidth: inlineGutterWidth)
                             }
                             .overlay { searchOverlay(texts: [line.text], newLine: line.newNumber) }
-                        inlineAccessories(line)
+                        inlineAccessories(line, continuation: continuation)
                     }
-                    .id(line.kind == .removed ? "" : DiffScreenModel.lineAnchor(path: path, line: line.newNumber ?? 0))
+                    // Unique per line: removed lines used to share one ID, which confused SwiftUI's diffing.
+                    .id(
+                        line.kind == .removed
+                            ? "\(path)#old\(line.oldNumber ?? 0)"
+                            : DiffScreenModel.lineAnchor(path: path, line: line.newNumber ?? 0))
                 case .sideBySide(_, _, let row, let connector, let continuation):
                     VStack(spacing: 0) {
                         SideBySideRowView(row: row, connector: connector, onComment: onComment)
@@ -234,12 +243,16 @@ struct DiffFileBodyView<Accessory: View>: View {
 
     /// Context lines can carry threads on both sides; removed lines on the left, added lines on the right.
     /// Accessories are indented past the gutter, which keeps running underneath (the diff stays one surface).
-    @ViewBuilder private func inlineAccessories(_ line: DiffLine) -> some View {
+    @ViewBuilder private func inlineAccessories(_ line: DiffLine, continuation: HalfContinuation) -> some View {
         if line.kind != .added, let old = line.oldNumber {
-            AccessoryLane { accessory(CodeLocation(path: path, line: old, side: .left)) }
+            AccessoryLane(gutterWidth: inlineGutterWidth, continuation: continuation) {
+                accessory(CodeLocation(path: path, line: old, side: .left))
+            }
         }
         if line.kind != .removed, let new = line.newNumber {
-            AccessoryLane { accessory(CodeLocation(path: path, line: new, side: .right)) }
+            AccessoryLane(gutterWidth: inlineGutterWidth, continuation: continuation) {
+                accessory(CodeLocation(path: path, line: new, side: .right))
+            }
         }
     }
 
@@ -328,50 +341,6 @@ struct Badge: View {
             .padding(.horizontal, 5)
             .padding(.vertical, 1)
             .background(tint.opacity(0.12), in: Capsule())
-    }
-}
-
-/// Xcode-style AI highlight: a soft gradient fading to the right, a gold edge and ✦ for the selected finding (pure).
-struct AIHighlightOverlay: View {
-    let highlight: LineHighlight?
-    @Environment(\.diffSelectFinding) private var selectFinding
-    @State private var isHovered = false
-
-    var body: some View {
-        if let highlight {
-            ZStack(alignment: .leading) {
-                AIAccent.lineGradient(
-                    opacity: highlight.isSelected ? 0.45 : 0.18 + 0.22 * highlight.intensity + (isHovered ? 0.12 : 0))
-                Rectangle()
-                    .fill(highlight.isSelected ? AnyShapeStyle(SylvraColor.accentGold) : AnyShapeStyle(AIAccent.border))
-                    .frame(width: 3)
-            }
-            .overlay(alignment: .trailing) {
-                Image(systemName: "sparkle")
-                    .font(.system(size: 9, weight: .bold))
-                    .foregroundStyle(
-                        highlight.isSelected ? AnyShapeStyle(SylvraColor.accentGold) : AnyShapeStyle(AIAccent.border)
-                    )
-                    .padding(.trailing, 6)
-                    .opacity(highlight.isSelected || isHovered ? 1 : 0.45)
-            }
-            .allowsHitTesting(false)
-            .overlay {
-                // Clicking the code of a highlighted line opens its finding; the gutter keeps its comment action.
-                if !highlight.isSelected, let id = highlight.findingID, let selectFinding {
-                    Color.clear
-                        .contentShape(Rectangle())
-                        .padding(.leading, 62)
-                        .onTapGesture { selectFinding(id) }
-                        .onHover { hovering in
-                            isHovered = hovering
-                            if hovering { NSCursor.pointingHand.push() } else { NSCursor.pop() }
-                        }
-                        .help("Show this AI finding")
-                }
-            }
-            .transition(.opacity)
-        }
     }
 }
 
