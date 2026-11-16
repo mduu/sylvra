@@ -206,14 +206,15 @@ struct RootScreen: View {
     }
 
     /// Prefills the review composer with an AI finding; the reviewer edits and owns the comment.
-    private func startComment(from finding: ReviewFinding) {
+    /// - Parameter reveal: scrolls the diff to the finding; not needed from the inline card (already in view).
+    private func startComment(from finding: ReviewFinding, reveal: Bool = true) {
         let location = CodeLocation(
             path: finding.path, line: finding.endLine, side: .right, startLine: finding.startLine)
         var body = finding.rationale
         if let suggestion = finding.suggestion { body += "\n\n" + SuggestionBlock.make(code: suggestion) }
         environment.review.draft = CommentDraft(
             location: location, lineText: environment.diff.text(at: location), body: body)
-        environment.diff.focus(path: finding.path, line: finding.endLine)
+        if reveal { environment.diff.focus(path: finding.path, line: finding.endLine) }
         // Start from a personal draft in the language last used for this repository; the reviewer edits it.
         Task { await environment.review.rewriteDraft() }
     }
@@ -248,7 +249,7 @@ struct RootScreen: View {
                             path: finding.path, line: finding.endLine, side: .right, startLine: finding.startLine)),
                     ideName: selection.map { environment.openInIDE.preferredIDE(for: $0.id).name },
                     actions: FindingActions(
-                        turnIntoComment: { startComment(from: finding) },
+                        turnIntoComment: { startComment(from: finding, reveal: false) },
                         askInChat: {
                             environment.chat.context.finding = finding.title
                             environment.aiReview.tab = .chat

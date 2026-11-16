@@ -17,6 +17,8 @@ public struct DiffScreen<LineAccessory: View>: View {
     private let onRefresh: (() async -> Void)?
     @State private var diffIsWide = true
     @State private var diffWidth: CGFloat = 800
+    /// The row at the top of the diff (see `scrollPosition`).
+    @State private var topRowID: String?
     @State private var commentAnchor: CodeLocation?
 
     public init(
@@ -162,11 +164,15 @@ public struct DiffScreen<LineAccessory: View>: View {
                             }
                         }
                     }
+                    // Keeps the row at the top in place when content above changes height (cards, comment
+                    // boxes, threads opening or closing) instead of keeping the pixel offset.
+                    .scrollTargetLayout()
                     // A new layout, scope or commit builds all rows from scratch: rows the lazy stack kept from
                     // the previous mode (and animations between modes) left files rendered in a mix of modes.
                     .id(renderMode)
                     .animation(.snappy, value: model.revealedContext)
                 }
+                .scrollPosition(id: $topRowID, anchor: .top)
                 .onChange(of: renderMode) {
                     guard let path = model.selectedPath else { return }
                     Task { @MainActor in proxy.scrollTo(path, anchor: .top) }
@@ -196,10 +202,9 @@ public struct DiffScreen<LineAccessory: View>: View {
                 }
                 .onChange(of: model.focusedLine?.token) {
                     guard let target = model.focusedLine else { return }
-                    // First the file (always realised), then the line once the lazy rows around it exist.
-                    proxy.scrollTo(target.path, anchor: .top)
-                    Task {
-                        try? await Task.sleep(for: .milliseconds(120))
+                    // Straight to the line: rows are identified by their anchors, so the lazy stack finds lines
+                    // it hasn't built yet. (Scrolling to the file first made the diff jump to the file's top.)
+                    Task { @MainActor in
                         withAnimation(.smooth(duration: 0.35)) {
                             proxy.scrollTo(
                                 DiffScreenModel.lineAnchor(path: target.path, line: target.line), anchor: .center)
