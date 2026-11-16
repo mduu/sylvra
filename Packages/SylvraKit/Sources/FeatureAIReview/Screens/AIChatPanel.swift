@@ -123,13 +123,31 @@ struct ChatMessageView: View {
                 .font(.caption.monospaced())
                 .help("Show the discussed code")
             }
-            Text(Self.render(message.text))
-                .font(.callout)
-                .textSelection(.enabled)
-                .padding(10)
-                .frame(maxWidth: .infinity, alignment: message.role == .user ? .trailing : .leading)
-                .background(background, in: RoundedRectangle(cornerRadius: 12))
-                .foregroundStyle(message.role == .error ? AnyShapeStyle(.red) : AnyShapeStyle(.primary))
+            if message.role == .user {
+                // The reviewer's question: a compact bubble on the right that only grows with its text.
+                Text(Self.render(message.text))
+                    .font(.callout)
+                    .textSelection(.enabled)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
+                    .background(SylvraColor.brandPrimary.opacity(0.32), in: RoundedRectangle(cornerRadius: 14))
+                    .padding(.leading, 36)
+                    .frame(maxWidth: .infinity, alignment: .trailing)
+            } else {
+                // AI answers (and errors) use the full width; answers carry the AI accent.
+                Text(Self.render(message.text))
+                    .font(.callout)
+                    .textSelection(.enabled)
+                    .padding(10)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(background, in: RoundedRectangle(cornerRadius: 12))
+                    .overlay {
+                        if message.role == .assistant {
+                            RoundedRectangle(cornerRadius: 12).strokeBorder(AIAccent.border.opacity(0.35))
+                        }
+                    }
+                    .foregroundStyle(message.role == .error ? AnyShapeStyle(.red) : AnyShapeStyle(.primary))
+            }
             if let useAsComment {
                 Button("Use as comment", systemImage: "text.bubble.badge.plus", action: useAsComment)
                     .buttonStyle(.borderless)
@@ -141,7 +159,7 @@ struct ChatMessageView: View {
 
     private var background: AnyShapeStyle {
         switch message.role {
-        case .user: AnyShapeStyle(SylvraColor.brandPrimary.opacity(0.14))
+        case .user: AnyShapeStyle(SylvraColor.brandPrimary.opacity(0.32))
         case .assistant: AnyShapeStyle(AIAccent.cardBackground)
         case .error: AnyShapeStyle(Color.red.opacity(0.08))
         }
