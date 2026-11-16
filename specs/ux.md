@@ -134,6 +134,8 @@ Screens follow the container / presentational split described in `architecture.m
 - Repositories are added with a search sheet (e.g. `org:acme billing`) or from repositories already in the inbox. *My teams*, *Involved* and *Recently closed* only search the added repositories; *Requested from me* and *My PRs* always search all repositories so nothing addressed to the user is missed. Reason: one broad search over a large organization can exceed GitHub's time limit (502).
 - Sections are collapsible; the state is remembered.
 
+**Why you're involved**: the PR overview shows where the user was @-mentioned (description, comments, reviews, code comments with file and line; excerpt with the mention highlighted, link to GitHub) and how often they commented — so *Involved* PRs explain themselves.
+
 **Filters** (inbox and repository view): chips above the list — *Filters* menu with persistent preferences (hide bots, hide drafts by others — own drafts always stay visible, hidden authors), *Author*, *Needs review*, *CI failing*, *Small*. Right-click a pull request: *Show only PRs by …*, *Hide PRs by …*. A hint counts what the filters hide.
 
 If GitHub reports `X-GitHub-SSO: partial-results`, the sidebar explains that the GitHub CLI token isn't authorized for an organization's single sign-on.

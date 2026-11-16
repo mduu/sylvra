@@ -24,6 +24,16 @@ struct PullRequestDetailMappingTests {
           "reviewRequests": {"nodes": [
             {"requestedReviewer": {"__typename": "Team", "name": "Core", "slug": "core"}},
             {"requestedReviewer": {"__typename": "User", "login": "bob", "avatarUrl": null, "name": "Bob"}}]},
+          "comments": {"nodes": [
+            {"author": {"login": "bob", "avatarUrl": null, "name": "Bob"}, "body": "cc @mduu for the export",
+             "createdAt": "2026-11-02T08:00:00Z", "url": "https://github.com/o/r/pull/5#issuecomment-1"},
+            {"author": {"login": "mduu", "avatarUrl": null, "name": "Marc"}, "body": "Looks good, @bob",
+             "createdAt": "2026-11-02T08:30:00Z", "url": null}]},
+          "reviews": {"nodes": [{"author": {"login": "cid", "avatarUrl": null, "name": "Cid"}, "body": "",
+            "submittedAt": "2026-11-02T09:00:00Z", "url": null}]},
+          "reviewThreads": {"nodes": [{"path": "Sources/Export.swift", "line": 12, "comments": {"nodes": [
+            {"author": {"login": "cid", "avatarUrl": null, "name": "Cid"}, "body": "@mduu is this right?",
+             "createdAt": "2026-11-02T09:05:00Z", "url": null}]}}]},
           "latestReviews": {"nodes": [{"state": "APPROVED", "submittedAt": "2026-11-02T09:00:00Z",
             "author": {"login": "cid", "avatarUrl": null, "name": "Cid"}}]},
           "commits": {"totalCount": 1, "nodes": [{"commit": {
@@ -45,6 +55,15 @@ struct PullRequestDetailMappingTests {
     private func detail() throws -> PullRequestDetail {
         let response = try GitHubJSON.decoder.decode(DetailResponse.self, from: Data(Self.json.utf8))
         return try #require(response.repository?.pullRequest).detail
+    }
+
+    @Test func findsMentionsOfTheViewer() throws {
+        let response = try GitHubJSON.decoder.decode(DetailResponse.self, from: Data(Self.json.utf8))
+        let involvement = try #require(response.repository?.pullRequest).involvement(of: "mduu")
+        #expect(involvement.mentions.map(\.place) == [.codeComment(path: "Sources/Export.swift", line: 12), .comment])
+        #expect(involvement.mentions.last?.excerpt == "cc @mduu for the export")
+        #expect(involvement.ownCommentCount == 1)
+        #expect(try #require(response.repository?.pullRequest).involvement(of: "zed").isEmpty)
     }
 
     @Test func mapsSummaryAndCommits() throws {

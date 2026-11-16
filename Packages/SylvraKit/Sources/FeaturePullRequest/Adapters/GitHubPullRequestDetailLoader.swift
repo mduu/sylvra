@@ -19,12 +19,17 @@ public struct GitHubPullRequestDetailLoader: PullRequestDetailLoading {
         guard let node = response.repository?.pullRequest else {
             throw GitHubError.graphQL(["Pull request \(id) not found"])
         }
-        return node.detail
+        var detail = node.detail
+        if let login = response.viewer?.login {
+            detail.involvement = node.involvement(of: login)
+        }
+        return detail
     }
 
     // swiftlint:disable line_length
     static let query = """
         query($owner: String!, $name: String!, $number: Int!) {
+          viewer { login }
           repository(owner: $owner, name: $name) {
             pullRequest(number: $number) {
               number title url isDraft createdAt updatedAt additions deletions changedFiles
@@ -38,6 +43,9 @@ public struct GitHubPullRequestDetailLoader: PullRequestDetailLoading {
               milestone { title }
               closingIssuesReferences(first: 5) { nodes { number title url } }
               reviewRequests(first: 20) { nodes { requestedReviewer { __typename ... on User { login avatarUrl name } ... on Team { name slug } } } }
+              comments(last: 60) { nodes { author { login avatarUrl ... on User { name } } body createdAt url } }
+              reviews(last: 30) { nodes { author { login avatarUrl ... on User { name } } body submittedAt url } }
+              reviewThreads(last: 50) { nodes { path line comments(first: 10) { nodes { author { login avatarUrl ... on User { name } } body createdAt url } } } }
               latestReviews(first: 30) { nodes { state submittedAt author { login avatarUrl ... on User { name } } } }
               commits(first: 100) { totalCount nodes { commit {
                 oid abbreviatedOid messageHeadline messageBody authoredDate url
@@ -60,7 +68,9 @@ public struct GitHubPullRequestDetailLoader: PullRequestDetailLoading {
 // MARK: - Response DTOs
 
 struct DetailResponse: Decodable, Sendable {
+    let viewer: Viewer?
     let repository: Repository?
+    struct Viewer: Decodable, Sendable { let login: String }
     struct Repository: Decodable, Sendable {
         let pullRequest: DetailNode?
     }
@@ -96,6 +106,59 @@ struct DetailNode: Decodable, Sendable {
     let latestReviews: Nodes<ReviewNode>
     let commits: Nodes<CommitWrapper>
     let checks: Nodes<CheckCommitWrapper>
+    let comments: Nodes<CommentNode>?
+    let reviews: Nodes<CommentNode>?
+    let reviewThreads: Nodes<ThreadNode>?
+
+    /// An issue comment, review or review comment (`submittedAt` for reviews).
+    struct CommentNode: Decodable, Sendable {
+        let author: GitHubActorNode?
+        let body: String
+        let createdAt: Date?
+        let submittedAt: Date?
+        let url: URL?
+        var date: Date { createdAt ?? submittedAt ?? .distantPast }
+    }
+
+    struct ThreadNode: Decodable, Sendable {
+        let path: String
+        let line: Int?
+        let comments: Nodes<CommentNode>
+    }
+
+    /// Mentions of the viewer and their own participation, newest first.
+    func involvement(of login: String) -> Involvement {
+        var mentions: [Mention] = []
+        func add(_ node: CommentNode, _ place: Mention.Place) {
+            guard node.author?.login.lowercased() != login.lowercased(),
+                let excerpt = MentionFinder.excerpt(mentioning: login, in: node.body)
+            else { return }
+            mentions.append(
+                Mention(
+                    place: place, author: node.author?.userRef ?? UserRef(login: "ghost"), date: node.date,
+                    excerpt: excerpt, url: node.url))
+        }
+        if author?.login.lowercased() != login.lowercased(),
+            let excerpt = MentionFinder.excerpt(mentioning: login, in: body)
+        {
+            mentions.append(
+                Mention(
+                    place: .description, author: author?.userRef ?? UserRef(login: "ghost"), date: createdAt,
+                    excerpt: excerpt, url: url))
+        }
+        comments?.values.forEach { add($0, .comment) }
+        reviews?.values.forEach { add($0, .review) }
+        for thread in reviewThreads?.values ?? [] {
+            thread.comments.values.forEach { add($0, .codeComment(path: thread.path, line: thread.line)) }
+        }
+        let own =
+            (comments?.values ?? []) + (reviews?.values ?? [])
+            + (reviewThreads?.values.flatMap(\.comments.values) ?? [])
+        let mine = own.filter { $0.author?.login.lowercased() == login.lowercased() }
+        return Involvement(
+            login: login, mentions: mentions.sorted { $0.date > $1.date }, ownCommentCount: mine.count,
+            lastOwnCommentAt: mine.map(\.date).max())
+    }
 
     struct Nodes<Element: Decodable & Sendable>: Decodable, Sendable {
         let nodes: [Element?]

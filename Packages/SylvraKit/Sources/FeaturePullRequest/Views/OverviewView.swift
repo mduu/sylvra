@@ -12,6 +12,9 @@ struct OverviewView: View {
             if !detail.mergeStatus.reasons.isEmpty {
                 MergeStatusCardView(status: detail.mergeStatus)
             }
+            if !detail.involvement.isEmpty {
+                InvolvementCardView(involvement: detail.involvement, open: open)
+            }
             section("Description") {
                 if detail.body.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                     Text("No description provided.").foregroundStyle(.secondary)

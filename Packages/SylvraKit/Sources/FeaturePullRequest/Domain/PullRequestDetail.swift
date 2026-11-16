@@ -18,6 +18,8 @@ public struct PullRequestDetail: Sendable, Equatable {
     public var mergeStatus: MergeStatus
     public var checks: [CheckRun]
     public var commits: [Commit]
+    /// Where the signed-in user was mentioned or took part.
+    public var involvement = Involvement()
 
     public enum State: String, Sendable {
         case open = "OPEN", closed = "CLOSED", merged = "MERGED"

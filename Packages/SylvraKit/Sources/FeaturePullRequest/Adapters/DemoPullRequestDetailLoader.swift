@@ -54,7 +54,7 @@ public struct DemoPullRequestDetailLoader: PullRequestDetailLoading {
             reviewDecision: .reviewRequired,
             mergeability: .mergeable
         )
-        return PullRequestDetail(
+        var detail = PullRequestDetail(
             summary: summary,
             body: """
                 Adds **CSV export** next to JSON and changes how invoice totals are summed.
@@ -85,6 +85,24 @@ public struct DemoPullRequestDetailLoader: PullRequestDetailLoading {
             checks: checks,
             commits: commits
         )
+        if id.number == 1229 {
+            // Demo for the "Involved" section: why the PR concerns the user.
+            detail.involvement = Involvement(
+                login: marc.login,
+                mentions: [
+                    Mention(
+                        place: .codeComment(path: "Sources/Billing/Pricing/PriceRules.swift", line: 58),
+                        author: jonas, date: ago(5),
+                        excerpt:
+                            "@mduu you wrote the VAT rounding — does it still hold when rules are split per market?",
+                        url: demoURL(id, "#discussion_r1")),
+                    Mention(
+                        place: .comment, author: lena, date: ago(27),
+                        excerpt: "Splitting this into two PRs would help. cc @mduu for the export part.",
+                        url: demoURL(id, "#issuecomment-1")),
+                ], ownCommentCount: 1, lastOwnCommentAt: ago(50))
+        }
+        return detail
     }
 
     private static func demoURL(_ id: PullRequestID, _ suffix: String) -> URL? {
