@@ -1,6 +1,7 @@
 import Foundation
 import OSLog
 import Observation
+import Platform
 import SylvraCore
 
 /// A comment being written on a diff location.
@@ -47,7 +48,7 @@ public final class ReviewScreenModel {
     private var toggledThreadIDs: Set<String> = []
     private var pullRequestID: PullRequestID?
     private let service: any ReviewService
-    private let logger = Logger(subsystem: "ch.mduu.sylvra", category: "Review")
+    private let logger = SylvraLog.logger("review")
 
     public init(service: any ReviewService) {
         self.service = service

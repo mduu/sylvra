@@ -1,4 +1,5 @@
 import DesignSystem
+import Platform
 import SwiftUI
 
 /// Chooses the repositories the broad inbox sections search (container: owns the search).
@@ -79,7 +80,9 @@ public struct InboxRepositoriesSheet: View {
     @ViewBuilder private var searchSection: some View {
         Section("Search results") {
             if let searchError {
-                Label(searchError, systemImage: "exclamationmark.triangle").foregroundStyle(.secondary)
+                Label(searchError, systemImage: "exclamationmark.triangle")
+                    .foregroundStyle(.secondary)
+                    .textSelection(.enabled)
             } else if results.isEmpty, !isSearching {
                 Text("No repositories found").foregroundStyle(.secondary)
             }
@@ -125,6 +128,8 @@ public struct InboxRepositoriesSheet: View {
         }
     }
 
+    private static let logger = SylvraLog.logger("inbox")
+
     private func search(_ text: String) async {
         guard text.count >= 2, let searcher = model.repositorySearcher else {
             results = []
@@ -134,13 +139,16 @@ public struct InboxRepositoriesSheet: View {
         try? await Task.sleep(for: .milliseconds(300))
         guard !Task.isCancelled else { return }
         isSearching = true
+        searchError = nil
         defer { isSearching = false }
         do {
             results = try await searcher.searchRepositories(matching: text)
             searchError = nil
-        } catch is CancellationError {
         } catch {
+            // Typing cancels the previous search; only the latest one may report an error.
+            guard !Task.isCancelled, !(error is CancellationError) else { return }
             searchError = (error as? LocalizedError)?.errorDescription ?? String(describing: error)
+            Self.logger.error("Repository search failed: \(String(describing: error), privacy: .public)")
         }
     }
 }

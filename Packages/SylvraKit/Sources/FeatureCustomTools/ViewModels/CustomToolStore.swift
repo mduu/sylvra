@@ -1,6 +1,7 @@
 import Foundation
 import OSLog
 import Observation
+import Platform
 
 /// The user's custom tools, persisted as JSON in UserDefaults.
 @MainActor
@@ -11,7 +12,7 @@ public final class CustomToolStore {
     public private(set) var tools: [CustomTool]
 
     @ObservationIgnored private let defaults: UserDefaults
-    @ObservationIgnored private let logger = Logger(subsystem: "app.sylvra", category: "customTools")
+    @ObservationIgnored private let logger = SylvraLog.logger("customTools")
 
     public init(defaults: UserDefaults = .standard) {
         self.defaults = defaults

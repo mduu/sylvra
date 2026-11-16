@@ -1,6 +1,7 @@
 import AppKit
 import Foundation
 import OSLog
+import Platform
 @preconcurrency import SwiftTerm
 
 /// Keeps one PTY terminal view per session alive, independent of the SwiftUI hierarchy,
@@ -9,7 +10,7 @@ import OSLog
 final class TerminalViewStore: TerminalProcessHosting {
     private var views: [TerminalSession.ID: LocalProcessTerminalView] = [:]
     private var delegates: [TerminalSession.ID: SessionDelegate] = [:]
-    private let logger = Logger(subsystem: "app.sylvra", category: "terminal")
+    private let logger = SylvraLog.logger("terminal")
 
     /// The session's terminal view; the shell is started on first access.
     func view(for session: TerminalSession, in model: TerminalModel) -> LocalProcessTerminalView {

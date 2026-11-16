@@ -1,4 +1,5 @@
 import Foundation
+import OSLog
 
 /// Errors of the GitHub client.
 public enum GitHubError: Error, Equatable, Sendable, LocalizedError {
@@ -44,7 +45,14 @@ public struct URLSessionTransport: HTTPTransport {
     }
 
     public func send(_ request: URLRequest) async throws -> (Data, HTTPURLResponse) {
-        let (data, response) = try await session.data(for: request)
+        let data: Data
+        let response: URLResponse
+        do {
+            (data, response) = try await session.data(for: request)
+        } catch let error as URLError where error.code == .cancelled {
+            // A cancelled task (e.g. the user kept typing) is not an error worth showing.
+            throw CancellationError()
+        }
         guard let http = response as? HTTPURLResponse else {
             throw GitHubError.http(status: 0, message: "No HTTP response")
         }
@@ -60,6 +68,7 @@ public actor GitHubClient {
     private let tokenProvider: any GitHubTokenProviding
     private let transport: any HTTPTransport
     private var cachedToken: String?
+    private let logger = SylvraLog.logger("github")
     private let retryDelays: [Duration]
 
     /// Remaining GraphQL / REST budget as reported by the last response.
@@ -102,6 +111,7 @@ public actor GitHubClient {
             throw GitHubError.decoding(String(describing: error))
         }
         if let errors = envelope.errors, !errors.isEmpty {
+            logger.error("GraphQL errors: \(errors.map(\.message).joined(separator: " | "), privacy: .public)")
             throw GitHubError.graphQL(errors.map(\.message))
         }
         guard let payload = envelope.data else {
@@ -153,11 +163,22 @@ public actor GitHubClient {
             do {
                 return try await performOnce(request)
             } catch GitHubError.http(let status, let message) {
+                let path = request.url?.path ?? ""
                 guard retryTransient, Self.isTransient(status), attempt < retryDelays.count else {
+                    logger.error("\(path, privacy: .public) failed: \(status) \(message, privacy: .public)")
                     throw GitHubError.http(status: status, message: message)
                 }
+                logger.notice("\(path, privacy: .public) returned \(status), retrying")
                 try await Task.sleep(for: retryDelays[attempt])
                 attempt += 1
+            } catch let error as GitHubError {
+                throw error
+            } catch is CancellationError {
+                throw CancellationError()
+            } catch {
+                let path = request.url?.path ?? ""
+                logger.error("\(path, privacy: .public) failed: \(String(describing: error), privacy: .public)")
+                throw error
             }
         }
     }

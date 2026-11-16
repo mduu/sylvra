@@ -289,6 +289,7 @@ stateDiagram-v2
 | Comment on line | `C` |
 | Insert suggestion | `⌘⇧S` |
 | Run AI review | `⌘⇧R` |
+| Show log (Help menu: errors of this run, copyable) | `⌥⌘L` |
 | Open chat | `⌘⇧K` |
 | Open in default IDE | `⌘⇧O` |
 | Open on GitHub | `⌘⇧G` |

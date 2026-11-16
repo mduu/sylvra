@@ -130,7 +130,7 @@ public struct InboxScreen: View {
             ContentUnavailableView {
                 Label("Couldn't load pull requests", systemImage: "exclamationmark.triangle")
             } description: {
-                Text(message)
+                Text(message).textSelection(.enabled)
             } actions: {
                 Button("Try again") { Task { await model.refresh() } }
                 if model.repositorySearcher != nil, model.scope.isAll {

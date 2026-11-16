@@ -28,6 +28,7 @@ public final class InboxScreenModel {
     /// Repository search for the chooser; `nil` hides it.
     public let repositorySearcher: (any RepositorySearching)?
 
+    private static let logger = SylvraLog.logger("inbox")
     static let scopeKey = "inbox.scope"
 
     /// - Parameters:
@@ -70,7 +71,10 @@ public final class InboxScreenModel {
             snapshot = try await loader.loadInbox(scope: scope)
             loadState = .loaded
             cache?.save(snapshot, key: "inbox")
+        } catch is CancellationError {
+            if snapshot.isEmpty { loadState = .idle }
         } catch {
+            Self.logger.error("Loading the inbox failed: \(String(describing: error), privacy: .public)")
             loadState = .failed(Self.message(for: error))
         }
     }

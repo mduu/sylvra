@@ -35,7 +35,10 @@ struct SylvraApp: App {
         .commands {
             ReviewCommands()
             TerminalCommands(terminal: environment.terminal)
+            DiagnosticCommands()
         }
+
+        DiagnosticLogWindow()
 
         Settings {
             SettingsScreen {
