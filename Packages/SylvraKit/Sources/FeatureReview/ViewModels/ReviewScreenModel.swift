@@ -127,7 +127,10 @@ public final class ReviewScreenModel {
     public var rewriter: Rewriter?
     /// Hands the draft's lines and text to a private AI discussion (wired by the app).
     public var discussHandler: ((_ location: CodeLocation, _ code: String, _ question: String) -> Void)?
-    public private(set) var isRewriting = false
+    /// What the AI is doing with the draft right now (`nil`: nothing).
+    public private(set) var rewritingStyle: CommentRewriteStyle?
+    public var isRewriting: Bool { rewritingStyle != nil }
+    private var rewriteTask: Task<Void, Never>?
     /// The draft text before the last AI rewrite, for *Undo rewrite*.
     public private(set) var textBeforeRewrite: String?
     /// Default when a repository has no remembered choice yet.
@@ -142,6 +145,8 @@ public final class ReviewScreenModel {
         set {
             if let pullRequestID { UserDefaults.standard.set(newValue, forKey: Self.languageKey(pullRequestID)) }
             languageRevision += 1
+            // A new language replaces a translation that is still running.
+            if rewritingStyle == .translate { cancelRewrite() }
             Task { await rewriteDraft(.translate) }
         }
     }
@@ -163,7 +168,10 @@ public final class ReviewScreenModel {
         }
     }
 
-    public func cancelDraft() { draft = nil }
+    public func cancelDraft() {
+        cancelRewrite()
+        draft = nil
+    }
 
     /// Appends a ```` ```suggestion ```` block with the commented lines to the draft.
     public func insertSuggestion() {
@@ -351,18 +359,34 @@ extension ReviewScreenModel {
         else { return }
         let started = pullRequestID
         let location = draft.location
-        isRewriting = true
-        defer { isRewriting = false }
-        do {
-            let original = draft.body
-            let rewritten = try await rewriter(original, draftLanguage, style)
-            // Only replace the text if the reviewer is still on the same draft.
-            guard pullRequestID == started, self.draft?.location == location else { return }
-            self.draft?.body = rewritten
-            textBeforeRewrite = original
-        } catch {
-            errorMessage = String(localized: "Couldn't rewrite: \(error.localizedDescription)")
+        let original = draft.body
+        let language = draftLanguage
+        rewritingStyle = style
+        let task = Task { @MainActor in
+            do {
+                let rewritten = try await rewriter(original, language, style)
+                // Only replace the text if the reviewer is still on the same draft and didn't cancel.
+                guard !Task.isCancelled, pullRequestID == started, self.draft?.location == location else { return }
+                self.draft?.body = rewritten
+                textBeforeRewrite = original
+            } catch {
+                guard !Task.isCancelled, !(error is CancellationError) else { return }
+                errorMessage = String(localized: "Couldn't rewrite: \(error.localizedDescription)")
+            }
         }
+        rewriteTask = task
+        await task.value
+        if rewriteTask == task {
+            rewriteTask = nil
+            rewritingStyle = nil
+        }
+    }
+
+    /// Stops a running rewrite or translation; the draft keeps its current text.
+    public func cancelRewrite() {
+        rewriteTask?.cancel()
+        rewriteTask = nil
+        rewritingStyle = nil
     }
 
     /// Restores the draft text from before the last AI rewrite.

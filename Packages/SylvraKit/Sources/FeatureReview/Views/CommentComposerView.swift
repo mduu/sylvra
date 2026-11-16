@@ -15,7 +15,10 @@ struct CommentComposerView: View {
     var cancel: () -> Void = {}
     /// Language of this comment (`English`, `German`); changing it translates the draft when a rewriter exists.
     var language: Binding<String>?
-    var isRewriting = false
+    /// What the AI is doing with the draft (shown over the text, which is locked meanwhile).
+    var rewritingStyle: CommentRewriteStyle?
+    var cancelRewrite: () -> Void = {}
+    private var isRewriting: Bool { rewritingStyle != nil }
     /// Rewrites the draft personally in the selected language; `nil` hides the button.
     var rewrite: ((CommentRewriteStyle) -> Void)?
     /// Discusses the selected lines privately with the agent (the draft text becomes the question).
@@ -122,6 +125,17 @@ struct CommentComposerView: View {
             .frame(minHeight: 80, maxHeight: 220)
             .background(.background, in: RoundedRectangle(cornerRadius: 6))
             .overlay(RoundedRectangle(cornerRadius: 6).strokeBorder(.separator))
+            .disabled(isRewriting)
+            .overlay {
+                if let rewritingStyle {
+                    RewriteProgressView(
+                        title: Self.progressTitle(rewritingStyle, language: language?.wrappedValue),
+                        cancel: cancelRewrite
+                    )
+                    .transition(.opacity)
+                }
+            }
+            .animation(.snappy, value: rewritingStyle)
 
             if !toneIssues.isEmpty {
                 ToneHintView(
@@ -155,6 +169,36 @@ struct CommentComposerView: View {
     }
 
     private var lineLabel: String { ReviewThreadView.lineLabel(location) }
+
+    static func progressTitle(_ style: CommentRewriteStyle, language: String?) -> String {
+        switch style {
+        case .translate where language == "German": String(localized: "Translating to German…")
+        case .translate: String(localized: "Translating to English…")
+        case .improve: String(localized: "Rephrasing…")
+        case .shorten: String(localized: "Shortening…")
+        }
+    }
+}
+
+/// The AI working on the draft: a veil over the text with what's happening and a way to stop it (pure).
+struct RewriteProgressView: View {
+    let title: String
+    var cancel: () -> Void = {}
+
+    var body: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: 6).fill(.background.opacity(0.75))
+            RoundedRectangle(cornerRadius: 6).fill(AIAccent.lineGradient(opacity: 0.25))
+            RoundedRectangle(cornerRadius: 6).strokeBorder(AIAccent.border.opacity(0.7), lineWidth: 1.5)
+            VStack(spacing: 8) {
+                HStack(spacing: 8) {
+                    ProgressView().controlSize(.small)
+                    Label(title, systemImage: "sparkles").font(.callout.weight(.medium))
+                }
+                Button("Cancel", action: cancel).controlSize(.small)
+            }
+        }
+    }
 }
 
 #Preview {

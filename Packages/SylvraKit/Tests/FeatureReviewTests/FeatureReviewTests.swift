@@ -285,6 +285,44 @@ struct CommentLanguageTests {
         // Switching the language only translates.
         #expect(model.draft?.body == "[German translate] Round once.")
     }
+
+    /// Regression: switching EN → DE → EN while translating ignored the second switch (and showed no progress).
+    @Test func aNewLanguageReplacesARunningTranslation() async throws {
+        let model = ReviewScreenModel(service: DemoReviewService(snapshot: DemoReviewService.sample()))
+        await model.load(id)
+        model.rewriter = { text, language, style in
+            if language == "German" { try await Task.sleep(for: .seconds(5)) }
+            return "[\(language) \(style.rawValue)] \(text)"
+        }
+        model.startComment(at: location, lineText: "x")
+        model.draft?.body = "Round once."
+        model.draftLanguage = "German"
+        try await Task.sleep(for: .milliseconds(50))
+        #expect(model.rewritingStyle == .translate)
+        model.draftLanguage = "English"
+        try await Task.sleep(for: .milliseconds(100))
+        #expect(model.draft?.body == "[English translate] Round once.")
+        #expect(model.rewritingStyle == nil)
+    }
+
+    @Test func cancellingARewriteKeepsTheText() async throws {
+        let model = ReviewScreenModel(service: DemoReviewService(snapshot: DemoReviewService.sample()))
+        await model.load(id)
+        model.rewriter = { _, _, _ in
+            try await Task.sleep(for: .seconds(5))
+            return "rewritten"
+        }
+        model.startComment(at: location, lineText: "x")
+        model.draft?.body = "Round once."
+        let rewrite = Task { await model.rewriteDraft(.shorten) }
+        try await Task.sleep(for: .milliseconds(50))
+        #expect(model.rewritingStyle == .shorten)
+        model.cancelRewrite()
+        await rewrite.value
+        #expect(model.draft?.body == "Round once.")
+        #expect(model.rewritingStyle == nil)
+        #expect(model.errorMessage == nil)
+    }
 }
 
 struct ToneCheckTests {
