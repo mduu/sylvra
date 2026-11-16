@@ -5,7 +5,7 @@ extension Image {
     /// An SF Symbol with transparent room on its left, for toolbar menus with a primary action
     /// (icon + chevron): macOS puts their icon right at the capsule's edge and ignores SwiftUI padding,
     /// so the room has to be part of the image.
-    public static func toolbarSymbol(_ name: String, leading: CGFloat = 5) -> Image {
+    public static func toolbarSymbol(_ name: String, leading: CGFloat = 9) -> Image {
         let configuration = NSImage.SymbolConfiguration(pointSize: 15, weight: .regular, scale: .medium)
         guard
             let symbol = NSImage(systemSymbolName: name, accessibilityDescription: nil)?
