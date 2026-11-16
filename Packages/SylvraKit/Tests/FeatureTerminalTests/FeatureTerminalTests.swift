@@ -142,3 +142,13 @@ struct ShellLaunchTests {
         #expect(ExternalTerminal.named("org.example.term").name == "org.example.term")
     }
 }
+
+struct TerminalFontSizeTests {
+    @Test func keepsStoredSizesWithinRange() {
+        #expect(TerminalPreferences.fontSize(0) == TerminalPreferences.defaultFontSize)
+        #expect(TerminalPreferences.fontSize(15) == 15)
+        #expect(TerminalPreferences.fontSize(3) == TerminalPreferences.fontSizes.lowerBound)
+        #expect(TerminalPreferences.fontSize(99) == TerminalPreferences.fontSizes.upperBound)
+        #expect(TerminalPreferences.fontSize(13.6) == 14)
+    }
+}

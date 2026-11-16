@@ -32,4 +32,14 @@ public enum TerminalPreferences {
     public static let shellKey = "terminal.shell"
     /// Bundle identifier of the external terminal app; empty = Terminal.
     public static let externalTerminalKey = "terminal.externalApp"
+    /// Font size of the terminal panel in points.
+    public static let fontSizeKey = "terminal.fontSize"
+    public static let defaultFontSize: Double = 13
+    public static let fontSizes: ClosedRange<Double> = 9...24
+
+    /// A stored font size within `fontSizes` (0 or garbage falls back to the default).
+    public static func fontSize(_ stored: Double) -> Double {
+        guard stored > 0 else { return defaultFontSize }
+        return min(max(stored.rounded(), fontSizes.lowerBound), fontSizes.upperBound)
+    }
 }

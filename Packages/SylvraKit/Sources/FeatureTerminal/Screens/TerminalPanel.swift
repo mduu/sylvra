@@ -78,6 +78,7 @@ extension TerminalPanel where Accessory == EmptyView {
 private struct TerminalHostView: NSViewRepresentable {
     let view: LocalProcessTerminalView
     @Environment(\.colorScheme) private var colorScheme
+    @AppStorage(TerminalPreferences.fontSizeKey) private var fontSize = TerminalPreferences.defaultFontSize
 
     func makeNSView(context: Context) -> LocalProcessTerminalView {
         DispatchQueue.main.async { view.window?.makeFirstResponder(view) }
@@ -85,6 +86,8 @@ private struct TerminalHostView: NSViewRepresentable {
     }
 
     func updateNSView(_ nsView: LocalProcessTerminalView, context: Context) {
+        let size = CGFloat(TerminalPreferences.fontSize(fontSize))
+        if nsView.font.pointSize != size { nsView.font = TerminalFonts.preferred(size: size) }
         let appearance = NSAppearance(named: colorScheme == .dark ? .darkAqua : .aqua)
         appearance?.performAsCurrentDrawingAppearance {
             nsView.nativeBackgroundColor = NSColor(SylvraColor.terminalBackground)

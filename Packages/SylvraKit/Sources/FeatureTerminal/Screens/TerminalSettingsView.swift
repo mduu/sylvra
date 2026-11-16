@@ -4,6 +4,7 @@ import SwiftUI
 public struct TerminalSettingsView: View {
     @AppStorage(TerminalPreferences.shellKey) private var shell = ""
     @AppStorage(TerminalPreferences.externalTerminalKey) private var externalApp = ""
+    @AppStorage(TerminalPreferences.fontSizeKey) private var fontSize = TerminalPreferences.defaultFontSize
     @State private var usesCustomApp = false
 
     public init() {}
@@ -12,6 +13,9 @@ public struct TerminalSettingsView: View {
         Section("Terminal") {
             TextField("Shell", text: $shell, prompt: Text(ShellLaunch.loginShell()))
                 .help("Leave empty to use your login shell.")
+            Stepper(value: $fontSize, in: TerminalPreferences.fontSizes, step: 1) {
+                Text("Font size: \(Int(TerminalPreferences.fontSize(fontSize))) pt")
+            }
             Picker("External terminal", selection: appSelection) {
                 ForEach(ExternalTerminal.presets) { Text($0.name).tag($0.bundleIdentifier) }
                 Text("Other…").tag(Self.other)

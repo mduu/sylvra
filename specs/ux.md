@@ -323,7 +323,7 @@ Built single-key shortcuts (active whenever no text is being edited — composer
 - **IDEs** — detected IDEs, paths, default IDE, Rider recent-projects cleanup.
 - **AI** — agent providers (detected path and version), default provider / models / effort, multi-model reviews, max parallel agents, sharding threshold, cross-cutting pass, history context on/off, highlight style.
 - **Diff** — default layout, scope, context lines, font, whitespace, color-blind palette.
-- **Terminal & Tools** — shell, external terminal app, custom tools editor.
+- **Terminal & Tools** — shell, font size (9–24 pt, applies to open terminals at once), external terminal app, custom tools editor.
 - **Worktrees** — location, stable review worktree per repo, retention, cleanup now.
 - **Notifications** — per job type; new review requests; updates on reviewed PRs.
 
