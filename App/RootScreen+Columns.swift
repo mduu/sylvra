@@ -115,7 +115,16 @@ extension RootScreen {
                 }
             )
         }
-        .terminalPanel(environment, selection: selection)
+        .terminalPanel(environment, selection: selection, isEnabled: hostsBottomPanel)
         .stableColumn()
+    }
+
+    /// Only one window shows the terminal: each session has a single AppKit view, and a second
+    /// (even hidden) window rendering the panel takes it away, leaving the visible terminal blank.
+    /// The review window exists in the background in every layout, so the main window is the host
+    /// unless the two-window layout puts the diff in the review window.
+    var hostsBottomPanel: Bool {
+        let isTwoWindows = WindowLayout(rawValue: layoutMode) == .twoWindows
+        return role == (isTwoWindows ? .review : .main)
     }
 }

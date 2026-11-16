@@ -143,8 +143,14 @@ struct TerminalSplit<Content: View>: View {
 
 extension View {
     /// Places the terminal panel below this view (bridges FeatureTerminal into the main window).
-    func terminalPanel(_ environment: AppEnvironment, selection: PullRequestSummary?) -> some View {
-        TerminalSplit(environment: environment, selection: selection) { self }
+    /// `isEnabled` false leaves the view as is (another window hosts the panel).
+    @ViewBuilder
+    func terminalPanel(_ environment: AppEnvironment, selection: PullRequestSummary?, isEnabled: Bool) -> some View {
+        if isEnabled {
+            TerminalSplit(environment: environment, selection: selection) { self }
+        } else {
+            self
+        }
     }
 }
 
