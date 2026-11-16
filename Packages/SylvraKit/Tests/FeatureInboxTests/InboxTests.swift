@@ -189,3 +189,62 @@ struct InboxFilterTests {
         #expect(restored.filter.preferences.hidesBots)
     }
 }
+
+@MainActor
+struct RepositoryBrowserTests {
+    private let billing = InboxRepository(owner: "acme", name: "billing")
+
+    @Test func pagesThroughAllOpenPullRequests() async {
+        let browser = RepositoryBrowserModel(repository: billing, loader: DemoRepositoryPullRequestLoader(pageSize: 15))
+        await browser.load(matching: "", excludingAuthors: [])
+        #expect(browser.totalCount == 38)
+        #expect(browser.pullRequests.count == 15)
+        await browser.loadMore(excludingAuthors: [])
+        await browser.loadMore(excludingAuthors: [])
+        #expect(browser.pullRequests.count == 38)
+        #expect(!browser.canLoadMore)
+        #expect(Set(browser.pullRequests.map(\.id)).count == 38)
+    }
+
+    @Test func searchesAndExcludesHiddenAuthors() async {
+        let browser = RepositoryBrowserModel(repository: billing, loader: DemoRepositoryPullRequestLoader())
+        await browser.load(matching: "tax", excludingAuthors: ["mduu"])
+        #expect(!browser.pullRequests.isEmpty)
+        #expect(browser.pullRequests.allSatisfy { $0.title.localizedCaseInsensitiveContains("tax") })
+        #expect(!browser.pullRequests.contains { $0.author.login == "mduu" })
+    }
+
+    @Test func groupsByWaitingYoursAndOpen() async {
+        let model = InboxScreenModel(loader: DemoInboxLoader(), repositoryLoader: DemoRepositoryPullRequestLoader())
+        await model.refresh()
+        model.openRepository(billing)
+        await model.browser?.load(matching: "", excludingAuthors: [])
+        let groups = model.browserGroups
+        #expect(groups.map(\.title) == ["Waiting for you", "Yours", "Open"])
+        #expect(groups[0].pullRequests.map(\.id.number) == [1234])
+        #expect(groups[1].pullRequests.allSatisfy { $0.author.login == "mduu" })
+        #expect(model.summary(for: groups[2].pullRequests[0].id) != nil)
+        model.closeRepository()
+        #expect(model.browser == nil)
+    }
+
+    @Test func persistsCollapsedSections() throws {
+        let defaults = try #require(UserDefaults(suiteName: "InboxCollapsed-\(UUID().uuidString)"))
+        let model = InboxScreenModel(loader: DemoInboxLoader(), defaults: defaults)
+        model.setExpanded("involved", false)
+        #expect(!InboxScreenModel(loader: DemoInboxLoader(), defaults: defaults).isExpanded("involved"))
+        #expect(model.isExpanded("myTeams"))
+    }
+
+    @Test func buildsRepositorySearchQueries() {
+        let query = GitHubRepositoryPullRequestLoader.searchQuery(
+            repository: billing, text: "export", excludedAuthors: ["dg-renovate"])
+        #expect(query == "is:pr is:open archived:false sort:updated-desc repo:acme/billing export -author:dg-renovate")
+        let many = (1...60).map { "author-number-\($0)" }
+        #expect(
+            GitHubRepositoryPullRequestLoader.searchQuery(repository: billing, text: "", excludedAuthors: many).count
+                <= InboxScope.maxQueryLength)
+        #expect(GitHubRepositoryPullRequestLoader.countQuery(count: 2).contains("s1: search(query: $q1"))
+        #expect(GitHubRepositoryPullRequestLoader.pageQuery(pageSize: 40).contains("after: $after"))
+    }
+}

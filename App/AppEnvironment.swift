@@ -99,19 +99,32 @@ final class AppEnvironment {
         }
     }
 
-    /// `--flag=value` (preferred: a separate bare value would be opened as a document by AppKit, and the
-    /// main window would not appear) or `--flag value`.
     private static func makeInbox(
         loader: any InboxLoading, gitHub: GitHubClient, isDemo: Bool, arguments: [String]
     ) -> InboxScreenModel {
         let inbox = InboxScreenModel(
             loader: loader, cache: isDemo ? nil : JSONCache(),
             repositorySearcher: isDemo ? DemoRepositorySearcher() : GitHubRepositorySearcher(client: gitHub),
+            repositoryLoader: isDemo
+                ? DemoRepositoryPullRequestLoader() : GitHubRepositoryPullRequestLoader(client: gitHub),
             defaults: isDemo ? nil : .standard)
         inbox.isChoosingRepositories = arguments.contains("--choose-repositories")
+        if isDemo {
+            // Demo: a few repositories in the sidebar; `--repository=billing` opens one.
+            Task { @MainActor in
+                for name in ["billing", "payments", "identity", "catalog", "ios-app"] {
+                    await inbox.addRepository(InboxRepository(owner: "acme", name: name))
+                }
+                if let name = value(of: "--repository", in: arguments) {
+                    inbox.openRepository(InboxRepository(owner: "acme", name: name))
+                }
+            }
+        }
         return inbox
     }
 
+    /// `--flag=value` (preferred: a separate bare value would be opened as a document by AppKit, and the
+    /// main window would not appear) or `--flag value`.
     private static func value(of flag: String, in arguments: [String]) -> String? {
         if let inline = arguments.first(where: { $0.hasPrefix(flag + "=") }) {
             return String(inline.dropFirst(flag.count + 1))

@@ -15,33 +15,21 @@ public struct InboxScreen: View {
 
     public var body: some View {
         List(selection: $selection) {
-            ForEach(model.visibleSections, id: \.section) { entry in
-                Section {
-                    ForEach(entry.pullRequests) { pullRequest in
-                        InboxRowView(pullRequest: pullRequest)
-                            .tag(pullRequest.id)
-                            .contextMenu { rowMenu(pullRequest) }
-                    }
-                } header: {
-                    HStack {
-                        Text(entry.section.title)
-                        Spacer()
-                        Text(entry.pullRequests.count, format: .number)
-                            .foregroundStyle(
-                                entry.section == .requestedFromMe && !entry.pullRequests.isEmpty
-                                    ? AnyShapeStyle(SylvraColor.accentGold) : AnyShapeStyle(.secondary))
-                    }
-                }
+            if let browser = model.browser {
+                RepositoryBrowserContent(model: model, browser: browser, rowMenu: rowMenu)
+            } else {
+                inboxContent
             }
         }
         .listStyle(.sidebar)
         .scrollContentBackground(.hidden)
         .background(SylvraColor.surfaceSidebar)
-        .searchable(text: $model.searchText, placement: .sidebar, prompt: Text("Search PRs"))
+        .searchable(text: $model.searchText, placement: .sidebar, prompt: searchPrompt)
         .safeAreaInset(edge: .top, spacing: 0) {
-            if !model.snapshot.isEmpty {
+            if !model.snapshot.isEmpty || model.browser != nil {
                 InboxFilterBar(
-                    filter: model.filter, authors: model.authors, hiddenCount: model.hiddenCount,
+                    filter: model.filter, authors: model.authors,
+                    hiddenCount: model.browser == nil ? model.hiddenCount : model.browserHiddenCount,
                     toggle: model.toggle, showOnlyAuthor: model.showOnly(author:), clear: model.clearTemporaryFilters,
                     updatePreferences: model.updatePreferences)
             }
@@ -58,9 +46,6 @@ public struct InboxScreen: View {
                 if model.snapshot.isRestrictedBySSO == true {
                     ssoHint
                 }
-                if model.repositorySearcher != nil {
-                    scopeFooter
-                }
             }
         }
         .sheet(isPresented: $model.isChoosingRepositories) {
@@ -68,22 +53,14 @@ public struct InboxScreen: View {
         }
         .task { await model.keepRefreshing() }
         .toolbar {
-            if model.repositorySearcher != nil {
-                ToolbarItem {
-                    Button {
-                        model.isChoosingRepositories = true
-                    } label: {
-                        Label(
-                            "Inbox repositories",
-                            systemImage: model.scope.isAll
-                                ? "square.stack.3d.up" : "square.stack.3d.up.fill")
-                    }
-                    .help("Choose the repositories your inbox searches")
-                }
-            }
             ToolbarItem {
                 Button {
-                    Task { await model.refresh() }
+                    Task {
+                        await model.refresh()
+                        await model.browser?.load(
+                            matching: model.browser?.searchText ?? "",
+                            excludingAuthors: model.filter.preferences.hiddenAuthors)
+                    }
                 } label: {
                     Label("Refresh", systemImage: "arrow.clockwise")
                 }
@@ -118,35 +95,90 @@ public struct InboxScreen: View {
         .background(SylvraColor.accentGold.opacity(0.08))
     }
 
-    private var scopeFooter: some View {
-        Button {
-            model.isChoosingRepositories = true
-        } label: {
-            HStack(spacing: 6) {
-                Image(systemName: "square.stack.3d.up")
-                Text(
-                    model.scope.isAll
-                        ? String(localized: "All repositories")
-                        : String(localized: "\(model.scope.repositories.count) repositories"))
-                Spacer()
-                Text("Edit").foregroundStyle(SylvraColor.brandPrimary)
-            }
-            .font(.caption)
-            .foregroundStyle(.secondary)
-            .padding(.horizontal, 12)
-            .padding(.vertical, 8)
-            .contentShape(Rectangle())
+    private var searchPrompt: Text {
+        if let browser = model.browser {
+            return Text("Search in \(browser.repository.name)")
         }
-        .buttonStyle(.plain)
-        .background(SylvraColor.surfaceSidebar)
-        .help("Choose the repositories your inbox searches")
+        return Text("Search PRs")
+    }
+
+    @ViewBuilder private var inboxContent: some View {
+        ForEach(model.visibleSections, id: \.section) { entry in
+            Section(isExpanded: expansion(entry.section.rawValue)) {
+                ForEach(entry.pullRequests) { pullRequest in
+                    InboxRowView(pullRequest: pullRequest)
+                        .tag(pullRequest.id)
+                        .contextMenu { rowMenu(pullRequest) }
+                }
+            } header: {
+                HStack {
+                    Text(entry.section.title)
+                    Spacer()
+                    Text(entry.pullRequests.count, format: .number)
+                        .foregroundStyle(
+                            entry.section == .requestedFromMe && !entry.pullRequests.isEmpty
+                                ? AnyShapeStyle(SylvraColor.accentGold) : AnyShapeStyle(.secondary))
+                }
+            }
+        }
+        if model.repositoryLoader != nil {
+            if model.loadState == .loaded, model.visibleSections.isEmpty {
+                Section {
+                    Label("Nothing waiting for you. Enjoy the quiet.", systemImage: "leaf")
+                        .foregroundStyle(.secondary)
+                        .selectionDisabled()
+                }
+            }
+            repositoriesSection
+        }
+    }
+
+    private func expansion(_ section: String) -> Binding<Bool> {
+        Binding(get: { model.isExpanded(section) }, set: { model.setExpanded(section, $0) })
+    }
+
+    private var repositoriesSection: some View {
+        Section(isExpanded: expansion("repositories")) {
+            ForEach(model.scope.repositories) { repository in
+                Button {
+                    model.openRepository(repository)
+                } label: {
+                    RepositoryListRow(repository: repository, openCount: model.repositoryCounts[repository.id])
+                }
+                .buttonStyle(.plain)
+                .selectionDisabled()
+                .contextMenu {
+                    Button("Remove from inbox", systemImage: "minus.circle") {
+                        Task { await model.removeRepository(repository) }
+                    }
+                }
+            }
+            Button {
+                model.isChoosingRepositories = true
+            } label: {
+                Label("Add repository", systemImage: "plus")
+                    .foregroundStyle(SylvraColor.brandPrimary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .selectionDisabled()
+            if model.scope.isAll {
+                Text("Add the repositories you work in: browse all their open pull requests here.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .selectionDisabled()
+            }
+        } header: {
+            Text("Repositories")
+        }
     }
 
     @ViewBuilder private var overlay: some View {
         switch model.loadState {
-        case .loading:
+        case .loading where model.browser == nil:
             ProgressView()
-        case .failed(let message) where model.snapshot.isEmpty:
+        case .failed(let message) where model.snapshot.isEmpty && model.browser == nil:
             ContentUnavailableView {
                 Label("Couldn't load pull requests", systemImage: "exclamationmark.triangle")
             } description: {
@@ -158,7 +190,7 @@ public struct InboxScreen: View {
                         .help("Searching fewer repositories helps when your organizations are large")
                 }
             }
-        case .loaded where model.snapshot.isEmpty:
+        case .loaded where model.snapshot.isEmpty && model.repositoryLoader == nil && model.browser == nil:
             ContentUnavailableView {
                 Label("Nothing to review", systemImage: "leaf")
             } description: {

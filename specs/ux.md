@@ -127,7 +127,14 @@ Screens follow the container / presentational split described in `architecture.m
 5. *My PRs* — my own open PRs.
 6. *Recently closed* — last 7 days.
 
-**Inbox repositories**: the user adds the repositories that matter (search by name, e.g. `org:acme billing`, or pick from repositories already in the inbox). *My teams*, *Involved* and *Recently closed* only search these; *Requested from me* and *My PRs* always search all repositories so nothing addressed to the user is missed. No repositories chosen = all repositories. Reason: accounts in large organizations don't need every repository, and one broad search can exceed GitHub's time limit (502). Entry points: filter button in the sidebar toolbar, footer "All repositories · Edit", *Add repository…* in the empty inbox and *Choose repositories…* when loading fails.
+**Inbox and repositories** (like Mail: what needs me, then where I work):
+
+- The *inbox sections* above group pull requests by *why* they concern the user (review requested, team, involved, mine).
+- Below them, **Repositories** lists the repositories the user added (6–8 typically), each with its number of open pull requests. Clicking one replaces the sidebar content with *all* open pull requests of that repository, grouped into *Waiting for you*, *Yours* and *Open*; `‹ Inbox` or Esc goes back. The search field then searches on GitHub (debounced), and pages load while scrolling (*Load more*), so huge repositories (monoliths with hundreds of open PRs) stay usable.
+- Repositories are added with a search sheet (e.g. `org:acme billing`) or from repositories already in the inbox. *My teams*, *Involved* and *Recently closed* only search the added repositories; *Requested from me* and *My PRs* always search all repositories so nothing addressed to the user is missed. Reason: one broad search over a large organization can exceed GitHub's time limit (502).
+- Sections are collapsible; the state is remembered.
+
+**Filters** (inbox and repository view): chips above the list — *Filters* menu with persistent preferences (hide bots, hide drafts by others — own drafts always stay visible, hidden authors), *Author*, *Needs review*, *CI failing*, *Small*. Right-click a pull request: *Show only PRs by …*, *Hide PRs by …*. A hint counts what the filters hide.
 
 If GitHub reports `X-GitHub-SSO: partial-results`, the sidebar explains that the GitHub CLI token isn't authorized for an organization's single sign-on.
 
@@ -140,7 +147,7 @@ If GitHub reports `X-GitHub-SSO: partial-results`, the sidebar explains that the
 
 - Status dot: unread / updated since my last review / reviewed.
 - Badges only for meaningful states: draft, conflicts, CI failing, blocked, *AI-authored*, *changes since my review*.
-- Search (title, number, author, branch) and filter chips (repo, author, size, CI, draft). Saved filters become custom sections.
+- Search (title, number, author, branch) and filter chips (see above).
 
 ## 6. PR column
 

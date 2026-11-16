@@ -103,3 +103,58 @@ public struct DemoRepositorySearcher: RepositorySearching {
         }
     }
 }
+
+/// Fixture pull requests per repository for demo mode (paged like GitHub).
+public struct DemoRepositoryPullRequestLoader: RepositoryPullRequestLoading {
+    private let pageSize: Int
+
+    public init(pageSize: Int = 15) {
+        self.pageSize = pageSize
+    }
+
+    static let openCounts = ["billing": 38, "payments": 12, "identity": 6, "catalog": 5, "ios-app": 9]
+
+    private static let titles = [
+        "Refactor tax calculation", "Add retry to export job", "Update dependency swift-nio to v2.80",
+        "Fix flaky invoice test", "Remove legacy PDF renderer", "Log export duration", "Translate emails to French",
+        "Speed up customer lookup", "Use new pricing API", "Clean up feature flags",
+    ]
+    private static let people = [
+        ("lkeller", "Lena Keller"), ("twagner", "Tim Wagner"), ("dg-renovate", "Renovate"), ("srossi", "Sara Rossi"),
+        ("mduu", "Marc Dürst"), ("anovak", "Ana Novak"),
+    ]
+
+    public func openPullRequestCounts(for repositories: [InboxRepository]) async throws -> [String: Int] {
+        Dictionary(uniqueKeysWithValues: repositories.map { ($0.id, Self.openCounts[$0.name] ?? 0) })
+    }
+
+    public func loadPullRequests(
+        in repository: InboxRepository, matching text: String, excludingAuthors excludedAuthors: [String],
+        after cursor: String?
+    ) async throws -> RepositoryPullRequestPage {
+        let all = Self.pullRequests(in: repository).filter { pullRequest in
+            !excludedAuthors.contains(pullRequest.author.login.lowercased())
+                && (text.isEmpty || pullRequest.title.localizedCaseInsensitiveContains(text))
+        }
+        let start = cursor.flatMap(Int.init) ?? 0
+        let end = min(start + pageSize, all.count)
+        return RepositoryPullRequestPage(
+            pullRequests: Array(all[start..<end]), totalCount: all.count, nextCursor: end < all.count ? "\(end)" : nil)
+    }
+
+    static func pullRequests(in repository: InboxRepository) -> [PullRequestSummary] {
+        let known = DemoInboxLoader.sections.values.joined().filter {
+            $0.id.repository == repository.name && $0.id.number != 812
+        }
+        let count = max((openCounts[repository.name] ?? 0) - known.count, 0)
+        let generated = (0..<count).map { index in
+            let person = people[index % people.count]
+            let isDraft = index % 7 == 3
+            return DemoInboxLoader.pr(
+                repository.name, 1299 - index * 3, titles[index % titles.count], person.0, person.1,
+                hoursAgo: Double(10 + index * 9), 20 + index * 17 % 400, index * 7 % 90,
+                index % 5 == 2 ? .failure : .success, index % 4 == 0 ? .approved : .reviewRequired, draft: isDraft)
+        }
+        return (Array(known) + generated).sorted { $0.updatedAt > $1.updatedAt }
+    }
+}
