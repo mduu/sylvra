@@ -84,7 +84,8 @@ public struct DemoInboxLoader: InboxLoading {
             checkState: checks,
             reviewDecision: review,
             mergeability: .mergeable,
-            viewerActivity: activity
+            viewerActivity: activity,
+            commentCount: (number * 7) % 13
         )
     }
 }

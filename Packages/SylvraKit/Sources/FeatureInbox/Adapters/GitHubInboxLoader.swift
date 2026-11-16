@@ -118,7 +118,8 @@ struct PullRequestNode: Decodable, Sendable {
           author { __typename login avatarUrl ... on User { name } }
           commits(last: 1) { nodes { commit { committedDate statusCheckRollup { state } } } }
           viewerDidAuthor
-          comments(last: 10) { nodes { createdAt viewerDidAuthor author { __typename } } }
+          comments(last: 10) { totalCount nodes { createdAt viewerDidAuthor author { __typename } } }
+          reviewThreads { totalCount }
           reviews(last: 10) { nodes { submittedAt viewerDidAuthor author { __typename } } }
         }
         """
@@ -141,9 +142,13 @@ struct PullRequestNode: Decodable, Sendable {
     let viewerDidAuthor: Bool?
     let comments: Activities?
     let reviews: Activities?
+    let reviewThreads: Count?
+
+    struct Count: Decodable, Sendable { let totalCount: Int }
 
     /// Comments or reviews; `date` is `createdAt` or `submittedAt` (pending reviews have none).
     struct Activities: Decodable, Sendable {
+        let totalCount: Int?
         let nodes: [Activity?]
         struct Activity: Decodable, Sendable {
             let createdAt: Date?
@@ -208,8 +213,15 @@ struct PullRequestNode: Decodable, Sendable {
             reviewDecision: reviewDecision.flatMap(ReviewDecision.init(rawValue:)) ?? .none,
             mergeability: mergeable.flatMap(Mergeability.init(rawValue:)) ?? .unknown,
             authorIsBot: author?.typename == "Bot",
-            viewerActivity: viewerActivity
+            viewerActivity: viewerActivity,
+            commentCount: commentCount
         )
+    }
+
+    /// Conversation comments plus code threads (`nil` when the query didn't ask).
+    var commentCount: Int? {
+        guard comments?.totalCount != nil || reviewThreads != nil else { return nil }
+        return (comments?.totalCount ?? 0) + (reviewThreads?.totalCount ?? 0)
     }
 
     /// The reviewer's last review or comment against everyone else's latest commit, review or comment.

@@ -63,6 +63,8 @@ public struct PullRequestSummary: Identifiable, Hashable, Sendable, Codable {
     public let authorIsBot: Bool
     /// Whether the signed-in reviewer acted last (`nil`: unknown, or the reviewer's own pull request).
     public let viewerActivity: ViewerActivity?
+    /// Conversation comments plus code threads (`nil`: unknown).
+    public let commentCount: Int?
 
     public init(
         id: PullRequestID,
@@ -80,7 +82,8 @@ public struct PullRequestSummary: Identifiable, Hashable, Sendable, Codable {
         reviewDecision: ReviewDecision = .none,
         mergeability: Mergeability = .unknown,
         authorIsBot: Bool = false,
-        viewerActivity: ViewerActivity? = nil
+        viewerActivity: ViewerActivity? = nil,
+        commentCount: Int? = nil
     ) {
         self.id = id
         self.title = title
@@ -98,6 +101,7 @@ public struct PullRequestSummary: Identifiable, Hashable, Sendable, Codable {
         self.mergeability = mergeability
         self.authorIsBot = authorIsBot
         self.viewerActivity = viewerActivity
+        self.commentCount = commentCount
     }
 
     /// The reviewer already commented or reviewed and nothing happened since.

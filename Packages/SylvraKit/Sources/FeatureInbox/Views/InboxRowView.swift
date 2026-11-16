@@ -12,7 +12,12 @@ struct InboxRowView: View {
         HStack(alignment: .top, spacing: 10) {
             AvatarView(pullRequest.author, size: 26)
             VStack(alignment: .leading, spacing: 3) {
-                HStack(spacing: 6) {
+                HStack(alignment: .firstTextBaseline, spacing: 6) {
+                    // The number is how reviewers find a PR again: big, before the title.
+                    Text(verbatim: "#\(pullRequest.id.number)")
+                        .font(.body.weight(.bold).monospacedDigit())
+                        .foregroundStyle(SylvraColor.brandPrimary)
+                        .fixedSize()
                     Text(pullRequest.title)
                         .font(.callout.weight(.semibold))
                         .lineLimit(1)
@@ -25,10 +30,17 @@ struct InboxRowView: View {
                     }
                 }
                 HStack(spacing: 6) {
-                    Text(verbatim: "\(pullRequest.id.repository) #\(pullRequest.id.number)")
+                    Text(verbatim: pullRequest.id.repository)
                     Text(verbatim: "+\(pullRequest.additions) −\(pullRequest.deletions)")
                         .monospacedDigit()
                     CheckStateBadge(pullRequest.checkState)
+                    if let comments = pullRequest.commentCount, comments > 0 {
+                        HStack(spacing: 2) {
+                            Image(systemName: "bubble.left")
+                            Text(verbatim: "\(comments)").monospacedDigit()
+                        }
+                        .help("\(comments) comments and code discussions")
+                    }
                     Spacer(minLength: 0)
                     Text(pullRequest.updatedAt, format: .relative(presentation: .numeric, unitsStyle: .narrow))
                 }

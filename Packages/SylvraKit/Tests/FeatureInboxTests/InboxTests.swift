@@ -93,6 +93,10 @@ struct GitHubInboxLoaderTests {
             """)
         #expect(answered?.isWaitingOnOthers == false)
         #expect(answered?.viewerActivity?.hasNewActivity == true)
+        let counted = try node(
+            #""comments": {"totalCount": 4, "nodes": []}, "reviewThreads": {"totalCount": 3}"#)
+        #expect(counted?.commentCount == 7)
+        #expect(try node(#""viewerDidAuthor": false"#)?.commentCount == nil)
         let own = try node(#""viewerDidAuthor": true, "comments": {"nodes": []}"#)
         #expect(own?.viewerActivity == nil)
     }
