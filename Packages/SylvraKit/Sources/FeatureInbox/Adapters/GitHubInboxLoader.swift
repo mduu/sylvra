@@ -35,7 +35,9 @@ public struct GitHubInboxLoader: InboxLoading {
             return sections
         }
         let isRestricted = await !client.ssoRestrictedOrganizations.isEmpty
-        return InboxSnapshot(sections: sections, isRestrictedBySSO: isRestricted ? true : nil)
+        let viewer = try? await client.viewer()
+        return InboxSnapshot(
+            sections: sections, isRestrictedBySSO: isRestricted ? true : nil, viewerLogin: viewer?.login)
     }
 
     /// One aliased search per query (`s0`, `s1` …); search texts are passed as variables.
@@ -113,7 +115,7 @@ struct PullRequestNode: Decodable, Sendable {
           number title url isDraft createdAt updatedAt additions deletions
           headRefName baseRefName reviewDecision mergeable
           repository { name owner { login } }
-          author { login avatarUrl ... on User { name } }
+          author { __typename login avatarUrl ... on User { name } }
           commits(last: 1) { nodes { commit { statusCheckRollup { state } } } }
         }
         """
@@ -131,8 +133,21 @@ struct PullRequestNode: Decodable, Sendable {
     let reviewDecision: String?
     let mergeable: String?
     let repository: Repository?
-    let author: GitHubActorNode?
+    let author: AuthorNode?
     let commits: Commits?
+
+    struct AuthorNode: Decodable, Sendable {
+        let typename: String?
+        let login: String
+        let name: String?
+        let avatarUrl: URL?
+
+        enum CodingKeys: String, CodingKey {
+            case typename = "__typename", login, name, avatarUrl
+        }
+
+        var userRef: UserRef { UserRef(login: login, name: name, avatarURL: avatarUrl) }
+    }
 
     struct Repository: Decodable, Sendable {
         let name: String
@@ -165,7 +180,8 @@ struct PullRequestNode: Decodable, Sendable {
             baseRefName: baseRefName ?? "",
             checkState: rollup.flatMap(CheckState.init(rawValue:)) ?? .none,
             reviewDecision: reviewDecision.flatMap(ReviewDecision.init(rawValue:)) ?? .none,
-            mergeability: mergeable.flatMap(Mergeability.init(rawValue:)) ?? .unknown
+            mergeability: mergeable.flatMap(Mergeability.init(rawValue:)) ?? .unknown,
+            authorIsBot: author?.typename == "Bot"
         )
     }
 }

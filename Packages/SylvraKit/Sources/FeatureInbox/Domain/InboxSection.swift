@@ -51,13 +51,17 @@ public struct InboxSnapshot: Sendable, Equatable, Codable {
     public var loadedAt: Date
     /// Some organizations hid their results because the token lacks SSO authorization (`nil` = no).
     public var isRestrictedBySSO: Bool?
+    /// Login of the signed-in user (own drafts always stay visible).
+    public var viewerLogin: String?
 
     public init(
-        sections: [InboxSection: [PullRequestSummary]], loadedAt: Date = .now, isRestrictedBySSO: Bool? = nil
+        sections: [InboxSection: [PullRequestSummary]], loadedAt: Date = .now, isRestrictedBySSO: Bool? = nil,
+        viewerLogin: String? = nil
     ) {
         self.sections = sections
         self.loadedAt = loadedAt
         self.isRestrictedBySSO = isRestrictedBySSO
+        self.viewerLogin = viewerLogin
     }
 
     public func pullRequests(in section: InboxSection) -> [PullRequestSummary] {

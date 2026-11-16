@@ -12,7 +12,7 @@ public struct DemoInboxLoader: InboxLoading {
                 scope.contains(owner: $0.id.owner, name: $0.id.repository)
             }
         }
-        return InboxSnapshot(sections: sections)
+        return InboxSnapshot(sections: sections, viewerLogin: "mduu")
     }
 
     public static let sections: [InboxSection: [PullRequestSummary]] = [
@@ -27,6 +27,9 @@ public struct DemoInboxLoader: InboxLoading {
         .myTeams: [
             pr("identity", 412, "Migrate auth to passkeys", "srossi", "Sara Rossi", hoursAgo: 26, 930, 610, .failure),
             pr("ios-app", 2201, "Bump SwiftLint to 0.65", "dbrunner", "David Brunner", hoursAgo: 30, 3, 3, .success),
+            pr(
+                "payments", 902, "Update dependency stripe to v14", "dg-renovate", "Renovate", hoursAgo: 40, 12, 9,
+                .success),
             pr(
                 "catalog", 77, "Cache product images on disk", "anovak", "Ana Novak", hoursAgo: 52, 210, 18, .success,
                 draft: true),

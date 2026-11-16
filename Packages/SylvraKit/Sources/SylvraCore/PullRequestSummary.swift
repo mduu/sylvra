@@ -59,6 +59,8 @@ public struct PullRequestSummary: Identifiable, Hashable, Sendable, Codable {
     public let checkState: CheckState
     public let reviewDecision: ReviewDecision
     public let mergeability: Mergeability
+    /// The author is a GitHub App (bot account).
+    public let authorIsBot: Bool
 
     public init(
         id: PullRequestID,
@@ -74,7 +76,8 @@ public struct PullRequestSummary: Identifiable, Hashable, Sendable, Codable {
         baseRefName: String,
         checkState: CheckState = .none,
         reviewDecision: ReviewDecision = .none,
-        mergeability: Mergeability = .unknown
+        mergeability: Mergeability = .unknown,
+        authorIsBot: Bool = false
     ) {
         self.id = id
         self.title = title
@@ -90,6 +93,14 @@ public struct PullRequestSummary: Identifiable, Hashable, Sendable, Codable {
         self.checkState = checkState
         self.reviewDecision = reviewDecision
         self.mergeability = mergeability
+        self.authorIsBot = authorIsBot
+    }
+
+    /// Bot accounts: GitHub Apps and conventionally named service users (`dg-renovate`, `ci-bot`).
+    public var isByBot: Bool {
+        let login = author.login.lowercased()
+        return authorIsBot || login.hasSuffix("[bot]") || login.hasSuffix("-bot")
+            || ["renovate", "dependabot"].contains { login.contains($0) }
     }
 
     /// Changed lines in total.

@@ -18,7 +18,9 @@ public struct InboxScreen: View {
             ForEach(model.visibleSections, id: \.section) { entry in
                 Section {
                     ForEach(entry.pullRequests) { pullRequest in
-                        InboxRowView(pullRequest: pullRequest).tag(pullRequest.id)
+                        InboxRowView(pullRequest: pullRequest)
+                            .tag(pullRequest.id)
+                            .contextMenu { rowMenu(pullRequest) }
                     }
                 } header: {
                     HStack {
@@ -36,6 +38,14 @@ public struct InboxScreen: View {
         .scrollContentBackground(.hidden)
         .background(SylvraColor.surfaceSidebar)
         .searchable(text: $model.searchText, placement: .sidebar, prompt: Text("Search PRs"))
+        .safeAreaInset(edge: .top, spacing: 0) {
+            if !model.snapshot.isEmpty {
+                InboxFilterBar(
+                    filter: model.filter, authors: model.authors, hiddenCount: model.hiddenCount,
+                    toggle: model.toggle, showOnlyAuthor: model.showOnly(author:), clear: model.clearTemporaryFilters,
+                    updatePreferences: model.updatePreferences)
+            }
+        }
         .overlay { overlay }
         .safeAreaInset(edge: .bottom) {
             VStack(spacing: 0) {
@@ -66,7 +76,7 @@ public struct InboxScreen: View {
                         Label(
                             "Inbox repositories",
                             systemImage: model.scope.isAll
-                                ? "line.3.horizontal.decrease.circle" : "line.3.horizontal.decrease.circle.fill")
+                                ? "square.stack.3d.up" : "square.stack.3d.up.fill")
                     }
                     .help("Choose the repositories your inbox searches")
                 }
@@ -79,6 +89,16 @@ public struct InboxScreen: View {
                 }
                 .keyboardShortcut("r", modifiers: .command)
             }
+        }
+    }
+
+    @ViewBuilder private func rowMenu(_ pullRequest: PullRequestSummary) -> some View {
+        let login = pullRequest.author.login
+        Button("Show only PRs by \(login)", systemImage: "person") { model.showOnly(author: login) }
+        Button("Hide PRs by \(login)", systemImage: "eye.slash") { model.updatePreferences { $0.hideAuthor(login) } }
+        if let url = pullRequest.url {
+            Divider()
+            Link(destination: url) { Label("Open on GitHub", systemImage: "safari") }
         }
     }
 

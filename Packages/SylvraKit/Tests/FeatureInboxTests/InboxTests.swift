@@ -101,7 +101,7 @@ struct InboxScreenModelTests {
         #expect(restored.scope.repositories.map(\.fullName) == ["acme/identity"])
 
         await model.showAllRepositories()
-        #expect(model.snapshot.pullRequests(in: .myTeams).count == 3)
+        #expect(model.snapshot.pullRequests(in: .myTeams).count == 4)
     }
 
     @Test func demoSearchFindsRepositories() async throws {
@@ -126,5 +126,66 @@ struct ChangeSizeTests {
     @Test(arguments: [(5, ChangeSize.xs), (50, .s), (300, .m), (999, .l), (5000, .xl)])
     func sizes(lines: Int, expected: ChangeSize) {
         #expect(ChangeSize(changedLines: lines) == expected)
+    }
+}
+
+struct InboxFilterTests {
+    private func pr(
+        _ login: String, draft: Bool = false, bot: Bool = false, checks: CheckState = .success,
+        review: ReviewDecision = .reviewRequired, lines: Int = 20
+    ) -> PullRequestSummary {
+        PullRequestSummary(
+            id: PullRequestID(owner: "o", repository: "r", number: Int.random(in: 1...99_999)), title: "t",
+            author: UserRef(login: login), isDraft: draft, createdAt: .now, updatedAt: .now, additions: lines,
+            deletions: 0, headRefName: "h", baseRefName: "main", checkState: checks, reviewDecision: review,
+            authorIsBot: bot)
+    }
+
+    @Test func detectsBots() {
+        #expect(pr("dg-renovate").isByBot)
+        #expect(pr("dependabot[bot]").isByBot)
+        #expect(pr("release-bot").isByBot)
+        #expect(pr("github-actions", bot: true).isByBot)
+        #expect(!pr("lkeller").isByBot)
+        #expect(!pr("robert").isByBot)
+    }
+
+    @Test func hidesBotsAuthorsAndOthersDrafts() {
+        var filter = PullRequestFilter(viewerLogin: "mduu")
+        filter.preferences.hidesBots = true
+        filter.preferences.hidesOthersDrafts = true
+        filter.preferences.hideAuthor("TWagner")
+        #expect(!filter.matches(pr("dg-renovate")))
+        #expect(!filter.matches(pr("lkeller", draft: true)))
+        #expect(filter.matches(pr("mduu", draft: true)))
+        #expect(!filter.matches(pr("twagner")))
+        #expect(filter.matches(pr("lkeller")))
+        filter.preferences.showAuthor("twagner")
+        #expect(filter.matches(pr("twagner")))
+    }
+
+    @Test func quickFiltersAndAuthorCombine() {
+        let filter = PullRequestFilter(quickFilters: [.ciFailing, .small], author: "lkeller")
+        #expect(filter.matches(pr("lkeller", checks: .failure)))
+        #expect(!filter.matches(pr("lkeller", checks: .failure, lines: 900)))
+        #expect(!filter.matches(pr("lkeller")))
+        #expect(!filter.matches(pr("srossi", checks: .failure)))
+        #expect(filter.hasTemporaryFilters)
+    }
+
+    @MainActor
+    @Test func modelPersistsPreferencesAndCountsHidden() async throws {
+        let defaults = try #require(UserDefaults(suiteName: "InboxFilterTests-\(UUID().uuidString)"))
+        let model = InboxScreenModel(loader: DemoInboxLoader(), defaults: defaults)
+        await model.refresh()
+        #expect(model.hiddenCount == 0)
+        model.updatePreferences { $0.hidesBots = true }
+        #expect(model.hiddenCount == 1)
+        #expect(!model.visibleSections.flatMap(\.pullRequests).contains { $0.author.login == "dg-renovate" })
+        model.showOnly(author: "lkeller")
+        #expect(Set(model.visibleSections.flatMap(\.pullRequests).map(\.author.login)) == ["lkeller"])
+        model.clearTemporaryFilters()
+        let restored = InboxScreenModel(loader: DemoInboxLoader(), defaults: defaults)
+        #expect(restored.filter.preferences.hidesBots)
     }
 }

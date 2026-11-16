@@ -19,6 +19,8 @@ public final class InboxScreenModel {
     public var searchText = ""
     /// Repositories the broad sections search (persisted; empty = all).
     public private(set) var scope: InboxScope
+    /// Filter preferences (persisted) and temporary quick filters.
+    public private(set) var filter = PullRequestFilter()
     /// Shows the sheet for choosing the inbox repositories.
     public var isChoosingRepositories = false
 
@@ -30,6 +32,7 @@ public final class InboxScreenModel {
 
     private static let logger = SylvraLog.logger("inbox")
     static let scopeKey = "inbox.scope"
+    static let filterKey = "inbox.filter"
 
     /// - Parameters:
     ///   - cache: shows the last loaded inbox immediately at launch (`nil` in demo mode and tests).
@@ -45,6 +48,10 @@ public final class InboxScreenModel {
         scope =
             defaults?.data(forKey: Self.scopeKey).flatMap { try? JSONDecoder().decode(InboxScope.self, from: $0) }
             ?? .all
+        filter.preferences =
+            defaults?.data(forKey: Self.filterKey).flatMap {
+                try? JSONDecoder().decode(InboxFilterPreferences.self, from: $0)
+            } ?? InboxFilterPreferences()
         if let cached = cache?.load(InboxSnapshot.self, key: "inbox") {
             snapshot = cached
             loadState = .loaded
@@ -55,7 +62,9 @@ public final class InboxScreenModel {
     /// Empty sections are hidden to keep the sidebar calm.
     public var visibleSections: [(section: InboxSection, pullRequests: [PullRequestSummary])] {
         InboxSection.allCases.compactMap { section in
-            let pullRequests = snapshot.pullRequests(in: section).filter(matchesSearch)
+            let pullRequests = snapshot.pullRequests(in: section).filter {
+                matchesSearch($0) && activeFilter.matches($0)
+            }
             return pullRequests.isEmpty ? nil : (section, pullRequests)
         }
     }
@@ -77,6 +86,48 @@ public final class InboxScreenModel {
             Self.logger.error("Loading the inbox failed: \(String(describing: error), privacy: .public)")
             loadState = .failed(Self.message(for: error))
         }
+    }
+
+    // MARK: - Filters
+
+    private var activeFilter: PullRequestFilter {
+        var filter = filter
+        filter.viewerLogin = snapshot.viewerLogin
+        return filter
+    }
+
+    /// Pull requests the filters hide (shown as a hint, so an emptier list isn't confusing).
+    public var hiddenCount: Int {
+        snapshot.sections.values.joined().filter { matchesSearch($0) && !activeFilter.matches($0) }.count
+    }
+
+    /// Authors of the loaded pull requests, for the author filter.
+    public var authors: [String] {
+        Array(Set(snapshot.sections.values.joined().map(\.author.login))).sorted {
+            $0.localizedCaseInsensitiveCompare($1) == .orderedAscending
+        }
+    }
+
+    public func toggle(_ quickFilter: QuickFilter) {
+        if filter.quickFilters.contains(quickFilter) {
+            filter.quickFilters.remove(quickFilter)
+        } else {
+            filter.quickFilters.insert(quickFilter)
+        }
+    }
+
+    public func showOnly(author: String?) {
+        filter.author = author
+    }
+
+    public func clearTemporaryFilters() {
+        filter.quickFilters = []
+        filter.author = nil
+    }
+
+    public func updatePreferences(_ change: (inout InboxFilterPreferences) -> Void) {
+        change(&filter.preferences)
+        if let data = try? JSONEncoder().encode(filter.preferences) { defaults?.set(data, forKey: Self.filterKey) }
     }
 
     // MARK: - Repositories
