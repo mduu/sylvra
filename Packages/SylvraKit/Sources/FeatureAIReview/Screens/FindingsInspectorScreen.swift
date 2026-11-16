@@ -146,7 +146,9 @@ public struct FindingsInspectorScreen: View {
                 .overlay { RoundedRectangle(cornerRadius: 10).strokeBorder(.quaternary, style: .init(dash: [4])) }
             }
         case .patterns:
-            ForEach(model.results[id]?.patterns ?? []) { PatternRowView(pattern: $0) }
+            ForEach(model.results[id]?.patterns ?? []) { pattern in
+                PatternRowView(pattern: pattern) { location in jumpToLocation(location.path, location.startLine) }
+            }
         case .chat:
             if let chat {
                 AIChatPanel(model: chat, pullRequestID: id, jump: jumpToLocation, useAsComment: useAsComment)

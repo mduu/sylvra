@@ -79,20 +79,28 @@ struct AIHighlightOverlay: View {
             }
             .allowsHitTesting(false)
             .overlay {
-                // Clicking the code of a highlighted line opens its finding; the gutter keeps its comment action.
+                // Clicking the AI edge or the code of a highlighted line opens its finding; the line numbers in
+                // between keep their comment action.
                 if !highlight.isSelected, let id = highlight.findingID, let selectFinding {
-                    Color.clear
-                        .contentShape(Rectangle())
-                        .padding(.leading, gutterWidth)
-                        .onTapGesture { selectFinding(id) }
-                        .onHover { hovering in
-                            isHovered = hovering
-                            if hovering { NSCursor.pointingHand.push() } else { NSCursor.pop() }
-                        }
-                        .help("Show this AI finding")
+                    HStack(spacing: 0) {
+                        tapArea { selectFinding(id) }.frame(width: 8)
+                        Color.clear.frame(width: max(gutterWidth - 8, 0)).allowsHitTesting(false)
+                        tapArea { selectFinding(id) }
+                    }
                 }
             }
             .transition(.opacity)
         }
+    }
+
+    private func tapArea(_ action: @escaping () -> Void) -> some View {
+        Color.clear
+            .contentShape(Rectangle())
+            .onTapGesture(perform: action)
+            .onHover { hovering in
+                isHovered = hovering
+                if hovering { NSCursor.pointingHand.push() } else { NSCursor.pop() }
+            }
+            .help("Show this AI finding")
     }
 }

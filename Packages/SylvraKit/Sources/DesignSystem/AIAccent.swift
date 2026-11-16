@@ -8,14 +8,15 @@ public enum AIAccent {
         Color(red: 0.35, green: 0.78, blue: 0.78),
     ]
 
-    /// Horizontal gradient that fades out to the right (line highlights).
+    /// Horizontal gradient that fades out slowly to the right (line highlights): the colors stay visible
+    /// across most of the line and a trace remains at the end.
     public static func lineGradient(opacity: Double) -> LinearGradient {
         LinearGradient(
             stops: [
                 .init(color: colors[0].opacity(opacity), location: 0),
-                .init(color: colors[1].opacity(opacity * 0.6), location: 0.45),
-                .init(color: colors[2].opacity(opacity * 0.3), location: 0.75),
-                .init(color: .clear, location: 1),
+                .init(color: colors[1].opacity(opacity * 0.8), location: 0.5),
+                .init(color: colors[2].opacity(opacity * 0.55), location: 0.85),
+                .init(color: colors[2].opacity(opacity * 0.3), location: 1),
             ],
             startPoint: .leading, endPoint: .trailing)
     }

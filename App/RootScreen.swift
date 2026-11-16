@@ -94,7 +94,7 @@ struct RootScreen: View {
                 jump: { finding in environment.diff.focus(path: finding.path, line: finding.startLine) },
                 turnIntoComment: { finding in startComment(from: finding) },
                 chat: environment.chat,
-                jumpToLocation: { path, line in environment.diff.focus(path: path, line: line) },
+                jumpToLocation: { path, line in Task { await environment.diff.reveal(path, line: line) } },
                 useAsComment: { answer, location in useAsComment(answer, at: location) }
             )
             .rememberedColumn(.inspector, ideal: inspectorWidth)

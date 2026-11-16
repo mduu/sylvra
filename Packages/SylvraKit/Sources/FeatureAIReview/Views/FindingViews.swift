@@ -100,6 +100,8 @@ public struct FindingActions {
 /// Pattern verdict row (pure).
 struct PatternRowView: View {
     let pattern: PatternFinding
+    /// Shows a piece of evidence in the diff; `nil` keeps the locations as plain text.
+    var jump: ((CodeLocationText) -> Void)?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
@@ -118,12 +120,39 @@ struct PatternRowView: View {
                     horizontal: false, vertical: true)
             }
             if !pattern.evidence.isEmpty {
-                Text(pattern.evidence.map(\.description).joined(separator: ", "))
-                    .font(.caption.monospaced())
-                    .foregroundStyle(.tertiary)
+                FlowLocations(locations: pattern.evidence, jump: jump)
             }
         }
         .padding(.vertical, 6)
+        .contentShape(Rectangle())
+        // The whole row shows the first piece of evidence.
+        .onTapGesture { if let first = pattern.evidence.first { jump?(first) } }
+        .help(jump == nil || pattern.evidence.isEmpty ? "" : String(localized: "Show in the diff"))
+    }
+}
+
+/// Evidence locations as links to the diff (pure).
+private struct FlowLocations: View {
+    let locations: [CodeLocationText]
+    let jump: ((CodeLocationText) -> Void)?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            ForEach(locations, id: \.self) { location in
+                if let jump {
+                    Button {
+                        jump(location)
+                    } label: {
+                        Label(location.description, systemImage: "arrow.right.circle")
+                            .font(.caption.monospaced())
+                    }
+                    .buttonStyle(.link)
+                    .help("Show \(location.path) in the diff")
+                } else {
+                    Text(location.description).font(.caption.monospaced()).foregroundStyle(.tertiary)
+                }
+            }
+        }
     }
 }
 

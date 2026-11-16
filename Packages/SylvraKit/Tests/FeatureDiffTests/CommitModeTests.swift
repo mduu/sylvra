@@ -97,3 +97,14 @@ struct RevealTests {
         #expect(model.selectedPath == "Sources/Billing/InvoiceService.swift")
     }
 }
+
+@MainActor
+struct RevealLineTests {
+    @Test func revealsARequestedLine() async {
+        let model = DiffScreenModel(loader: DemoDiffLoader())
+        await model.load(PullRequestID(owner: "acme", repository: "billing", number: 1234), headSHA: "e08b5a1")
+        await model.reveal("Sources/Billing/InvoiceService.swift", line: 13)
+        #expect(model.focusedLine?.line == 13)
+        #expect(model.selectedPath == "Sources/Billing/InvoiceService.swift")
+    }
+}
