@@ -98,10 +98,13 @@ struct ChipFlowLayout: Layout {
     var spacing: CGFloat = 6
 
     func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
-        let rows = arrange(width: proposal.width ?? .infinity, subviews: subviews)
+        // Without a proposed width (ideal size), report the widest chip, not all chips in one row:
+        // the sidebar's width must not depend on how many chips there are.
+        let widest = subviews.map { $0.sizeThatFits(.unspecified).width }.max() ?? 0
+        let rows = arrange(width: proposal.width ?? widest, subviews: subviews)
         let width = rows.map { $0.width }.max() ?? 0
         let height = rows.map(\.height).reduce(0, +) + spacing * CGFloat(max(rows.count - 1, 0))
-        return CGSize(width: proposal.width ?? width, height: height)
+        return CGSize(width: proposal.width ?? max(width, widest), height: height)
     }
 
     func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {

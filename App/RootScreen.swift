@@ -32,6 +32,7 @@ struct RootScreen: View {
     var body: some View {
         NavigationSplitView(columnVisibility: $columnVisibility) {
             InboxScreen(model: environment.inbox, selection: $selectedID)
+                .stableColumn(ideal: 280)
                 .navigationSplitViewColumnWidth(min: 220, ideal: 280, max: 360)
         } content: {
             PullRequestScreen(model: environment.pullRequest, pullRequest: selection) {
@@ -39,6 +40,7 @@ struct RootScreen: View {
                     NavigatorToolsMenu(environment: environment, item: item, pullRequest: selection?.id)
                 }
             }
+            .stableColumn(ideal: 340)
             .navigationSplitViewColumnWidth(min: 280, ideal: 340, max: 460)
         } detail: {
             ReviewScreen(model: environment.review, pullRequestID: selection?.id) {
@@ -58,6 +60,7 @@ struct RootScreen: View {
                 )
             }
             .terminalPanel(environment, selection: selection)
+            .stableColumn(ideal: 700)
         }
         .containerBackground(SylvraColor.surfacePrimary, for: .window)
         .toolbarBackground(SylvraColor.surfacePrimary, for: .windowToolbar)
@@ -75,6 +78,7 @@ struct RootScreen: View {
                 jumpToLocation: { path, line in environment.diff.focus(path: path, line: line) },
                 useAsComment: { answer, location in useAsComment(answer, at: location) }
             )
+            .stableColumn(ideal: 300)
             .inspectorColumnWidth(min: 240, ideal: 300, max: 420)
         }
         .task(id: selection?.id) {
@@ -379,4 +383,14 @@ extension RootScreen {
 
 #Preview {
     RootScreen(environment: AppEnvironment(arguments: ["--demo"]))
+}
+
+extension View {
+    /// Decouples a split view column from its content's size: without this, content that gets wider or
+    /// narrower after a refresh (a status chip, a longer title) makes the split view redistribute the columns.
+    /// The column limits come from `navigationSplitViewColumnWidth` / `inspectorColumnWidth` alone.
+    func stableColumn(ideal: CGFloat) -> some View {
+        frame(minWidth: 0, idealWidth: ideal, maxWidth: .infinity, maxHeight: .infinity)
+            .clipped()
+    }
 }
