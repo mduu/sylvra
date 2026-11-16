@@ -3,7 +3,7 @@ import DesignSystem
 import SwiftUI
 import SylvraCore
 
-private let diffRowHeight: CGFloat = 22
+let diffRowHeight: CGFloat = 22
 private let codeFont = Font.system(size: 12.5, design: .monospaced)
 /// Unchanged code is slightly dimmed, so the change is in the light (focus lens, see specs/ux.md §7.2).
 private let contextOpacity = 0.62
@@ -275,8 +275,50 @@ struct ConnectorRibbonView: View {
     }
 }
 
+/// The ribbon continued straight down through content inserted inside a change block (pure):
+/// same colors, with the cross-section where the row above meets the next one.
+struct RibbonContinuationView: View {
+    /// Covered part of the width (0 = left), `nil` = only the hairline.
+    let crossSection: ClosedRange<CGFloat>?
+
+    var body: some View {
+        Canvas { context, size in
+            guard let crossSection else {
+                context.fill(
+                    Path(CGRect(x: size.width / 2 - 0.5, y: 0, width: 1, height: size.height)),
+                    with: .color(SylvraColor.codeHairline))
+                return
+            }
+            let width = size.width
+            let rect = CGRect(
+                x: crossSection.lowerBound * width, y: 0,
+                width: (crossSection.upperBound - crossSection.lowerBound) * width, height: size.height)
+            let gradient = Gradient(colors: [
+                SylvraColor.diffRemoved.opacity(0.42), SylvraColor.diffAdded.opacity(0.42),
+            ])
+            context.fill(
+                Path(rect), with: .linearGradient(gradient, startPoint: .zero, endPoint: CGPoint(x: width, y: 0)))
+            // The curved edge continues as a vertical line where it crossed the row boundary.
+            let edgeGradient = Gradient(colors: [
+                SylvraColor.diffRemoved.opacity(0.85), SylvraColor.diffAdded.opacity(0.85),
+            ])
+            for x in [crossSection.lowerBound, crossSection.upperBound] where x > 0.001 && x < 0.999 {
+                var edge = Path()
+                edge.move(to: CGPoint(x: x * width, y: 0))
+                edge.addLine(to: CGPoint(x: x * width, y: size.height))
+                context.stroke(
+                    edge,
+                    with: .linearGradient(edgeGradient, startPoint: .zero, endPoint: CGPoint(x: width, y: 0)),
+                    lineWidth: 1.5)
+            }
+        }
+        .background(SylvraColor.codeSurface)
+        .accessibilityHidden(true)
+    }
+}
+
 /// Glowing bar at the gutter edge of changed lines (pure).
-private struct ChangeBar: View {
+struct ChangeBar: View {
     let kind: DiffLine.Kind
 
     var body: some View {
@@ -293,7 +335,7 @@ private struct ChangeBar: View {
 }
 
 /// Subtle diagonal hatching for the empty side of a side-by-side row (pure).
-private struct HatchPattern: View {
+struct HatchPattern: View {
     var body: some View {
         Canvas { context, size in
             var path = Path()
