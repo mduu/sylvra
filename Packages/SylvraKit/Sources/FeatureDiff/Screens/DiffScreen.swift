@@ -16,6 +16,7 @@ public struct DiffScreen<LineAccessory: View>: View {
     /// Reloads the PR after a push (details, head SHA → diff); `nil` reloads only the diff.
     private let onRefresh: (() async -> Void)?
     @State private var diffIsWide = true
+    @State private var diffWidth: CGFloat = 800
     @State private var commentAnchor: CodeLocation?
 
     public init(
@@ -170,11 +171,18 @@ public struct DiffScreen<LineAccessory: View>: View {
                     guard let path = model.selectedPath else { return }
                     Task { @MainActor in proxy.scrollTo(path, anchor: .top) }
                 }
-                .onGeometryChange(for: Bool.self) {
-                    $0.size.width >= 760  // room for two thread lanes of ~320 pt
-                } action: {
-                    diffIsWide = $0
+                .onGeometryChange(for: CGFloat.self) {
+                    $0.size.width
+                } action: { width in
+                    diffWidth = width
+                    let isWide = width >= 760  // room for two thread lanes of ~320 pt
+                    if diffIsWide != isWide { diffIsWide = isWide }
                 }
+                .horizontalWheelScrolling { model.scrollHorizontally(by: $0, diffWidth: diffWidth) }
+                .overlay(alignment: .bottom) { horizontalIndicator }
+                .environment(
+                    \.diffHorizontalOffset, min(model.horizontalOffset, model.maxHorizontalOffset(diffWidth: diffWidth))
+                )
                 .environment(\.diffIsWide, diffIsWide)
                 .environment(\.diffSelectFinding, isCommitMode ? nil : model.selectFinding)
                 .environment(\.diffSearchQuery, model.isSearchPresented ? model.searchQuery : "")
@@ -261,6 +269,17 @@ extension DiffScreen where LineAccessory == EmptyView {
 }
 
 extension DiffScreen {
+    /// Shown while some line is wider than the view.
+    @ViewBuilder fileprivate var horizontalIndicator: some View {
+        let maxOffset = model.maxHorizontalOffset(diffWidth: diffWidth)
+        if maxOffset > 0 {
+            HorizontalScrollIndicator(
+                offset: min(model.horizontalOffset, maxOffset), maxOffset: maxOffset,
+                codeWidth: DiffScreenModel.codeWidth(diffWidth: diffWidth, layout: model.layout)
+            ) { model.scrollHorizontally(by: $0, diffWidth: diffWidth) }
+        }
+    }
+
     private var isCommitMode: Bool { model.selectedCommit != nil }
 
     /// Everything that changes what a row shows for the same line.

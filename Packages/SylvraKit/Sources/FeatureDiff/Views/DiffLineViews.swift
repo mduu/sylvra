@@ -38,10 +38,8 @@ struct InlineLineView: View {
                     .frame(width: 18)
                     .foregroundStyle(DiffColors.accent(line.kind) ?? .secondary)
                     .fontWeight(.semibold)
-                Text(line.attributedText(language: language))
-                    .lineLimit(1)
+                ScrollingCodeText(text: line.attributedText(language: language))
                     .opacity(line.kind == .context ? contextOpacity : 1)
-                    .frame(maxWidth: .infinity, alignment: .leading)
             }
             .frame(maxHeight: .infinity)
             .background(DiffColors.background(line.kind))
@@ -106,11 +104,9 @@ private struct SideBySideHalf: View {
             if let line {
                 HStack(spacing: 0) {
                     ChangeBar(kind: line.kind)
-                    Text(line.attributedText(language: language))
-                        .lineLimit(1)
+                    ScrollingCodeText(text: line.attributedText(language: language))
                         .opacity(line.kind == .context ? contextOpacity : 1)
                         .padding(.leading, 8)
-                        .frame(maxWidth: .infinity, alignment: .leading)
                 }
                 .frame(maxHeight: .infinity)
                 .background(DiffColors.background(line.kind))
@@ -126,6 +122,22 @@ private struct SideBySideHalf: View {
     private var commentAction: ((Bool) -> Void)? {
         guard let onComment, let number, line != nil else { return nil }
         return { onComment(side, number, $0) }
+    }
+}
+
+/// A line's code at full length, shifted by the diff's horizontal scroll offset and clipped (pure).
+/// Long lines used to be cut off at the right edge.
+private struct ScrollingCodeText: View {
+    let text: AttributedString
+    @Environment(\.diffHorizontalOffset) private var offset
+
+    var body: some View {
+        Text(text)
+            .lineLimit(1)
+            .fixedSize(horizontal: true, vertical: false)
+            .offset(x: -offset)
+            .frame(minWidth: 0, maxWidth: .infinity, alignment: .leading)
+            .clipped()
     }
 }
 

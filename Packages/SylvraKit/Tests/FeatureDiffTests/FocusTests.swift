@@ -71,3 +71,32 @@ struct HighlightSpanTests {
         #expect(unknown.index == 0 && unknown.count == 1)
     }
 }
+
+/// Regression: long lines were cut off at the right edge with no way to see the rest.
+@MainActor
+struct HorizontalScrollTests {
+    private let id = PullRequestID(owner: "acme", repository: "billing", number: 1234)
+
+    @Test func countsTabsAsFourCharacters() {
+        #expect(DiffScreenModel.displayLength(of: "\tab") == 6)
+    }
+
+    @Test func limitsScrollingToTheLongestLine() {
+        #expect(DiffScreenModel.maxHorizontalOffset(longestLine: 100, characterWidth: 7, codeWidth: 500) == 232)
+        #expect(DiffScreenModel.maxHorizontalOffset(longestLine: 10, characterWidth: 7, codeWidth: 500) == 0)
+    }
+
+    @Test func scrollsWithinTheLimitAndResetsForAnotherPullRequest() async {
+        let model = DiffScreenModel(loader: DemoDiffLoader())
+        await model.load(id, headSHA: "head")
+        let limit = model.maxHorizontalOffset(diffWidth: 400)
+        #expect(limit > 0)
+        model.scrollHorizontally(by: 10_000, diffWidth: 400)
+        #expect(model.horizontalOffset == limit)
+        model.scrollHorizontally(by: -10_000, diffWidth: 400)
+        #expect(model.horizontalOffset == 0)
+        model.scrollHorizontally(by: 30, diffWidth: 400)
+        await model.load(PullRequestID(owner: "acme", repository: "billing", number: 99), headSHA: "head")
+        #expect(model.horizontalOffset == 0)
+    }
+}

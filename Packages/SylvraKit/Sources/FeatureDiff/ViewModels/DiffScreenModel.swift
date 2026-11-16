@@ -128,6 +128,11 @@ public final class DiffScreenModel {
     /// A line the diff should scroll to (new side), e.g. an AI finding; reset after scrolling.
     public private(set) var focusedLine: FocusedLine?
 
+    /// How far the code is scrolled sideways (all rows together; gutters stay put).
+    public var horizontalOffset: CGFloat = 0
+    /// Longest shown line, cached per diff state (scrolling re-renders often).
+    @ObservationIgnored var longestLineCache: (key: Int, length: Int)?
+
     /// A scroll request to a new-side line; `token` makes repeated requests for the same line distinct.
     public struct FocusedLine: Equatable, Sendable {
         public let path: String
@@ -239,6 +244,7 @@ public final class DiffScreenModel {
             headLines = [:]
             selectedCommit = nil
             commitFiles = nil
+            horizontalOffset = 0
             if scope == .sinceLastReview { scope = .focused }
             loadState = .loading
         }
