@@ -6,13 +6,14 @@ import Testing
 @testable import FeatureInbox
 
 struct GitHubInboxLoaderTests {
-    @Test func queryContainsOneAliasedSearchPerSection() {
-        let query = GitHubInboxLoader.query(pageSize: 5)
+    @Test func queriesOneSectionPerRequest() {
         for section in InboxSection.allCases {
+            let query = GitHubInboxLoader.query(for: section, pageSize: 5)
             #expect(query.contains("\(section.rawValue): search("))
+            #expect(query.components(separatedBy: "search(").count == 2)
+            #expect(query.contains("fragment PR on PullRequest"))
         }
-        #expect(query.contains("user-review-requested:@me"))
-        #expect(query.contains("fragment PR on PullRequest"))
+        #expect(GitHubInboxLoader.query(for: .requestedFromMe, pageSize: 5).contains("user-review-requested:@me"))
     }
 
     @Test func recentlyClosedUsesSevenDayWindow() throws {

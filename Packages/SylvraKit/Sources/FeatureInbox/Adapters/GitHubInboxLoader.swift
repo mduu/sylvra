@@ -2,7 +2,10 @@ import Foundation
 import Platform
 import SylvraCore
 
-/// Loads all inbox sections with a single GraphQL request (one aliased search per section).
+/// Loads the inbox sections with one GraphQL search per section, in parallel.
+///
+/// A single combined query is too heavy for accounts with many pull requests: GitHub answers with
+/// 502 once a query exceeds its time limit, so each section gets its own small request.
 public struct GitHubInboxLoader: InboxLoading {
     private let client: GitHubClient
     private let pageSize: Int
@@ -13,21 +16,31 @@ public struct GitHubInboxLoader: InboxLoading {
     }
 
     public func loadInbox() async throws -> InboxSnapshot {
-        let response = try await client.graphQL(Self.query(pageSize: pageSize), as: [String: SearchResult].self)
-        var sections: [InboxSection: [PullRequestSummary]] = [:]
-        for section in InboxSection.allCases {
-            sections[section] = response[section.rawValue]?.nodes.compactMap { $0?.summary } ?? []
+        let client = client
+        let pageSize = pageSize
+        let sections = try await withThrowingTaskGroup(of: (InboxSection, [PullRequestSummary]).self) { group in
+            for section in InboxSection.allCases {
+                group.addTask {
+                    let response = try await client.graphQL(
+                        Self.query(for: section, pageSize: pageSize), as: [String: SearchResult].self)
+                    return (section, response[section.rawValue]?.nodes.compactMap { $0?.summary } ?? [])
+                }
+            }
+            var sections: [InboxSection: [PullRequestSummary]] = [:]
+            for try await (section, pullRequests) in group { sections[section] = pullRequests }
+            return sections
         }
         return InboxSnapshot(sections: sections)
     }
 
-    static func query(pageSize: Int) -> String {
-        let searches = InboxSection.allCases.map { section in
-            let query = section.searchQuery()
-            return
-                #"\#(section.rawValue): search(query: "\#(query)", type: ISSUE, first: \#(pageSize)) { nodes { ...PR } }"#
-        }
-        return "query {\n\(searches.joined(separator: "\n"))\n}\n" + PullRequestNode.fragment
+    static func query(for section: InboxSection, pageSize: Int) -> String {
+        let query = section.searchQuery()
+        return """
+            query {
+            \(section.rawValue): search(query: "\(query)", type: ISSUE, first: \(pageSize)) { nodes { ...PR } }
+            }
+
+            """ + PullRequestNode.fragment
     }
 }
 

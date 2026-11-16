@@ -6,20 +6,23 @@ import Testing
 /// Transport returning canned responses and recording requests.
 final class FakeTransport: HTTPTransport, @unchecked Sendable {
     var status = 200
+    /// Statuses for the first requests (then `status`).
+    var statusSequence: [Int] = []
     var body = Data()
     var headers: [String: String] = [:]
     private(set) var requests: [URLRequest] = []
 
     func send(_ request: URLRequest) async throws -> (Data, HTTPURLResponse) {
         requests.append(request)
-        let response = HTTPURLResponse(url: request.url!, statusCode: status, httpVersion: nil, headerFields: headers)!
+        let code = requests.count <= statusSequence.count ? statusSequence[requests.count - 1] : status
+        let response = HTTPURLResponse(url: request.url!, statusCode: code, httpVersion: nil, headerFields: headers)!
         return (body, response)
     }
 }
 
 struct GitHubClientTests {
     private func client(_ transport: FakeTransport, token: String? = "secret") -> GitHubClient {
-        GitHubClient(tokenProvider: StaticTokenProvider(token), transport: transport)
+        GitHubClient(tokenProvider: StaticTokenProvider(token), transport: transport, retryDelays: [.zero, .zero])
     }
 
     @Test func decodesViewer() async throws {
@@ -75,5 +78,35 @@ struct GitHubClientTests {
         await #expect(throws: GitHubError.http(status: 502, message: "Server Error")) {
             _ = try await client(transport).viewer()
         }
+    }
+
+    @Test func retriesGatewayTimeouts() async throws {
+        let transport = FakeTransport()
+        transport.statusSequence = [502, 504]
+        transport.body = Data(#"{"data":{"viewer":{"login":"a","name":null,"avatarUrl":null}}}"#.utf8)
+        let viewer = try await client(transport).viewer()
+        #expect(viewer.login == "a")
+        #expect(transport.requests.count == 3)
+    }
+
+    @Test func givesUpAfterRetries() async throws {
+        let transport = FakeTransport()
+        transport.status = 502
+        transport.body = Data("<html><head><title>502 Bad Gateway</title></head><body>nginx</body></html>".utf8)
+        await #expect(throws: GitHubError.http(status: 502, message: "502 Bad Gateway nginx")) {
+            _ = try await client(transport).viewer()
+        }
+        #expect(transport.requests.count == 3)
+        #expect(GitHubError.http(status: 502, message: "").errorDescription?.contains("<html>") == false)
+    }
+
+    @Test func neverRetriesMutations() async throws {
+        let transport = FakeTransport()
+        transport.status = 502
+        struct Empty: Decodable, Sendable {}
+        await #expect(throws: GitHubError.self) {
+            _ = try await client(transport).graphQL("mutation { x }", as: Empty.self)
+        }
+        #expect(transport.requests.count == 1)
     }
 }

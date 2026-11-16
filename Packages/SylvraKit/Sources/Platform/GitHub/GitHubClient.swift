@@ -15,7 +15,15 @@ public enum GitHubError: Error, Equatable, Sendable, LocalizedError {
         switch self {
         case .notAuthenticated:
             String(localized: "Not signed in to GitHub. Run `gh auth login` or sign in in Settings.")
-        case .http(let status, let message): "GitHub \(status): \(message)"
+        case .http(let status, let message):
+            if GitHubClient.isTransient(status) {
+                String(
+                    localized:
+                        "GitHub didn't answer in time (\(status)). It may be busy or the request was too large — try again in a moment."
+                )
+            } else {
+                "GitHub \(status): \(message)"
+            }
         case .graphQL(let messages): messages.joined(separator: "\n")
         case .decoding(let message): String(localized: "Unexpected response from GitHub: \(message)")
         }
@@ -52,6 +60,7 @@ public actor GitHubClient {
     private let tokenProvider: any GitHubTokenProviding
     private let transport: any HTTPTransport
     private var cachedToken: String?
+    private let retryDelays: [Duration]
 
     /// Remaining GraphQL / REST budget as reported by the last response.
     public private(set) var rateLimitRemaining: Int?
@@ -59,8 +68,10 @@ public actor GitHubClient {
     public init(
         baseURL: URL? = GitHubClient.defaultEndpoint,
         tokenProvider: any GitHubTokenProviding,
-        transport: any HTTPTransport = URLSessionTransport()
+        transport: any HTTPTransport = URLSessionTransport(),
+        retryDelays: [Duration] = [.seconds(1), .seconds(3)]
     ) {
+        self.retryDelays = retryDelays
         self.baseURL = baseURL ?? URL(fileURLWithPath: "/")
         self.tokenProvider = tokenProvider
         self.transport = transport
@@ -78,7 +89,9 @@ public actor GitHubClient {
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.httpBody = try JSONEncoder().encode(body)
 
-        let data = try await perform(request)
+        // Mutations are never retried: a gateway timeout doesn't tell whether they were applied.
+        let isMutation = query.trimmingCharacters(in: .whitespacesAndNewlines).hasPrefix("mutation")
+        let data = try await perform(request, retryTransient: !isMutation)
         let envelope: GraphQLEnvelope<Response>
         do {
             envelope = try GitHubJSON.decoder.decode(GraphQLEnvelope<Response>.self, from: data)
@@ -100,7 +113,12 @@ public actor GitHubClient {
     ) async throws -> Data {
         var request = try await authorizedRequest(path: path, query: query)
         request.setValue(accept, forHTTPHeaderField: "Accept")
-        return try await perform(request)
+        return try await perform(request, retryTransient: true)
+    }
+
+    /// Gateway errors GitHub returns when a request times out or the backend is busy.
+    public static func isTransient(_ status: Int) -> Bool {
+        [502, 503, 504].contains(status)
     }
 
     // MARK: - Private
@@ -125,7 +143,23 @@ public actor GitHubClient {
         return token
     }
 
-    private func perform(_ request: URLRequest) async throws -> Data {
+    /// Sends the request; transient gateway errors are retried with the configured back-off.
+    private func perform(_ request: URLRequest, retryTransient: Bool) async throws -> Data {
+        var attempt = 0
+        while true {
+            do {
+                return try await performOnce(request)
+            } catch GitHubError.http(let status, let message) {
+                guard retryTransient, Self.isTransient(status), attempt < retryDelays.count else {
+                    throw GitHubError.http(status: status, message: message)
+                }
+                try await Task.sleep(for: retryDelays[attempt])
+                attempt += 1
+            }
+        }
+    }
+
+    private func performOnce(_ request: URLRequest) async throws -> Data {
         let (data, response) = try await transport.send(request)
         if let remaining = response.value(forHTTPHeaderField: "X-RateLimit-Remaining") {
             rateLimitRemaining = Int(remaining)
@@ -138,10 +172,20 @@ public actor GitHubClient {
             let message = (try? JSONDecoder().decode(GitHubMessage.self, from: data))?.message
             throw GitHubError.http(
                 status: response.statusCode,
-                message: message ?? String(bytes: data.prefix(200), encoding: .utf8) ?? ""
+                message: message ?? Self.plainText(data)
             )
         }
         return data
+    }
+}
+
+extension GitHubClient {
+    /// Short plain-text excerpt of an error body (HTML error pages are reduced to their text).
+    static func plainText(_ data: Data) -> String {
+        let raw = String(bytes: data.prefix(2000), encoding: .utf8) ?? ""
+        let text = raw.replacingOccurrences(of: "<[^>]+>", with: " ", options: .regularExpression)
+            .split(whereSeparator: \.isWhitespace).joined(separator: " ")
+        return String(text.prefix(200))
     }
 }
 
