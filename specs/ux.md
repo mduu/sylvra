@@ -161,9 +161,9 @@ Title, author avatar and name, `head → base` refs (with fork owner), merge sta
 
 | Tab | Content |
 |---|---|
-| **Overview** | AI summary · rendered description · labels, assignees, milestone, linked issues · reviewers with state and avatars · **merge status** in plain words ("Blocked: 1 approving review required, `build` failing") · change map · patterns · files by namespace |
-| **Commits** | Commit list: avatar, subject, short SHA (click = copy, ⌥-click = copy full SHA), author / committer, date, verified badge, CI state. Expand for full message body. Select a commit (or range) to review it in the diff. *Open commit on GitHub*. |
-| **Checks** | All checks with status, duration and result; failing ones on top. **One click opens the run on GitHub** (build logs). Re-run is done on GitHub. |
+| **Overview** | **change map** at the top · AI summary · rendered description · labels, assignees, milestone, linked issues · reviewers with state and avatars · **merge status** in plain words ("Blocked: 1 approving review required, `build` failing") · change map · patterns · files by namespace |
+| **Commits** | Commit list: avatar, subject, short SHA (click = copy, ⌥-click = copy full SHA), author / committer, date, verified badge, CI state. Expand for full message body. Select a commit to review it on its own in the diff (*All changes* goes back); the diff shows a banner with ◀ ▶ and `⌥]` / `⌥[`. Review threads, AI findings and new comments refer to the whole PR's line numbers, so they are hidden while a single commit is shown. *Open commit on GitHub*. |
+| **Checks** | All checks with status, duration and result; failing ones on top. **A click shows what the check reported** (GitHub's *Summary*: title, summary, annotations with file and line, details); the arrow opens the run on GitHub (build logs). Re-run is done on GitHub. |
 | **Conversation** | PR comments, reviews and timeline events; reply, react, edit own comments. |
 
 ### 6.3 Change essence
@@ -180,7 +180,7 @@ Title, author avatar and name, `head → base` refs (with fork owner), merge sta
 - Context menu: *Mark as viewed* / *Mark as not viewed*; on folders: *Mark all as viewed / not viewed*.
 - Synced with GitHub's "Viewed" state in both directions.
 - When a viewed file changes in a new push, it automatically flips back to *not viewed* and shows a "changed since viewed" marker (like GitHub).
-- In commit-by-commit mode, viewed state is tracked per commit as well.
+- Viewed state is per file for the whole PR (GitHub has no per-commit viewed state); commit-by-commit mode shows the same toggles.
 
 ## 7. Diff view — the *wow* view
 
@@ -190,7 +190,7 @@ The diff must feel like the best diff one has ever used: fast, beautiful and ins
 
 - **Layout**: `Side by side` | `Inline` (⌘⌥1 / ⌘⌥2)
 - **Scope**: `Focused` (changed hunks + N context lines, N ∈ {3, 5, 10, custom}) | `Full file`
-- **Range**: `All changes` | `Since my last review` | `Commit…` (commit-by-commit, with ◀ ▶ to step through commits) | custom range
+- **Range**: `All changes` | `Since my last review` | `Commit…` (commit-by-commit, with ◀ ▶ to step through commits; toolbar menu and Commits tab) | custom range (later)
 - Toggles: hide whitespace, wrap lines, show moved code.
 
 ### 7.2 Wow elements
