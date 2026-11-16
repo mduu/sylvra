@@ -99,6 +99,8 @@ extension EnvironmentValues {
     /// Find in diff: the query (≥ 2 characters) and the anchor of the current match.
     @Entry var diffSearchQuery = ""
     @Entry var diffCurrentMatch: String?
+    /// Selects an AI finding when its highlight is clicked (set by the app, see `DiffScreenModel.selectFinding`).
+    @Entry var diffSelectFinding: ((String) -> Void)?
 }
 
 /// Remembers rendered lines so scrolling and re-renders don't re-tokenise (bounded LRU-ish cache).

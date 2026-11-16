@@ -45,6 +45,11 @@ struct RootScreen: View {
                 model: environment.pullRequest, pullRequest: selection,
                 selectedCommitSHA: environment.diff.selectedCommit?.sha,
                 selectCommit: { commit in Task { await environment.diff.showCommit(commit) } },
+                summary: {
+                    AISummaryPanel(model: environment.aiReview, pullRequestID: selection?.id) { path in
+                        environment.diff.selectedPath = path
+                    }
+                },
                 overviewTop: { ChangeMapPanel(model: environment.diff) },
                 files: {
                     DiffFileNavigatorPanel(model: environment.diff) { item in
@@ -120,6 +125,10 @@ struct RootScreen: View {
                 .first { $0.id == id }?.title
         }
         .onAppear {
+            // A click on an AI highlight in the diff opens that finding (card in the diff, row in the inspector).
+            environment.diff.selectFinding = { id in
+                withAnimation(.snappy) { environment.aiReview.selectedFindingID = UUID(uuidString: id) }
+            }
             environment.review.discussHandler = { location, code, question in
                 discuss(location, code: code, question: question)
             }
@@ -191,22 +200,6 @@ struct RootScreen: View {
                     Label("AI Inspector", systemImage: "sidebar.right")
                 }
             }
-        }
-    }
-
-    /// AI findings of the selected PR as diff highlights (bridges FeatureAIReview → FeatureDiff).
-    private var aiHighlights: [LineHighlight] {
-        environment.aiReview.findings(for: selection?.id).map { finding in
-            let intensity: Double =
-                switch finding.severity {
-                case .critical: 1
-                case .major: 0.8
-                case .minor: 0.5
-                case .nit: 0.25
-                }
-            return LineHighlight(
-                path: finding.path, lines: finding.startLine...finding.endLine, intensity: intensity,
-                isSelected: finding.id == environment.aiReview.selectedFindingID)
         }
     }
 
@@ -307,6 +300,24 @@ extension RootScreen {
             location: location, lineText: environment.diff.text(at: location), body: answer)
         if location.side == .right { environment.diff.focus(path: location.path, line: location.line) }
         Task { await environment.review.rewriteDraft(.shorten) }
+    }
+}
+
+extension RootScreen {
+    /// AI findings of the selected PR as diff highlights (bridges FeatureAIReview → FeatureDiff).
+    private var aiHighlights: [LineHighlight] {
+        environment.aiReview.findings(for: selection?.id).map { finding in
+            let intensity: Double =
+                switch finding.severity {
+                case .critical: 1
+                case .major: 0.8
+                case .minor: 0.5
+                case .nit: 0.25
+                }
+            return LineHighlight(
+                path: finding.path, lines: finding.startLine...finding.endLine, intensity: intensity,
+                isSelected: finding.id == environment.aiReview.selectedFindingID, findingID: finding.id.uuidString)
+        }
     }
 }
 

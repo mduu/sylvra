@@ -33,33 +33,46 @@ public struct FindingsInspectorScreen: View {
     }
 
     public var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 12) {
-                header
-                if let id = pullRequest?.id,
-                    model.results[id] != nil || !model.progress.isEmpty || !(chat?.messages(for: id).isEmpty ?? true)
-                        || model.tab == .chat
-                {
-                    Picker("Section", selection: $model.tab) {
-                        Text("Findings \(model.visibleFindings(for: id).count)").tag(AIReviewModel.Tab.findings)
-                        Text("Patterns").tag(AIReviewModel.Tab.patterns)
-                        if chat != nil { Text("Chat").tag(AIReviewModel.Tab.chat) }
-                        Text("Summary").tag(AIReviewModel.Tab.summary)
-                    }
-                    .pickerStyle(.segmented)
-                    .labelsHidden()
-                    content(for: id)
-                } else {
-                    emptyState
+        VStack(alignment: .leading, spacing: 12) {
+            // Header and tabs stay put; only the tab content scrolls (long chats, many findings).
+            header
+            if let id = pullRequest?.id, hasContent(id) {
+                Picker("Section", selection: $model.tab) {
+                    Text("Findings \(model.visibleFindings(for: id).count)").tag(AIReviewModel.Tab.findings)
+                    Text("Patterns").tag(AIReviewModel.Tab.patterns)
+                    if chat != nil { Text("Chat").tag(AIReviewModel.Tab.chat) }
                 }
+                .pickerStyle(.segmented)
+                .labelsHidden()
+                ScrollViewReader { proxy in
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: 12) {
+                            content(for: id)
+                        }
+                        .padding(.bottom, 14)
+                        .animation(.snappy, value: model.selectedFindingID)
+                    }
+                    .onChange(of: model.selectedFindingID) { _, selected in
+                        guard let selected else { return }
+                        // A highlight clicked in the diff: show the finding here as well.
+                        model.tab = .findings
+                        withAnimation(.snappy) { proxy.scrollTo(selected, anchor: .top) }
+                    }
+                }
+            } else {
+                ScrollView { emptyState }
             }
-            .padding(14)
-            .animation(.snappy, value: model.selectedFindingID)
-            .animation(.snappy, value: model.progress)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .padding([.horizontal, .top], 14)
+        .animation(.snappy, value: model.progress)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .background(SylvraColor.surfaceSidebar)
         .task { await model.detectAgent() }
+    }
+
+    private func hasContent(_ id: PullRequestID) -> Bool {
+        model.results[id] != nil || !model.progress.isEmpty || !(chat?.messages(for: id).isEmpty ?? true)
+            || model.tab == .chat
     }
 
     private var header: some View {
@@ -112,6 +125,7 @@ public struct FindingsInspectorScreen: View {
                             dismiss: { model.dismiss(finding) })
                     )
                     .onTapGesture { model.selectedFindingID = nil }
+                    .id(finding.id)
                 } else {
                     FindingRowView(finding: finding, isSelected: false)
                         .contentShape(Rectangle())
@@ -119,6 +133,7 @@ public struct FindingsInspectorScreen: View {
                             model.selectedFindingID = finding.id
                             jump(finding)
                         }
+                        .id(finding.id)
                 }
             }
             if let history = model.results[id]?.history, !history.isEmpty {
@@ -135,11 +150,6 @@ public struct FindingsInspectorScreen: View {
         case .chat:
             if let chat {
                 AIChatPanel(model: chat, pullRequestID: id, jump: jumpToLocation, useAsComment: useAsComment)
-            }
-        case .summary:
-            Text(model.results[id]?.summary ?? "").font(.callout).textSelection(.enabled)
-            if let order = model.results[id]?.readingOrder, !order.isEmpty {
-                ReadingOrderView(steps: order) { jumpToLocation($0.path, 1) }
             }
         }
     }

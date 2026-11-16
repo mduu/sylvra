@@ -36,6 +36,8 @@ public final class DiffScreenModel {
         didSet { highlightIndex = Dictionary(grouping: lineHighlights, by: \.path) }
     }
     private var highlightIndex: [String: [LineHighlight]] = [:]
+    /// Called with a finding ID when the reviewer clicks its highlight in the diff (set by the app).
+    @ObservationIgnored public var selectFinding: ((String) -> Void)?
     /// Last error of a background action (viewed sync, full-file loading), shown as a banner.
     public var lastError: String?
 

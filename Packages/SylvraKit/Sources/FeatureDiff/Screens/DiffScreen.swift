@@ -170,6 +170,7 @@ public struct DiffScreen<LineAccessory: View>: View {
                     diffIsWide = $0
                 }
                 .environment(\.diffIsWide, diffIsWide)
+                .environment(\.diffSelectFinding, isCommitMode ? nil : model.selectFinding)
                 .environment(\.diffSearchQuery, model.isSearchPresented ? model.searchQuery : "")
                 .environment(
                     \.diffCurrentMatch,

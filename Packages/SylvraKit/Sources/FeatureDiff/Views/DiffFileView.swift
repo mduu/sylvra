@@ -1,3 +1,4 @@
+import AppKit
 import DesignSystem
 import SwiftUI
 import SylvraCore
@@ -333,25 +334,42 @@ struct Badge: View {
 /// Xcode-style AI highlight: a soft gradient fading to the right, a gold edge and ✦ for the selected finding (pure).
 struct AIHighlightOverlay: View {
     let highlight: LineHighlight?
+    @Environment(\.diffSelectFinding) private var selectFinding
+    @State private var isHovered = false
 
     var body: some View {
         if let highlight {
             ZStack(alignment: .leading) {
-                AIAccent.lineGradient(opacity: highlight.isSelected ? 0.45 : 0.18 + 0.22 * highlight.intensity)
+                AIAccent.lineGradient(
+                    opacity: highlight.isSelected ? 0.45 : 0.18 + 0.22 * highlight.intensity + (isHovered ? 0.12 : 0))
                 Rectangle()
                     .fill(highlight.isSelected ? AnyShapeStyle(SylvraColor.accentGold) : AnyShapeStyle(AIAccent.border))
                     .frame(width: 3)
             }
             .overlay(alignment: .trailing) {
-                if highlight.isSelected {
-                    Image(systemName: "sparkle")
-                        .font(.system(size: 9, weight: .bold))
-                        .foregroundStyle(SylvraColor.accentGold)
-                        .padding(.trailing, 6)
-                        .opacity(highlight.isSelected ? 1 : 0.7)
-                }
+                Image(systemName: "sparkle")
+                    .font(.system(size: 9, weight: .bold))
+                    .foregroundStyle(
+                        highlight.isSelected ? AnyShapeStyle(SylvraColor.accentGold) : AnyShapeStyle(AIAccent.border)
+                    )
+                    .padding(.trailing, 6)
+                    .opacity(highlight.isSelected || isHovered ? 1 : 0.45)
             }
             .allowsHitTesting(false)
+            .overlay {
+                // Clicking the code of a highlighted line opens its finding; the gutter keeps its comment action.
+                if !highlight.isSelected, let id = highlight.findingID, let selectFinding {
+                    Color.clear
+                        .contentShape(Rectangle())
+                        .padding(.leading, 62)
+                        .onTapGesture { selectFinding(id) }
+                        .onHover { hovering in
+                            isHovered = hovering
+                            if hovering { NSCursor.pointingHand.push() } else { NSCursor.pop() }
+                        }
+                        .help("Show this AI finding")
+                }
+            }
             .transition(.opacity)
         }
     }

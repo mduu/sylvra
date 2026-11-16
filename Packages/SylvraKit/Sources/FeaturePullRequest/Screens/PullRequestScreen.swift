@@ -4,13 +4,15 @@ import SwiftUI
 import SylvraCore
 
 /// The PR column (container): loads details for the selected PR and handles copy / open actions.
-/// Slots provided by the app (slices don't import each other): `files` (file navigator) and `overviewTop`
-/// (e.g. the change map). Selecting a commit reviews it on its own (`selectCommit`, `nil` = all changes).
-public struct PullRequestScreen<Files: View, OverviewTop: View>: View {
+/// Slots provided by the app (slices don't import each other): `summary` (pinned above the tabs, e.g. the AI
+/// summary), `overviewTop` (e.g. the change map) and `files` (file navigator). Selecting a commit reviews it on
+/// its own (`selectCommit`, `nil` = all changes).
+public struct PullRequestScreen<Files: View, OverviewTop: View, Summary: View>: View {
     @Bindable private var model: PullRequestScreenModel
     private let pullRequest: PullRequestSummary?
     private let files: Files
     private let overviewTop: OverviewTop
+    private let summary: Summary
     private let selectedCommitSHA: String?
     private let selectCommit: ((Commit?) -> Void)?
     @Environment(\.openURL) private var openURL
@@ -18,9 +20,11 @@ public struct PullRequestScreen<Files: View, OverviewTop: View>: View {
     public init(
         model: PullRequestScreenModel, pullRequest: PullRequestSummary?,
         selectedCommitSHA: String? = nil, selectCommit: ((Commit?) -> Void)? = nil,
+        @ViewBuilder summary: () -> Summary,
         @ViewBuilder overviewTop: () -> OverviewTop,
         @ViewBuilder files: () -> Files
     ) {
+        self.summary = summary()
         self.model = model
         self.pullRequest = pullRequest
         self.selectedCommitSHA = selectedCommitSHA
@@ -46,10 +50,12 @@ public struct PullRequestScreen<Files: View, OverviewTop: View>: View {
         }
     }
 
+    /// Header, summary and tabs stay at the top; only the tab content scrolls.
     private func content(_ detail: PullRequestDetail) -> some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
+        VStack(alignment: .leading, spacing: 0) {
+            VStack(alignment: .leading, spacing: 12) {
                 PullRequestHeaderView(detail: detail) { open(detail.summary.url) }
+                summary
                 Picker("Section", selection: $model.tab) {
                     Text("Overview").tag(PullRequestScreenModel.Tab.overview)
                     Text("Files \(detail.changedFiles)").tag(PullRequestScreenModel.Tab.files)
@@ -58,27 +64,36 @@ public struct PullRequestScreen<Files: View, OverviewTop: View>: View {
                 }
                 .pickerStyle(.segmented)
                 .labelsHidden()
-
-                switch model.tab {
-                case .overview:
-                    overviewTop
-                    OverviewView(detail: detail, open: open)
-                case .files:
-                    files
-                case .commits:
-                    commitList(detail)
-                case .checks:
-                    LazyVStack(alignment: .leading, spacing: 6) {
-                        ForEach(detail.checks) { check in
-                            CheckRowView(
-                                check: check, showReport: { model.openedCheck = check }, open: { open(check.url) })
-                        }
-                        if detail.checks.isEmpty { Text("No checks").foregroundStyle(.secondary) }
-                    }
-                }
             }
-            .padding(16)
-            .animation(.snappy, value: model.tab)
+            .padding([.horizontal, .top], 16)
+            .padding(.bottom, 10)
+            Divider().opacity(0.5)
+            ScrollView {
+                VStack(alignment: .leading, spacing: 16) {
+                    tabContent(detail)
+                }
+                .padding(16)
+                .animation(.snappy, value: model.tab)
+            }
+        }
+    }
+
+    @ViewBuilder private func tabContent(_ detail: PullRequestDetail) -> some View {
+        switch model.tab {
+        case .overview:
+            overviewTop
+            OverviewView(detail: detail, open: open)
+        case .files:
+            files
+        case .commits:
+            commitList(detail)
+        case .checks:
+            LazyVStack(alignment: .leading, spacing: 6) {
+                ForEach(detail.checks) { check in
+                    CheckRowView(check: check, showReport: { model.openedCheck = check }, open: { open(check.url) })
+                }
+                if detail.checks.isEmpty { Text("No checks").foregroundStyle(.secondary) }
+            }
         }
     }
 
@@ -143,13 +158,11 @@ public struct PullRequestScreen<Files: View, OverviewTop: View>: View {
     }
 }
 
-extension PullRequestScreen where Files == EmptyView, OverviewTop == EmptyView {
+extension PullRequestScreen where Files == EmptyView, OverviewTop == EmptyView, Summary == EmptyView {
     public init(model: PullRequestScreenModel, pullRequest: PullRequestSummary?) {
-        self.init(model: model, pullRequest: pullRequest) {
-            EmptyView()
-        } files: {
-            EmptyView()
-        }
+        self.init(
+            model: model, pullRequest: pullRequest, summary: { EmptyView() }, overviewTop: { EmptyView() },
+            files: { EmptyView() })
     }
 }
 

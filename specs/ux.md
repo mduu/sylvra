@@ -107,7 +107,7 @@ flowchart LR
 - **Sidebar (Inbox)** — which PRs need my attention.
 - **PR column** — everything about the PR and where it changed.
 - **Diff** — the code.
-- **Inspector** — AI findings, patterns, chat.
+- **Inspector** — AI findings, patterns, chat. Its header (run status) and tabs stay fixed; only the tab content scrolls.
 - **Terminal panel** — bottom panel, toggle with ⌃\`.
 
 Columns are collapsible. *Focus mode* (⌃⌘F) hides sidebar and PR column for maximum diff space.
@@ -161,14 +161,14 @@ Title, author avatar and name, `head → base` refs (with fork owner), merge sta
 
 | Tab | Content |
 |---|---|
-| **Overview** | **change map** at the top · AI summary · rendered description · labels, assignees, milestone, linked issues · reviewers with state and avatars · **merge status** in plain words ("Blocked: 1 approving review required, `build` failing") · change map · patterns · files by namespace |
+| **Overview** | **change map** at the top · rendered description · labels, assignees, milestone, linked issues · reviewers with state and avatars · **merge status** in plain words ("Blocked: 1 approving review required, `build` failing") · change map · patterns · files by namespace |
 | **Commits** | Commit list: avatar, subject, short SHA (click = copy, ⌥-click = copy full SHA), author / committer, date, verified badge, CI state. Expand for full message body. Select a commit to review it on its own in the diff (*All changes* goes back); the diff shows a banner with ◀ ▶ and `⌥]` / `⌥[`. Review threads, AI findings and new comments refer to the whole PR's line numbers, so they are hidden while a single commit is shown. *Open commit on GitHub*. |
 | **Checks** | All checks with status, duration and result; failing ones on top. **A click shows what the check reported** (GitHub's *Summary*: title, summary, annotations with file and line, details); the arrow opens the run on GitHub (build logs). Re-run is done on GitHub. |
 | **Conversation** | PR comments, reviews and timeline events; reply, react, edit own comments. |
 
 ### 6.3 Change essence
 
-1. **AI summary** — 2–4 sentences: intent, scope, risk areas, relation to earlier changes. Marked with the AI accent.
+1. **AI summary** — 2–4 sentences: intent, scope, risk areas, relation to earlier changes. Marked with the AI accent. Shown in the PR column **above the tabs** (pinned with the header, collapsed to 3 lines, *More* expands; the reading order folds out below), so it stays visible during the whole review.
 2. **Change map** — treemap of namespaces/folders (area = changed lines, color intensity = add/delete ratio, soft AI glow where findings are). Alternatives: sunburst, indented tree with sparkline bars. Click filters files and diff.
 3. **Patterns — "What patterns are used or missed?"** — compact list: pattern name, verdict chip (*followed* · *violated* · *introduced*), one-line rationale; click highlights the evidence in the diff.
 4. **Files by namespace** — tree grouped by folder, with +/−, kind icon, viewed checkmark, finding/comment counts. Noise group collapsed at the bottom. Optional AI reading order.
@@ -208,7 +208,7 @@ The diff must feel like the best diff one has ever used: fast, beautiful and ins
 
 - **Gradient background**: soft horizontal gradient in the AI accent colors across the affected lines, fading out to the right; opacity scales with severity.
 - **Gradient border**: thin rounded gradient stroke (with a touch of gold) around the *selected* finding.
-- **Gutter marker** ✦ in severity tint; hover shows the title, click opens the inline finding card.
+- **Marker** ✦ at the end of highlighted lines. **Clicking a highlighted line** (code area; the gutter keeps its comment action) selects that finding: its inline card opens below the lines and the inspector switches to it.
 - **Inline finding card**: title, severity, category, models that found it, rationale, suggested code as mini-diff; actions *Turn into comment*, *Dismiss*, *Ask in chat*, *Open in IDE*.
 - **Pattern evidence**: a subtle dotted underline in the AI accent; hover shows the pattern name and verdict.
 - Setting: *Background*, *Border*, or *Both*.
