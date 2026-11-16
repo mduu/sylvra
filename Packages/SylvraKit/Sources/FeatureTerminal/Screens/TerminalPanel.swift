@@ -81,7 +81,13 @@ private struct TerminalHostView: NSViewRepresentable {
     @AppStorage(TerminalPreferences.fontSizeKey) private var fontSize = TerminalPreferences.defaultFontSize
 
     func makeNSView(context: Context) -> LocalProcessTerminalView {
-        DispatchQueue.main.async { view.window?.makeFirstResponder(view) }
+        let size = CGFloat(TerminalPreferences.fontSize(fontSize))
+        DispatchQueue.main.async {
+            // SwiftTerm keeps drawing with the old cell metrics after the view is attached again,
+            // so set the font once more when the view is in the window.
+            view.font = TerminalFonts.preferred(size: size)
+            view.window?.makeFirstResponder(view)
+        }
         return view
     }
 
