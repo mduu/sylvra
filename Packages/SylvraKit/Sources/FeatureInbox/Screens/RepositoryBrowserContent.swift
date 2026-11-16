@@ -59,11 +59,9 @@ struct RepositoryBrowserContent<RowMenu: View>: View {
                         .contextMenu { rowMenu(pullRequest) }
                 }
             } header: {
-                HStack {
-                    Text(group.title)
-                    Spacer()
-                    Text(group.pullRequests.count, format: .number)
-                }
+                SectionHeading(
+                    title: group.title, count: group.pullRequests.count,
+                    isProminent: group.title == String(localized: "Waiting for you"))
             }
         }
         if browser.canLoadMore {

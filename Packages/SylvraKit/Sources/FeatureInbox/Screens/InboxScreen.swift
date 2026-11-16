@@ -127,14 +127,9 @@ public struct InboxScreen: View {
                     .contextMenu { rowMenu(pullRequest) }
             }
         } header: {
-            HStack {
-                Text(entry.section.title)
-                Spacer()
-                Text(entry.pullRequests.count, format: .number)
-                    .foregroundStyle(
-                        entry.section == .requestedFromMe && !entry.pullRequests.isEmpty
-                            ? AnyShapeStyle(SylvraColor.accentGold) : AnyShapeStyle(.secondary))
-            }
+            SectionHeading(
+                title: entry.section.title, count: entry.pullRequests.count,
+                isProminent: entry.section == .requestedFromMe)
         }
     }
 
@@ -175,7 +170,12 @@ public struct InboxScreen: View {
                     .selectionDisabled()
             }
         } header: {
-            Text("Repositories")
+            if model.scope.isAll {
+                Text("Repositories")
+            } else {
+                SectionHeading(
+                    title: String(localized: "Repositories"), count: model.scope.repositories.count)
+            }
         }
     }
 
