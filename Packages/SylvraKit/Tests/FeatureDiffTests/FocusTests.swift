@@ -100,3 +100,24 @@ struct HorizontalScrollTests {
         #expect(model.horizontalOffset == 0)
     }
 }
+
+/// Regression: switching the scope while full files were loading crashed in `TaskGroup.offer`.
+@MainActor
+struct FullFileLoadingTests {
+    private let id = PullRequestID(owner: "acme", repository: "billing", number: 1234)
+
+    @Test func survivesRapidScopeSwitches() async throws {
+        let model = DiffScreenModel(loader: DemoDiffLoader())
+        await model.load(id, headSHA: "head")
+        let switches = [DiffScreenModel.Scope.fullFile, .focused, .fullFile, .focused, .fullFile].map { scope in
+            Task { await model.setScope(scope) }
+        }
+        let cancelled = Task { await model.setScope(.fullFile) }
+        cancelled.cancel()
+        for task in switches { await task.value }
+        await cancelled.value
+        #expect(model.scope == .fullFile)
+        let file = try #require(model.files.first { $0.path == "Sources/Billing/InvoiceService.swift" })
+        #expect(model.hunks(for: file).first?.lines.first?.text == "import Foundation")
+    }
+}

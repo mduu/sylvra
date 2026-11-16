@@ -18,6 +18,7 @@ import SylvraCore
 /// - `--select=owner/repo#number`: select that PR once the inbox is loaded
 /// - `--tab=overview|commits|checks`: initial tab of the PR column
 /// - `--layout=inline`: inline instead of side-by-side diff
+/// - `--scope=fullFile`: start the diff with full files
 /// - `--focus`: hide the inbox sidebar; `--no-inspector`: hide the AI inspector
 /// - `--new-commits` (demo): simulate a push a few seconds after start
 /// - `--run-ai-review`: start an AI review as soon as a PR is selected; with `--turn-into-comment` the top
@@ -101,6 +102,9 @@ final class AppEnvironment {
         }
         if arguments.contains("--terminal") { terminal.show() }
         if Self.value(of: "--layout", in: arguments) == "inline" { diff.layout = .inline }
+        if let scope = Self.value(of: "--scope", in: arguments).flatMap(DiffScreenModel.Scope.init(rawValue:)) {
+            diff.scope = scope
+        }
         if let tab = Self.value(of: "--tab", in: arguments).flatMap(PullRequestScreenModel.Tab.init(rawValue:)) {
             pullRequest.tab = tab
         }

@@ -109,28 +109,11 @@ public struct DiffScreen<LineAccessory: View>: View {
                 ToolbarItemGroup {
                     // Icons keep the toolbar narrow: a toolbar wider than the window makes AppKit's
                     // constraint pass loop (crash) when all columns are visible.
-                    Picker("Layout", selection: $model.layout) {
-                        Label("Side by side", systemImage: "rectangle.split.2x1").tag(DiffScreenModel.Layout.sideBySide)
-                        Label("Inline", systemImage: "rectangle.split.1x2").tag(DiffScreenModel.Layout.inline)
-                    }
-                    .pickerStyle(.segmented)
-                    .labelStyle(.iconOnly)
-                    .help("Diff layout: side by side or inline (⌘⌥1 / ⌘⌥2)")
-                    Picker(
-                        "Scope",
-                        selection: Binding(get: { model.scope }, set: { scope in Task { await model.setScope(scope) } })
-                    ) {
-                        Label("Focused", systemImage: "text.line.first.and.arrowtriangle.forward").tag(
-                            DiffScreenModel.Scope.focused)
-                        Label("Full file", systemImage: "doc.plaintext").tag(DiffScreenModel.Scope.fullFile)
-                        if model.progress?.lastReviewedSHA != nil {
-                            Label("Since my last review", systemImage: "clock.arrow.circlepath").tag(
-                                DiffScreenModel.Scope.sinceLastReview)
-                        }
-                    }
-                    .pickerStyle(.segmented)
-                    .labelStyle(.iconOnly)
-                    .help("Changed lines only, the full file, or only what changed since your last review")
+                    DiffModeControls(
+                        layout: model.layout, scope: model.scope,
+                        canShowSinceReview: model.progress?.lastReviewedSHA != nil,
+                        setLayout: { model.layout = $0 },
+                        setScope: { scope in Task { await model.setScope(scope) } })
                     if !model.commits.isEmpty {
                         commitMenu
                     }

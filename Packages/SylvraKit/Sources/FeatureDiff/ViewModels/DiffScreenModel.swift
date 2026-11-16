@@ -297,31 +297,39 @@ public final class DiffScreenModel {
         if scope == .sinceLastReview, sinceReviewFiles == nil { await loadSinceReview() }
     }
 
+    /// Loads the head version of every changed file, a few at a time.
+    ///
+    /// Plain child tasks instead of a task group: the app crashed in `TaskGroup.offer` when the scope was
+    /// switched while files were loading (a group finishing children after its parent moved on).
     private func loadFullFiles() async {
         guard let pullRequestID, let headSHA else { return }
         let id = pullRequestID
         let loader = loader
         let pending = files.filter { fullFileHunks[$0.path] == nil && $0.status != .deleted && !$0.isBinary }
-        await withTaskGroup(of: (String, Result<String, any Error>).self) { group in
-            for file in pending {
-                group.addTask {
+        for start in stride(from: 0, to: pending.count, by: Self.fullFileBatchSize) {
+            let batch = Array(pending[start..<min(start + Self.fullFileBatchSize, pending.count)])
+            let tasks = batch.map { file in
+                Task.detached { () -> Result<String, any Error> in
                     do {
-                        return (
-                            file.path,
-                            .success(try await loader.loadFileContent(for: id, path: file.path, ref: headSHA))
-                        )
+                        return .success(try await loader.loadFileContent(for: id, path: file.path, ref: headSHA))
                     } catch {
-                        return (file.path, .failure(error))
+                        return .failure(error)
                     }
                 }
             }
-            for await (path, result) in group {
-                // Drop results of a PR the reviewer already left.
-                guard self.pullRequestID == id, let file = pending.first(where: { $0.path == path }) else { continue }
+            var results: [Result<String, any Error>] = []
+            await withTaskCancellationHandler {
+                for task in tasks { results.append(await task.value) }
+            } onCancel: {
+                for task in tasks { task.cancel() }
+            }
+            // Drop results of a PR the reviewer already left.
+            guard !Task.isCancelled, self.pullRequestID == id else { return }
+            for (file, result) in zip(batch, results) where fullFileHunks[file.path] == nil {
                 switch result {
                 case .success(let content) where !content.isEmpty:
-                    fullFileHunks[path] = FullFileBuilder.hunk(newContent: content, diff: file)
-                case .failure(let error):
+                    fullFileHunks[file.path] = FullFileBuilder.hunk(newContent: content, diff: file)
+                case .failure(let error) where !(error is CancellationError):
                     lastError = String(localized: "Couldn't load \(file.fileName): \(error.localizedDescription)")
                 default:
                     break
@@ -329,4 +337,7 @@ public final class DiffScreenModel {
             }
         }
     }
+
+    /// Files loaded in parallel for full-file view (large PRs would otherwise fire hundreds of requests).
+    static let fullFileBatchSize = 8
 }
