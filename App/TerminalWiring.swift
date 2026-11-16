@@ -1,4 +1,5 @@
 import AppKit
+import DesignSystem
 import FeatureActivity
 import FeatureCustomTools
 import FeatureDiff
@@ -216,7 +217,7 @@ struct TerminalToolbarMenu: View {
                 Task { await environment.terminal.openInExternalTerminal() }
             }
         } label: {
-            Label("Terminal", systemImage: "terminal")
+            Label("Terminal", systemImage: "terminal").toolbarMenuLabelInset()
         } primaryAction: {
             environment.terminal.toggle()
         }

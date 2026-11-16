@@ -1,3 +1,4 @@
+import DesignSystem
 import SwiftUI
 import SylvraCore
 
@@ -36,7 +37,7 @@ public struct OpenInIDEToolbarPanel: View {
                 }
             }
         } label: {
-            Label(title, systemImage: symbol)
+            Label(title, systemImage: symbol).toolbarMenuLabelInset()
         } primaryAction: {
             if let id = pullRequestID { Task { await model.open(id) } }
         }

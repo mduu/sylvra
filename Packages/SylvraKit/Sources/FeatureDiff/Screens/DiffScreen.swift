@@ -106,13 +106,14 @@ public struct DiffScreen<LineAccessory: View>: View {
                 await model.load(pullRequestID, headSHA: headSHA)
             }
             .toolbar {
+                // Icons keep the toolbar narrow: a toolbar wider than the window makes AppKit's
+                // constraint pass loop (crash) when all columns are visible.
+                ToolbarItem {
+                    DiffLayoutControl(layout: model.layout) { model.layout = $0 }
+                }
                 ToolbarItemGroup {
-                    // Icons keep the toolbar narrow: a toolbar wider than the window makes AppKit's
-                    // constraint pass loop (crash) when all columns are visible.
-                    DiffModeControls(
-                        layout: model.layout, scope: model.scope,
-                        canShowSinceReview: model.progress?.lastReviewedSHA != nil,
-                        setLayout: { model.layout = $0 },
+                    DiffScopeMenu(
+                        scope: model.scope, canShowSinceReview: model.progress?.lastReviewedSHA != nil,
                         setScope: { scope in Task { await model.setScope(scope) } })
                     if !model.commits.isEmpty {
                         commitMenu

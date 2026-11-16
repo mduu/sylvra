@@ -59,6 +59,7 @@ public struct AIReviewToolbarPanel: View {
             // constraint pass loop. Progress is shown by the pulse and the inspector.
             Label("AI Review", systemImage: "sparkles")
                 .symbolEffect(.pulse, isActive: isRunning)
+                .toolbarMenuLabelInset()
         } primaryAction: {
             guard let pullRequest else { return }
             Task { await model.run(pullRequest.id, title: pullRequest.title, body: pullRequestBody) }

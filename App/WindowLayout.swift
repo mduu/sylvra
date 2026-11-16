@@ -14,8 +14,10 @@ enum WindowLayout: String, CaseIterable, Identifiable {
     case twoWindows
 
     static let storageKey = "layout.mode"
-    /// Windows narrower than this use the compact layout in `automatic`.
-    static let compactBelow: CGFloat = 1400
+    /// Windows narrower than this use the compact layout in `automatic`. All columns at their default
+    /// widths (inbox 290, pull request 380, inspector 320) leave the diff ~700 pt at this width; MacBook
+    /// screens (1470–1728 pt) were above the old 1400 and never switched.
+    static let compactBelow: CGFloat = 1700
 
     var id: String { rawValue }
 

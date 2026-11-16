@@ -1,19 +1,40 @@
 import SwiftUI
 
-/// Toolbar controls for the diff: layout as two toggle buttons, scope as a menu naming the current choice
-/// (pure). Icon-only segmented pickers shared one tooltip and didn't say which mode was active.
-struct DiffModeControls: View {
+/// Side by side or inline as one segmented toolbar item (pure); ⌥⌘1 / ⌥⌘2 switch as well.
+struct DiffLayoutControl: View {
     let layout: DiffScreenModel.Layout
+    let setLayout: (DiffScreenModel.Layout) -> Void
+
+    var body: some View {
+        Picker("Layout", selection: Binding(get: { layout }, set: setLayout)) {
+            ForEach(DiffScreenModel.Layout.allCases) { option in
+                Label(option.title, systemImage: option.icon).tag(option)
+            }
+        }
+        .pickerStyle(.segmented)
+        .labelStyle(.iconOnly)
+        .fixedSize()
+        .help("\(layout.title) — side by side (⌥⌘1) or inline (⌥⌘2)")
+        .background {
+            // Shortcuts without extra toolbar items.
+            ForEach(Array(DiffScreenModel.Layout.allCases.enumerated()), id: \.element) { index, option in
+                Button(option.title) { setLayout(option) }
+                    .keyboardShortcut(KeyEquivalent(Character("\(index + 1)")), modifiers: [.command, .option])
+                    .opacity(0)
+                    .allowsHitTesting(false)
+                    .accessibilityHidden(true)
+            }
+        }
+    }
+}
+
+/// What the diff shows, as a menu naming the current choice (pure).
+struct DiffScopeMenu: View {
     let scope: DiffScreenModel.Scope
     let canShowSinceReview: Bool
-    let setLayout: (DiffScreenModel.Layout) -> Void
     let setScope: (DiffScreenModel.Scope) -> Void
 
     var body: some View {
-        ControlGroup {
-            layoutToggle(.sideBySide, shortcut: "1")
-            layoutToggle(.inline, shortcut: "2")
-        }
         Menu {
             ForEach(scopes, id: \.self) { option in
                 Toggle(isOn: Binding(get: { scope == option }, set: { if $0 { setScope(option) } })) {
@@ -30,16 +51,6 @@ struct DiffModeControls: View {
 
     private var scopes: [DiffScreenModel.Scope] {
         canShowSinceReview ? DiffScreenModel.Scope.allCases : [.focused, .fullFile]
-    }
-
-    private func layoutToggle(_ option: DiffScreenModel.Layout, shortcut: KeyEquivalent) -> some View {
-        Toggle(isOn: Binding(get: { layout == option }, set: { _ in setLayout(option) })) {
-            Label(option.title, systemImage: option.icon)
-        }
-        .toggleStyle(.button)
-        .labelStyle(.iconOnly)
-        .keyboardShortcut(shortcut, modifiers: [.command, .option])
-        .help("\(option.title) (⌥⌘\(String(shortcut.character)))")
     }
 }
 
@@ -87,8 +98,8 @@ extension DiffScreenModel.Scope {
 
 #Preview {
     HStack {
-        DiffModeControls(
-            layout: .inline, scope: .fullFile, canShowSinceReview: true, setLayout: { _ in }, setScope: { _ in })
+        DiffLayoutControl(layout: .inline, setLayout: { _ in })
+        DiffScopeMenu(scope: .fullFile, canShowSinceReview: true, setScope: { _ in })
     }
     .padding()
 }
