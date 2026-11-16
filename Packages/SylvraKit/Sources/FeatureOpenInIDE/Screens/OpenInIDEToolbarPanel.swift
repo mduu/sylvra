@@ -37,7 +37,11 @@ public struct OpenInIDEToolbarPanel: View {
                 }
             }
         } label: {
-            Label(title, systemImage: symbol).toolbarMenuLabelInset()
+            Label {
+                Text(title)
+            } icon: {
+                Image.toolbarSymbol(symbol)
+            }
         } primaryAction: {
             if let id = pullRequestID { Task { await model.open(id) } }
         }

@@ -57,9 +57,12 @@ public struct AIReviewToolbarPanel: View {
         } label: {
             // Constant title: toolbar items that change width while the window is full can make AppKit's
             // constraint pass loop. Progress is shown by the pulse and the inspector.
-            Label("AI Review", systemImage: "sparkles")
-                .symbolEffect(.pulse, isActive: isRunning)
-                .toolbarMenuLabelInset()
+            Label {
+                Text("AI Review")
+            } icon: {
+                Image.toolbarSymbol("sparkles")
+            }
+            .symbolEffect(.pulse, isActive: isRunning)
         } primaryAction: {
             guard let pullRequest else { return }
             Task { await model.run(pullRequest.id, title: pullRequest.title, body: pullRequestBody) }

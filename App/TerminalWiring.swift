@@ -217,7 +217,11 @@ struct TerminalToolbarMenu: View {
                 Task { await environment.terminal.openInExternalTerminal() }
             }
         } label: {
-            Label("Terminal", systemImage: "terminal").toolbarMenuLabelInset()
+            Label {
+                Text("Terminal")
+            } icon: {
+                Image.toolbarSymbol("terminal")
+            }
         } primaryAction: {
             environment.terminal.toggle()
         }
