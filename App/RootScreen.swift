@@ -22,6 +22,10 @@ struct RootScreen: View {
     @State private var columnVisibility: NavigationSplitViewVisibility
     @State private var overlay: Overlay?
     @State private var keyboard = KeyboardNavigator()
+    /// Column widths of the last session (read once at launch, see `ColumnLayout`).
+    private let inboxWidth = ColumnLayout.initialWidth(.inbox)
+    private let pullRequestWidth = ColumnLayout.initialWidth(.pullRequest)
+    private let inspectorWidth = ColumnLayout.initialWidth(.inspector)
 
     init(environment: AppEnvironment) {
         self.environment = environment
@@ -32,16 +36,20 @@ struct RootScreen: View {
     var body: some View {
         NavigationSplitView(columnVisibility: $columnVisibility) {
             InboxScreen(model: environment.inbox, selection: $selectedID)
-                .stableColumn(ideal: 280)
-                .navigationSplitViewColumnWidth(min: 220, ideal: 280, max: 360)
+                .rememberedColumn(.inbox, ideal: inboxWidth)
+                .navigationSplitViewColumnWidth(
+                    min: ColumnLayout.Column.inbox.range.lowerBound, ideal: inboxWidth,
+                    max: ColumnLayout.Column.inbox.range.upperBound)
         } content: {
             PullRequestScreen(model: environment.pullRequest, pullRequest: selection) {
                 DiffFileNavigatorPanel(model: environment.diff) { item in
                     NavigatorToolsMenu(environment: environment, item: item, pullRequest: selection?.id)
                 }
             }
-            .stableColumn(ideal: 340)
-            .navigationSplitViewColumnWidth(min: 280, ideal: 340, max: 460)
+            .rememberedColumn(.pullRequest, ideal: pullRequestWidth)
+            .navigationSplitViewColumnWidth(
+                min: ColumnLayout.Column.pullRequest.range.lowerBound, ideal: pullRequestWidth,
+                max: ColumnLayout.Column.pullRequest.range.upperBound)
         } detail: {
             ReviewScreen(model: environment.review, pullRequestID: selection?.id) {
                 DiffScreen(
@@ -60,7 +68,7 @@ struct RootScreen: View {
                 )
             }
             .terminalPanel(environment, selection: selection)
-            .stableColumn(ideal: 700)
+            .stableColumn()
         }
         .containerBackground(SylvraColor.surfacePrimary, for: .window)
         .toolbarBackground(SylvraColor.surfacePrimary, for: .windowToolbar)
@@ -78,8 +86,10 @@ struct RootScreen: View {
                 jumpToLocation: { path, line in environment.diff.focus(path: path, line: line) },
                 useAsComment: { answer, location in useAsComment(answer, at: location) }
             )
-            .stableColumn(ideal: 300)
-            .inspectorColumnWidth(min: 240, ideal: 300, max: 420)
+            .rememberedColumn(.inspector, ideal: inspectorWidth)
+            .inspectorColumnWidth(
+                min: ColumnLayout.Column.inspector.range.lowerBound, ideal: inspectorWidth,
+                max: ColumnLayout.Column.inspector.range.upperBound)
         }
         .task(id: selection?.id) {
             guard environment.autoRunsAIReview, let selection else { return }
@@ -383,14 +393,4 @@ extension RootScreen {
 
 #Preview {
     RootScreen(environment: AppEnvironment(arguments: ["--demo"]))
-}
-
-extension View {
-    /// Decouples a split view column from its content's size: without this, content that gets wider or
-    /// narrower after a refresh (a status chip, a longer title) makes the split view redistribute the columns.
-    /// The column limits come from `navigationSplitViewColumnWidth` / `inspectorColumnWidth` alone.
-    func stableColumn(ideal: CGFloat) -> some View {
-        frame(minWidth: 0, idealWidth: ideal, maxWidth: .infinity, maxHeight: .infinity)
-            .clipped()
-    }
 }
