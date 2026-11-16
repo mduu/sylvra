@@ -12,7 +12,7 @@ public struct DiscussionMarkerView: View {
     public var body: some View {
         Button(action: open) {
             Label("Discussed with Claude — private", systemImage: "bubble.left.and.text.bubble.right")
-                .font(.caption)
+                .aiFont(.caption)
                 .padding(.horizontal, 9)
                 .padding(.vertical, 4)
                 .background(AIAccent.cardBackground, in: Capsule())

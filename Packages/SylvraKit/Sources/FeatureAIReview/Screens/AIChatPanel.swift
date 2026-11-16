@@ -34,7 +34,7 @@ public struct AIChatPanel: View {
             if model.isSending {
                 HStack(spacing: 6) {
                     ProgressView().controlSize(.small)
-                    Text("Thinking…").font(.caption).foregroundStyle(.secondary)
+                    Text("Thinking…").aiFont(.caption).foregroundStyle(.secondary)
                 }
             }
             if model.messages(for: pullRequestID).isEmpty, let id = pullRequestID {
@@ -46,7 +46,7 @@ public struct AIChatPanel: View {
                     .textFieldStyle(.roundedBorder)
                     .lineLimit(1...5)
                     .onSubmit(send)
-                Button(action: send) { Image(systemName: "arrow.up.circle.fill").font(.title2) }
+                Button(action: send) { Image(systemName: "arrow.up.circle.fill").aiFont(.title2) }
                     .buttonStyle(.borderless)
                     .disabled(model.draft.isEmpty || model.isSending || pullRequestID == nil)
                     .keyboardShortcut(.return, modifiers: .command)
@@ -85,7 +85,7 @@ public struct AIChatPanel: View {
             Text(title).lineLimit(1)
             Button(action: remove) { Image(systemName: "xmark") }.buttonStyle(.borderless)
         }
-        .font(.caption)
+        .aiFont(.caption)
         .padding(.horizontal, 7)
         .padding(.vertical, 3)
         .background(SylvraColor.brandPrimary.opacity(0.14), in: Capsule())
@@ -110,6 +110,7 @@ struct ChatMessageView: View {
     let message: AIChatModel.Message
     var showCode: (() -> Void)?
     var useAsComment: (() -> Void)?
+    @Environment(\.aiTextScale) private var textScale
 
     var body: some View {
         VStack(alignment: message.role == .user ? .trailing : .leading, spacing: 4) {
@@ -120,13 +121,13 @@ struct ChatMessageView: View {
                         systemImage: "text.bubble")
                 }
                 .buttonStyle(.borderless)
-                .font(.caption.monospaced())
+                .aiFont(.caption, design: .monospaced)
                 .help("Show the discussed code")
             }
             if message.role == .user {
                 // The reviewer's question: a compact bubble on the right that only grows with its text.
-                Text(Self.render(message.text))
-                    .font(.callout)
+                Text(Self.render(message.text, scale: textScale))
+                    .aiFont(.callout)
                     .textSelection(.enabled)
                     .padding(.horizontal, 12)
                     .padding(.vertical, 8)
@@ -135,8 +136,8 @@ struct ChatMessageView: View {
                     .frame(maxWidth: .infinity, alignment: .trailing)
             } else {
                 // AI answers (and errors) use the full width; answers carry the AI accent.
-                Text(Self.render(message.text))
-                    .font(.callout)
+                Text(Self.render(message.text, scale: textScale))
+                    .aiFont(.callout)
                     .textSelection(.enabled)
                     .padding(10)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -151,7 +152,7 @@ struct ChatMessageView: View {
             if let useAsComment {
                 Button("Use as comment", systemImage: "text.bubble.badge.plus", action: useAsComment)
                     .buttonStyle(.borderless)
-                    .font(.caption)
+                    .aiFont(.caption)
                     .help("Draft a short, factual review comment from this answer — you edit it before posting")
             }
         }
@@ -165,7 +166,7 @@ struct ChatMessageView: View {
         }
     }
 
-    static func render(_ text: String) -> AttributedString {
+    static func render(_ text: String, scale: CGFloat = 1) -> AttributedString {
         let options = AttributedString.MarkdownParsingOptions(interpretedSyntax: .inlineOnlyPreservingWhitespace)
         var result = (try? AttributedString(markdown: text, options: options)) ?? AttributedString(text)
         let plain = String(result.characters)
@@ -175,7 +176,8 @@ struct ChatMessageView: View {
                 let url = CodeReferenceURL.make(path: reference.path, line: reference.line)
             else { continue }
             result[range].link = url
-            result[range].font = .callout.monospaced()
+            result[range].font = .system(
+                size: (AIFontMetrics.pointSize(of: .callout) * scale).rounded(), design: .monospaced)
         }
         return result
     }

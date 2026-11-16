@@ -9,7 +9,7 @@ struct ReadingOrderView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text("Suggested reading order").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+            Text("Suggested reading order").aiFont(.caption, weight: .semibold).foregroundStyle(.secondary)
             ForEach(Array(steps.enumerated()), id: \.element.path) { index, step in
                 Button {
                     select(step)
@@ -22,15 +22,15 @@ struct ReadingOrderView: View {
                             .background(AIAccent.border, in: Circle())
                         VStack(alignment: .leading, spacing: 1) {
                             HStack(spacing: 4) {
-                                Text((step.path as NSString).lastPathComponent).font(.callout.weight(.medium))
+                                Text((step.path as NSString).lastPathComponent).aiFont(.callout, weight: .medium)
                                 if step.isRisky {
                                     Image(systemName: "exclamationmark.triangle.fill")
-                                        .font(.caption2)
+                                        .aiFont(.caption2)
                                         .foregroundStyle(SylvraColor.accentGold)
                                         .help("Risky area")
                                 }
                             }
-                            Text(step.reason).font(.caption).foregroundStyle(.secondary)
+                            Text(step.reason).aiFont(.caption).foregroundStyle(.secondary)
                         }
                         Spacer(minLength: 0)
                     }

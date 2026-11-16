@@ -41,19 +41,19 @@ struct AISummaryCardView: View {
         VStack(alignment: .leading, spacing: 6) {
             HStack {
                 Label("AI summary", systemImage: "sparkles")
-                    .font(.caption.weight(.semibold))
+                    .aiFont(.caption, weight: .semibold)
                     .foregroundStyle(AIAccent.border)
                 Spacer()
                 Button(isExpanded ? "Less" : "More") { withAnimation(.snappy) { isExpanded.toggle() } }
                     .buttonStyle(.link)
-                    .font(.caption)
+                    .aiFont(.caption)
             }
             // Expanded content scrolls inside the card (at most `maxExpandedHeight`): the card sits in the PR
             // column's pinned area, which must stay small and must not depend on the text's length.
             ScrollView {
                 VStack(alignment: .leading, spacing: 6) {
                     Text(summary)
-                        .font(.callout)
+                        .aiFont(.callout)
                         .lineLimit(isExpanded ? nil : 3)
                         .textSelection(.enabled)
                         .fixedSize(horizontal: false, vertical: true)
@@ -62,7 +62,7 @@ struct AISummaryCardView: View {
                             ReadingOrderView(steps: readingOrder) { openFile($0.path) }
                                 .padding(.top, 4)
                         } label: {
-                            Text("Reading order (\(readingOrder.count) files)").font(.caption).foregroundStyle(
+                            Text("Reading order (\(readingOrder.count) files)").aiFont(.caption).foregroundStyle(
                                 .secondary)
                         }
                     }

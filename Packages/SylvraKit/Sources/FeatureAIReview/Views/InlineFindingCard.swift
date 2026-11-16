@@ -21,18 +21,18 @@ public struct InlineFindingCard: View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 8) {
                 Text(finding.severity.rawValue.uppercased())
-                    .font(.system(size: 10.5, weight: .bold))
+                    .aiFont(size: 10.5, weight: .bold)
                     .foregroundStyle(finding.severity.color)
                     .padding(.horizontal, 7)
                     .padding(.vertical, 2)
                     .background(finding.severity.color.opacity(0.16), in: Capsule())
-                Text(finding.title).font(.system(size: 13.5, weight: .semibold))
+                Text(finding.title).aiFont(size: 13.5, weight: .semibold)
                 Spacer(minLength: 0)
                 Image(systemName: "sparkles").foregroundStyle(AIAccent.border)
             }
-            Text(meta).font(.caption).foregroundStyle(.secondary)
+            Text(meta).aiFont(.caption).foregroundStyle(.secondary)
             Text(finding.rationale)
-                .font(.callout)
+                .aiFont(.callout)
                 .lineSpacing(2)
                 .fixedSize(horizontal: false, vertical: true)
                 .textSelection(.enabled)
@@ -98,7 +98,7 @@ struct SuggestionMiniDiff: View {
                 row("+", line, SylvraColor.diffAdded)
             }
         }
-        .font(.system(size: 11.5, design: .monospaced))
+        .aiFont(size: 11.5, design: .monospaced)
         .clipShape(RoundedRectangle(cornerRadius: 8))
         .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(SylvraColor.codeHairline))
     }

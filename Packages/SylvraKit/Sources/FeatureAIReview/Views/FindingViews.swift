@@ -10,7 +10,7 @@ struct FindingRowView: View {
         VStack(alignment: .leading, spacing: 4) {
             HStack(alignment: .firstTextBaseline, spacing: 8) {
                 Circle().fill(finding.severity.color).frame(width: 8, height: 8)
-                Text(finding.title).font(.callout.weight(.semibold)).fixedSize(horizontal: false, vertical: true)
+                Text(finding.title).aiFont(.callout, weight: .semibold).fixedSize(horizontal: false, vertical: true)
             }
             HStack(spacing: 4) {
                 Text(finding.location.description)
@@ -18,7 +18,7 @@ struct FindingRowView: View {
                 Text(finding.sources.map { $0.model.capitalized }.joined(separator: " + "))
                 if !finding.isAnchored { Image(systemName: "mappin.slash").help("Not in the diff") }
             }
-            .font(.caption)
+            .aiFont(.caption)
             .foregroundStyle(.secondary)
             .padding(.leading, 16)
         }
@@ -48,17 +48,18 @@ public struct FindingDetailView: View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 8) {
                 Text(finding.severity.rawValue.uppercased())
-                    .font(.caption2.weight(.bold))
+                    .aiFont(.caption2, weight: .bold)
                     .foregroundStyle(finding.severity.color)
                     .padding(.horizontal, 6)
                     .padding(.vertical, 2)
                     .background(finding.severity.color.opacity(0.15), in: Capsule())
-                Text(finding.title).font(.callout.weight(.semibold))
+                Text(finding.title).aiFont(.callout, weight: .semibold)
             }
-            Text(finding.rationale).font(.callout).fixedSize(horizontal: false, vertical: true).textSelection(.enabled)
+            Text(finding.rationale).aiFont(.callout).fixedSize(horizontal: false, vertical: true).textSelection(
+                .enabled)
             if let suggestion = finding.suggestion {
                 Text(suggestion)
-                    .font(.system(size: 11.5, design: .monospaced))
+                    .aiFont(size: 11.5, design: .monospaced)
                     .padding(8)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .background(Color.green.opacity(0.12), in: RoundedRectangle(cornerRadius: 6))
@@ -106,17 +107,17 @@ struct PatternRowView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             HStack {
-                Text(pattern.name).font(.callout.weight(.medium))
+                Text(pattern.name).aiFont(.callout, weight: .medium)
                 Spacer()
                 Text(pattern.verdict.title)
-                    .font(.caption.weight(.semibold))
+                    .aiFont(.caption, weight: .semibold)
                     .foregroundStyle(pattern.verdict.color)
                     .padding(.horizontal, 7)
                     .padding(.vertical, 2)
                     .background(pattern.verdict.color.opacity(0.14), in: Capsule())
             }
             if !pattern.rationale.isEmpty {
-                Text(pattern.rationale).font(.caption).foregroundStyle(.secondary).fixedSize(
+                Text(pattern.rationale).aiFont(.caption).foregroundStyle(.secondary).fixedSize(
                     horizontal: false, vertical: true)
             }
             if !pattern.evidence.isEmpty {
@@ -144,12 +145,12 @@ private struct FlowLocations: View {
                         jump(location)
                     } label: {
                         Label(location.description, systemImage: "arrow.right.circle")
-                            .font(.caption.monospaced())
+                            .aiFont(.caption, design: .monospaced)
                     }
                     .buttonStyle(.link)
                     .help("Show \(location.path) in the diff")
                 } else {
-                    Text(location.description).font(.caption.monospaced()).foregroundStyle(.tertiary)
+                    Text(location.description).aiFont(.caption, design: .monospaced).foregroundStyle(.tertiary)
                 }
             }
         }
@@ -168,9 +169,9 @@ struct AgentProgressRowView: View {
             case .done: Image(systemName: "checkmark.circle.fill").foregroundStyle(.green)
             case .failed: Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(.red)
             }
-            Text(progress.title).font(.caption).lineLimit(1)
+            Text(progress.title).aiFont(.caption).lineLimit(1)
             Spacer()
-            Text(stateText).font(.caption).foregroundStyle(.secondary)
+            Text(stateText).aiFont(.caption).foregroundStyle(.secondary)
         }
         .help(helpText)
     }

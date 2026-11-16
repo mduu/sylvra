@@ -79,10 +79,10 @@ public struct FindingsInspectorScreen: View {
     private var header: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
-                Label("AI review", systemImage: "sparkles").font(.callout.weight(.semibold))
+                Label("AI review", systemImage: "sparkles").aiFont(.callout, weight: .semibold)
                 Spacer()
                 Text(model.agentVersion.map { "\(model.providerName) \($0)" } ?? model.providerName)
-                    .font(.caption)
+                    .aiFont(.caption)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
             }
@@ -100,10 +100,10 @@ public struct FindingsInspectorScreen: View {
                     Button("Cancel review", role: .cancel) { model.cancel() }.controlSize(.small)
                 }
                 if let warning = model.workspaceWarning {
-                    Label(warning, systemImage: "exclamationmark.triangle").font(.caption).foregroundStyle(.orange)
+                    Label(warning, systemImage: "exclamationmark.triangle").aiFont(.caption).foregroundStyle(.orange)
                 }
                 if case .failed(let message) = model.runState {
-                    Text(message).font(.caption).foregroundStyle(.red).lineLimit(4)
+                    Text(message).aiFont(.caption).foregroundStyle(.red).lineLimit(4)
                 }
             }
         }
@@ -139,8 +139,8 @@ public struct FindingsInspectorScreen: View {
             }
             if let history = model.results[id]?.history, !history.isEmpty {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("History").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
-                    ForEach(history, id: \.self) { Text($0).font(.caption) }
+                    Text("History").aiFont(.caption, weight: .semibold).foregroundStyle(.secondary)
+                    ForEach(history, id: \.self) { Text($0).aiFont(.caption) }
                 }
                 .padding(10)
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -159,9 +159,9 @@ public struct FindingsInspectorScreen: View {
 
     private var emptyState: some View {
         VStack(spacing: 10) {
-            Image(systemName: "sparkles").font(.largeTitle).foregroundStyle(AIAccent.border)
+            Image(systemName: "sparkles").aiFont(.largeTitle).foregroundStyle(AIAccent.border)
             Text(pullRequest == nil ? "Select a pull request" : "No AI review yet")
-                .font(.headline)
+                .aiFont(.headline)
             if let pullRequest {
                 Button {
                     Task { await model.run(pullRequest.id, title: pullRequest.title, body: prBody) }
@@ -181,7 +181,7 @@ public struct FindingsInspectorScreen: View {
 
     private func chip(_ text: String) -> some View {
         Text(text)
-            .font(.caption)
+            .aiFont(.caption)
             .padding(.horizontal, 7)
             .padding(.vertical, 2)
             .background(SylvraColor.brandPrimary.opacity(0.14), in: Capsule())

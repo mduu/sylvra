@@ -1,3 +1,4 @@
+import DesignSystem
 import SwiftUI
 
 /// The settings window. Feature-specific panes are provided by the app (slices don't import each other).
@@ -39,6 +40,7 @@ extension SettingsScreen where TerminalPane == EmptyView {
 struct GeneralSettingsView: View {
     @AppStorage(AppearanceSetting.storageKey) private var appearance = AppearanceSetting.auto.rawValue
     @AppStorage("commentLanguage") private var commentLanguage = "English"
+    @AppStorage(AITextSize.storageKey) private var aiTextSize = AITextSize.standard.rawValue
 
     var body: some View {
         Form {
@@ -46,6 +48,10 @@ struct GeneralSettingsView: View {
                 ForEach(AppearanceSetting.allCases) { Text($0.title).tag($0.rawValue) }
             }
             .pickerStyle(.segmented)
+            Picker("AI text size", selection: $aiTextSize) {
+                ForEach(AITextSize.allCases) { Text($0.title).tag($0.rawValue) }
+            }
+            .help("Chat, findings and the AI summary")
             Picker("Language of GitHub comments", selection: $commentLanguage) {
                 ForEach(["English", "German", "French", "Italian", "Spanish"], id: \.self) { Text($0).tag($0) }
             }

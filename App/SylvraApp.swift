@@ -1,4 +1,5 @@
 import AppKit
+import DesignSystem
 import FeatureAIReview
 import FeatureActivity
 import FeatureSettings
@@ -10,6 +11,7 @@ import SwiftUI
 struct SylvraApp: App {
     @State private var environment = AppEnvironment()
     @AppStorage(AppearanceSetting.storageKey) private var appearance = AppearanceSetting.auto.rawValue
+    @AppStorage(AITextSize.storageKey) private var aiTextSize = AITextSize.standard.rawValue
 
     /// `--appearance=light|dark` overrides the setting (screenshots).
     private let launchAppearance = CommandLine.arguments.first { $0.hasPrefix("--appearance=") }
@@ -29,7 +31,9 @@ struct SylvraApp: App {
                     if environment.isDemo { NSApplication.shared.activate() }
                 }
                 .preferredColorScheme(
-                    launchAppearance?.colorScheme ?? AppearanceSetting(rawValue: appearance)?.colorScheme)
+                    launchAppearance?.colorScheme ?? AppearanceSetting(rawValue: appearance)?.colorScheme
+                )
+                .environment(\.aiTextScale, AITextSize(rawValue: aiTextSize)?.scale ?? 1)
         }
         .defaultSize(width: 1440, height: 900)
         .commands {
