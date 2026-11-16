@@ -50,6 +50,8 @@ final class AppEnvironment {
     let review: ReviewScreenModel
     let terminal = TerminalModel()
     let bottomPanel = BottomPanelState()
+    /// Selection and inspector state shared by the main and the review window.
+    let window: WindowState
     let customTools = CustomToolStore()
 
     // swiftlint:disable:next function_body_length
@@ -58,6 +60,7 @@ final class AppEnvironment {
         initialSelection = Self.value(of: "--select", in: arguments)
         startsFocused = arguments.contains("--focus")
         showsInspector = !arguments.contains("--no-inspector")
+        window = WindowState(isInspectorPresented: !arguments.contains("--no-inspector"))
         autoRunsAIReview = arguments.contains("--run-ai-review")
         autoTurnsIntoComment = arguments.contains("--turn-into-comment")
         initialCommit = Self.value(of: "--commit", in: arguments).flatMap(Int.init)

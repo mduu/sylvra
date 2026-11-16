@@ -44,6 +44,16 @@ struct SylvraApp: App {
             DiagnosticCommands()
         }
 
+        // The second window of the two-window layout: diff, AI and terminal for the selected pull request.
+        Window("Sylvra Review", id: RootScreen.reviewWindowID) {
+            RootScreen(environment: environment, role: .review)
+                .preferredColorScheme(
+                    launchAppearance?.colorScheme ?? AppearanceSetting(rawValue: appearance)?.colorScheme
+                )
+                .environment(\.aiTextScale, AITextSize(rawValue: aiTextSize)?.scale ?? 1)
+        }
+        .defaultSize(width: 1400, height: 900)
+
         DiagnosticLogWindow()
 
         Settings {

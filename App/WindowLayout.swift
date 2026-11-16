@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// How the main window arranges inbox, pull request, diff and AI inspector (toolbar menu, ⌃⌘0–3).
+/// How the main window arranges inbox, pull request, diff and AI inspector (toolbar menu, ⌃⌘0–4).
 enum WindowLayout: String, CaseIterable, Identifiable {
     /// Wide below `compactBelow`, compact otherwise.
     case automatic
@@ -10,6 +10,8 @@ enum WindowLayout: String, CaseIterable, Identifiable {
     case compact
     /// Only the diff, with the inspector as a sidebar; files in a popover.
     case focus
+    /// Inbox and pull request in this window, diff and AI in a second one (two screens).
+    case twoWindows
 
     static let storageKey = "layout.mode"
     /// Windows narrower than this use the compact layout in `automatic`.
@@ -29,6 +31,7 @@ enum WindowLayout: String, CaseIterable, Identifiable {
         case .wide: "Wide"
         case .compact: "Compact"
         case .focus: "Focus"
+        case .twoWindows: "Two windows"
         }
     }
 
@@ -38,6 +41,7 @@ enum WindowLayout: String, CaseIterable, Identifiable {
         case .wide: "Inbox, pull request, diff and AI side by side"
         case .compact: "Pull request and diff; inbox and AI float on demand"
         case .focus: "Only the diff and the AI sidebar"
+        case .twoWindows: "Inbox and pull request here, diff and AI in a second window"
         }
     }
 
@@ -47,6 +51,7 @@ enum WindowLayout: String, CaseIterable, Identifiable {
         case .wide: "rectangle.split.3x1"
         case .compact: "rectangle.split.2x1"
         case .focus: "rectangle"
+        case .twoWindows: "rectangle.on.rectangle"
         }
     }
 
@@ -56,13 +61,14 @@ enum WindowLayout: String, CaseIterable, Identifiable {
         case .wide: "1"
         case .compact: "2"
         case .focus: "3"
+        case .twoWindows: "4"
         }
     }
 
     /// Which split view columns are visible.
     var columnVisibility: NavigationSplitViewVisibility {
         switch self {
-        case .automatic, .wide: .all
+        case .automatic, .wide, .twoWindows: .all
         case .compact: .doubleColumn
         case .focus: .detailOnly
         }
@@ -99,7 +105,7 @@ struct WindowLayoutMenu: View {
     }
 }
 
-/// View → layout commands (⌃⌘0 automatic, ⌃⌘1 wide, ⌃⌘2 compact, ⌃⌘3 focus).
+/// View → layout commands (⌃⌘0 automatic, ⌃⌘1 wide, ⌃⌘2 compact, ⌃⌘3 focus, ⌃⌘4 two windows).
 struct WindowLayoutCommands: Commands {
     @AppStorage(WindowLayout.storageKey) private var layout = WindowLayout.automatic.rawValue
 

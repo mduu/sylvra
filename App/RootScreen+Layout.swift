@@ -9,7 +9,8 @@ extension RootScreen {
     /// The AI inspector as a sidebar (wide and focus layouts); compact floats it instead.
     var dockedInspector: Binding<Bool> {
         Binding(
-            get: { isInspectorPresented && layout.docksInspector },
+            // Two windows: the AI lives in the review window, not next to the inbox.
+            get: { isInspectorPresented && layout.docksInspector && !(role == .main && layout == .twoWindows) },
             set: { isInspectorPresented = $0 })
     }
 
@@ -30,6 +31,8 @@ extension RootScreen {
 /// Applies the chosen layout: column visibility, floating inbox and inspector, layout toolbar items.
 private struct WindowLayoutModifier: ViewModifier {
     let root: RootScreen
+    @Environment(\.openWindow) private var openWindow
+    @Environment(\.dismissWindow) private var dismissWindow
 
     func body(content: Content) -> some View {
         let layout = root.layout
@@ -45,6 +48,12 @@ private struct WindowLayoutModifier: ViewModifier {
                     root.columnVisibility = layout.columnVisibility
                     if layout != .compact { root.isInboxFloating = false }
                 }
+                guard root.role == .main else { return }
+                if layout == .twoWindows {
+                    openWindow(id: RootScreen.reviewWindowID)
+                } else {
+                    dismissWindow(id: RootScreen.reviewWindowID)
+                }
             }
             .onChange(of: root.selectedID) {
                 // Picking a pull request from the floating inbox closes it.
@@ -53,38 +62,55 @@ private struct WindowLayoutModifier: ViewModifier {
             .overlay(alignment: .leading) {
                 if layout == .compact, root.isInboxFloating {
                     FloatingPanel(edge: .leading, width: 300, isPresented: root.$isInboxFloating) {
-                        InboxScreen(model: root.environment.inbox, selection: root.$selectedID)
+                        InboxScreen(model: root.environment.inbox, selection: root.selectionBinding)
                     }
                 }
             }
             .overlay(alignment: .trailing) {
                 if !layout.docksInspector, root.isInspectorPresented {
-                    FloatingPanel(edge: .trailing, width: 360, isPresented: root.$isInspectorPresented) {
+                    FloatingPanel(edge: .trailing, width: 360, isPresented: root.inspectorBinding) {
                         root.inspectorContent
                     }
                 }
             }
             .animation(.snappy, value: root.isInboxFloating)
             .animation(.snappy, value: root.isInspectorPresented)
-            .toolbar {
-                ToolbarItem(placement: .navigation) {
-                    if layout == .compact {
-                        Button {
-                            root.isInboxFloating.toggle()
-                        } label: {
-                            Label("Inbox", systemImage: "tray")
-                        }
-                        .help("Show the inbox (⌘0)")
-                        .keyboardShortcut("0", modifiers: .command)
-                    } else if layout == .focus {
-                        FocusFilesButton(model: root.environment.diff)
-                    }
-                }
-                ToolbarItem(placement: .primaryAction) {
-                    WindowLayoutMenu(selection: root.$layoutMode, resolved: layout)
-                }
-            }
+            .toolbar { layoutToolbar(layout) }
     }
+}
+
+extension WindowLayoutModifier {
+    /// Inbox button (compact), files (focus) or review window (two windows), and the layout menu.
+    @ToolbarContentBuilder
+    fileprivate func layoutToolbar(_ layout: WindowLayout) -> some ToolbarContent {
+        ToolbarItem(placement: .navigation) {
+            if layout == .compact {
+                Button {
+                    root.isInboxFloating.toggle()
+                } label: {
+                    Label("Inbox", systemImage: "tray")
+                }
+                .help("Show the inbox (⌘0)")
+                .keyboardShortcut("0", modifiers: .command)
+            } else if layout == .focus {
+                FocusFilesButton(model: root.environment.diff)
+            } else if layout == .twoWindows {
+                Button {
+                    openWindow(id: RootScreen.reviewWindowID)
+                } label: {
+                    Label("Review window", systemImage: "macwindow.on.rectangle")
+                }
+                .help("Bring the review window (diff and AI) to the front")
+            }
+        }
+        ToolbarItem(placement: .primaryAction) {
+            WindowLayoutMenu(selection: root.$layoutMode, resolved: layout)
+        }
+    }
+}
+
+extension RootScreen {
+    static let reviewWindowID = "review"
 }
 
 extension View {

@@ -14,17 +14,17 @@ import SylvraCore
 struct RootScreen: View {
     @Environment(\.openURL) var openURL
     let environment: AppEnvironment
-    @State var selectedID: PullRequestID?
+    /// Which window this is: the main window, or the review window of the two-window layout.
+    let role: WindowRole
 
     /// The selected PR's latest summary from the inbox.
     var selection: PullRequestSummary? { selectedID.flatMap(environment.inbox.summary(for:)) }
-    @State var isInspectorPresented: Bool
     @State var columnVisibility: NavigationSplitViewVisibility
     @State var overlay: Overlay?
     @State private var keyboard = KeyboardNavigator()
     /// Column widths of the last session (read once at launch, see `ColumnLayout`).
-    private let inboxWidth = ColumnLayout.initialWidth(.inbox)
-    private let pullRequestWidth = ColumnLayout.initialWidth(.pullRequest)
+    let inboxWidth = ColumnLayout.initialWidth(.inbox)
+    let pullRequestWidth = ColumnLayout.initialWidth(.pullRequest)
     let inspectorWidth = ColumnLayout.initialWidth(.inspector)
     @AppStorage(WindowLayout.storageKey) var layoutMode = WindowLayout.automatic.rawValue
     /// The window is narrower than `WindowLayout.compactBelow` (only this changes the automatic layout).
@@ -33,165 +33,124 @@ struct RootScreen: View {
     @State var isInboxFloating = false
 
     /// The layout in effect (automatic resolves by window width).
-    var layout: WindowLayout { (WindowLayout(rawValue: layoutMode) ?? .automatic).resolved(isNarrow: isNarrowWindow) }
+    var layout: WindowLayout {
+        // The review window of the two-window layout is always a focused diff with the AI sidebar.
+        if role == .review { return .focus }
+        return (WindowLayout(rawValue: layoutMode) ?? .automatic).resolved(isNarrow: isNarrowWindow)
+    }
 
-    init(environment: AppEnvironment) {
+    init(environment: AppEnvironment, role: WindowRole = .main) {
         self.environment = environment
-        _isInspectorPresented = State(initialValue: environment.showsInspector)
+        self.role = role
         _columnVisibility = State(initialValue: environment.startsFocused ? .doubleColumn : .all)
     }
 
     var body: some View {
-        NavigationSplitView(columnVisibility: $columnVisibility) {
-            InboxScreen(model: environment.inbox, selection: $selectedID)
-                .rememberedColumn(.inbox, ideal: inboxWidth)
-                .navigationSplitViewColumnWidth(
-                    min: ColumnLayout.Column.inbox.range.lowerBound, ideal: inboxWidth,
-                    max: ColumnLayout.Column.inbox.range.upperBound)
-        } content: {
-            PullRequestScreen(
-                model: environment.pullRequest, pullRequest: selection,
-                selectedCommitSHA: environment.diff.selectedCommit?.sha,
-                selectCommit: { commit in Task { await environment.diff.showCommit(commit) } },
-                showInCode: { path, line in Task { await environment.diff.reveal(path, line: line) } },
-                summary: {
-                    AISummaryPanel(model: environment.aiReview, pullRequestID: selection?.id) { path in
-                        Task { await environment.diff.reveal(path) }
-                    }
-                },
-                overviewTop: { ChangeMapPanel(model: environment.diff) },
-                files: {
-                    DiffFileNavigatorPanel(model: environment.diff) { item in
-                        NavigatorToolsMenu(environment: environment, item: item, pullRequest: selection?.id)
-                    }
-                }
-            )
-            .rememberedColumn(.pullRequest, ideal: pullRequestWidth)
-            .navigationSplitViewColumnWidth(
-                min: ColumnLayout.Column.pullRequest.range.lowerBound, ideal: pullRequestWidth,
-                max: ColumnLayout.Column.pullRequest.range.upperBound)
-        } detail: {
-            ReviewScreen(model: environment.review, pullRequestID: selection?.id) {
-                DiffScreen(
-                    model: environment.diff,
-                    pullRequestID: selection?.id,
-                    headSHA: environment.pullRequest.detail.flatMap {
-                        $0.summary.id == selection?.id ? $0.headSHA : nil
-                    },
-                    lineAccessory: { lineAccessory(at: $0) },
-                    onStartComment: { environment.review.startComment(at: $0, lineText: $1) },
-                    onRefresh: {
-                        guard let id = selection?.id else { return }
-                        await environment.pullRequest.load(id)
-                        await environment.inbox.refresh()
-                    }
-                )
+        columns
+            .containerBackground(SylvraColor.surfacePrimary, for: .window)
+            .toolbarBackground(SylvraColor.surfacePrimary, for: .windowToolbar)
+            .toolbarBackgroundVisibility(.visible, for: .windowToolbar)
+            .navigationTitle(Text(verbatim: selection.map { "\($0.id.repository) #\($0.id.number)" } ?? "Sylvra"))
+            .navigationSubtitle(Text(verbatim: selection?.title ?? ""))
+            .inspector(isPresented: dockedInspector) {
+                inspectorContent
+                    .rememberedColumn(.inspector, ideal: inspectorWidth)
+                    .inspectorColumnWidth(
+                        min: ColumnLayout.Column.inspector.range.lowerBound, ideal: inspectorWidth,
+                        max: ColumnLayout.Column.inspector.range.upperBound)
             }
-            .terminalPanel(environment, selection: selection)
-            .stableColumn()
-        }
-        .containerBackground(SylvraColor.surfacePrimary, for: .window)
-        .toolbarBackground(SylvraColor.surfacePrimary, for: .windowToolbar)
-        .toolbarBackgroundVisibility(.visible, for: .windowToolbar)
-        .navigationTitle(Text(verbatim: selection.map { "\($0.id.repository) #\($0.id.number)" } ?? "Sylvra"))
-        .navigationSubtitle(Text(verbatim: selection?.title ?? ""))
-        .inspector(isPresented: dockedInspector) {
-            inspectorContent
-                .rememberedColumn(.inspector, ideal: inspectorWidth)
-                .inspectorColumnWidth(
-                    min: ColumnLayout.Column.inspector.range.lowerBound, ideal: inspectorWidth,
-                    max: ColumnLayout.Column.inspector.range.upperBound)
-        }
-        .windowLayout(self)
-        .task(id: selection?.id) {
-            guard environment.autoRunsAIReview, let selection else { return }
-            await environment.aiReview.run(selection.id, title: selection.title, body: "")
-            // Screenshots / demos: show the top finding in the diff right away.
-            if let first = environment.aiReview.findings(for: selection.id).first {
-                environment.aiReview.selectedFindingID = first.id
-                if environment.autoTurnsIntoComment { startComment(from: first) }
-            }
-        }
-        .focusedSceneValue(\.reviewActions, reviewActions)
-        .onChange(of: environment.pullRequest.detail?.commits, initial: true) { _, commits in
-            // Commit-by-commit review needs the PR's commits (oldest first, as GitHub lists them).
-            applyCommits(commits)
-        }
-        .onChange(of: environment.diff.selectedPath) { _, path in
-            environment.chat.context.file = path
-        }
-        .onChange(of: environment.aiReview.selectedFindingID) { _, id in
-            environment.chat.context.finding =
-                environment.aiReview.findings(for: selection?.id)
-                .first { $0.id == id }?.title
-        }
-        .onAppear(perform: connectModels)
-        .onDisappear { keyboard.stop() }
-        .sheet(item: $overlay) { overlay in
-            switch overlay {
-            case .palette: CommandPaletteSheet(items: paletteItems)
-            case .shortcuts: KeyboardShortcutsSheet()
-            }
-        }
-        .onChange(of: aiReadingOrder, initial: true) { _, order in
-            withAnimation(.snappy) { environment.diff.readingOrder = order }
-        }
-        .onChange(of: aiHighlights) { _, highlights in
-            withAnimation(.snappy) { environment.diff.lineHighlights = highlights }
-        }
-        .onChange(of: environment.aiReview.runState) { _, state in
-            let id = "ai-review"
-            switch state {
-            case .running:
-                environment.activity.start(ActivityJob(id: id, kind: .aiReview, title: String(localized: "AI review")))
-            case .done:
-                let count = environment.aiReview.visibleFindings(for: environment.aiReview.runningPullRequest).count
-                environment.activity.finish(id, message: String(localized: "Review finished — \(count) findings"))
-            case .failed(let message):
-                environment.activity.finish(id, message: message)
-            case .idle:
-                environment.activity.finish(id, message: nil)
-            }
-        }
-        .onChange(of: environment.openInIDE.status) { _, status in
-            if case .working(let message) = status {
-                environment.activity.start(ActivityJob(id: "checkout", kind: .checkout, title: message))
-            } else {
-                environment.activity.finish("checkout", message: nil)
-            }
-        }
-        .onChange(of: environment.inbox.snapshot) {
-            guard selectedID == nil, let wanted = environment.initialSelection else { return }
-            selectedID = environment.inbox.snapshot.sections.values.joined().first { $0.id.description == wanted }?.id
-        }
-        .overlay(alignment: .bottom) {
-            OpenInIDEStatusToast(status: environment.openInIDE.status)
-                .padding(.bottom, 16)
-                .animation(.snappy, value: environment.openInIDE.status)
-        }
-        .toolbar {
-            ToolbarItem(placement: .primaryAction) {
-                ActivityToolbarPanel(center: environment.activity)
-            }
-            ToolbarItem(placement: .primaryAction) {
-                OpenInIDEToolbarPanel(model: environment.openInIDE, pullRequestID: selection?.id)
-            }
-            ToolbarItem(placement: .primaryAction) {
-                TerminalToolbarMenu(environment: environment, pullRequest: selection?.id)
-            }
-            ToolbarItem(placement: .primaryAction) {
-                AIReviewToolbarPanel(
-                    model: environment.aiReview, pullRequest: selection,
-                    pullRequestBody: environment.pullRequest.detail?.body ?? "")
-            }
-            ToolbarItem(placement: .primaryAction) {
-                Button {
-                    isInspectorPresented.toggle()
-                } label: {
-                    Label("AI Inspector", systemImage: "sidebar.right")
+            .windowLayout(self)
+            .task(id: selection?.id) {
+                guard role == .main, environment.autoRunsAIReview, let selection else { return }
+                await environment.aiReview.run(selection.id, title: selection.title, body: "")
+                // Screenshots / demos: show the top finding in the diff right away.
+                if let first = environment.aiReview.findings(for: selection.id).first {
+                    environment.aiReview.selectedFindingID = first.id
+                    if environment.autoTurnsIntoComment { startComment(from: first) }
                 }
             }
-        }
+            .focusedSceneValue(\.reviewActions, reviewActions)
+            .onChange(of: environment.pullRequest.detail?.commits, initial: true) { _, commits in
+                // Commit-by-commit review needs the PR's commits (oldest first, as GitHub lists them).
+                applyCommits(commits)
+            }
+            .onChange(of: environment.diff.selectedPath) { _, path in
+                environment.chat.context.file = path
+            }
+            .onChange(of: environment.aiReview.selectedFindingID) { _, id in
+                environment.chat.context.finding =
+                    environment.aiReview.findings(for: selection?.id)
+                    .first { $0.id == id }?.title
+            }
+            .onAppear(perform: connectModels)
+            .onDisappear { keyboard.stop() }
+            .sheet(item: $overlay) { overlay in
+                switch overlay {
+                case .palette: CommandPaletteSheet(items: paletteItems)
+                case .shortcuts: KeyboardShortcutsSheet()
+                }
+            }
+            .onChange(of: aiReadingOrder, initial: true) { _, order in
+                withAnimation(.snappy) { environment.diff.readingOrder = order }
+            }
+            .onChange(of: aiHighlights) { _, highlights in
+                withAnimation(.snappy) { environment.diff.lineHighlights = highlights }
+            }
+            .onChange(of: environment.aiReview.runState) { _, state in
+                let id = "ai-review"
+                switch state {
+                case .running:
+                    environment.activity.start(
+                        ActivityJob(id: id, kind: .aiReview, title: String(localized: "AI review")))
+                case .done:
+                    let count = environment.aiReview.visibleFindings(for: environment.aiReview.runningPullRequest).count
+                    environment.activity.finish(id, message: String(localized: "Review finished — \(count) findings"))
+                case .failed(let message):
+                    environment.activity.finish(id, message: message)
+                case .idle:
+                    environment.activity.finish(id, message: nil)
+                }
+            }
+            .onChange(of: environment.openInIDE.status) { _, status in
+                if case .working(let message) = status {
+                    environment.activity.start(ActivityJob(id: "checkout", kind: .checkout, title: message))
+                } else {
+                    environment.activity.finish("checkout", message: nil)
+                }
+            }
+            .onChange(of: environment.inbox.snapshot) {
+                guard selectedID == nil, let wanted = environment.initialSelection else { return }
+                selectedID =
+                    environment.inbox.snapshot.sections.values.joined().first { $0.id.description == wanted }?.id
+            }
+            .overlay(alignment: .bottom) {
+                OpenInIDEStatusToast(status: environment.openInIDE.status)
+                    .padding(.bottom, 16)
+                    .animation(.snappy, value: environment.openInIDE.status)
+            }
+            .toolbar {
+                ToolbarItem(placement: .primaryAction) {
+                    ActivityToolbarPanel(center: environment.activity)
+                }
+                ToolbarItem(placement: .primaryAction) {
+                    OpenInIDEToolbarPanel(model: environment.openInIDE, pullRequestID: selection?.id)
+                }
+                ToolbarItem(placement: .primaryAction) {
+                    TerminalToolbarMenu(environment: environment, pullRequest: selection?.id)
+                }
+                ToolbarItem(placement: .primaryAction) {
+                    AIReviewToolbarPanel(
+                        model: environment.aiReview, pullRequest: selection,
+                        pullRequestBody: environment.pullRequest.detail?.body ?? "")
+                }
+                ToolbarItem(placement: .primaryAction) {
+                    Button {
+                        isInspectorPresented.toggle()
+                    } label: {
+                        Label("AI Inspector", systemImage: "sidebar.right")
+                    }
+                }
+            }
     }
 
     /// Prefills the review composer with an AI finding; the reviewer edits and owns the comment.
@@ -218,7 +177,7 @@ struct RootScreen: View {
 
     /// Below a diff line: review threads, and the selected AI finding as an inline card at its last line.
     @ViewBuilder
-    private func lineAccessory(at location: CodeLocation) -> some View {
+    func lineAccessory(at location: CodeLocation) -> some View {
         VStack(alignment: .leading, spacing: 0) {
             ReviewThreadsPanel(model: environment.review, location: location)
             if environment.chat.discussedLocations(for: selection?.id).contains(where: {
@@ -368,7 +327,11 @@ extension RootScreen {
         environment.review.discussHandler = { location, code, question in
             discuss(location, code: code, question: question)
         }
-        keyboard.handler = { key in handleKey(key) }
+        // Both windows install handlers; with two windows only the review window's reacts (no double moves).
+        keyboard.handler = { key in
+            guard role == .review || layout != .twoWindows else { return false }
+            return handleKey(key)
+        }
         keyboard.start()
     }
 }
