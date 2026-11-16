@@ -47,8 +47,12 @@ extension View {
     ///
     /// The content can neither widen nor narrow the column (otherwise a refresh that changes a chip or a
     /// title makes the split view redistribute the columns); the limits come from the split view alone.
+    ///
+    /// `minHeight: 0` matters: a column whose minimum height follows its content (wrapping text in a pinned,
+    /// non-scrolling area gets taller when narrower) made the split view re-layout endlessly — AppKit then
+    /// aborted while zooming, or the window grew taller than the screen and no column could scroll.
     func rememberedColumn(_ column: ColumnLayout.Column, ideal: CGFloat) -> some View {
-        frame(minWidth: 0, idealWidth: ideal, maxWidth: .infinity, maxHeight: .infinity)
+        frame(minWidth: 0, idealWidth: ideal, maxWidth: .infinity, minHeight: 0, maxHeight: .infinity)
             .clipped()
             .onGeometryChange(for: CGFloat.self) {
                 $0.size.width
@@ -59,6 +63,6 @@ extension View {
 
     /// The detail column: only decoupled from its content (it takes the remaining width).
     func stableColumn() -> some View {
-        frame(minWidth: 0, maxWidth: .infinity, maxHeight: .infinity).clipped()
+        frame(minWidth: 0, maxWidth: .infinity, minHeight: 0, maxHeight: .infinity).clipped()
     }
 }

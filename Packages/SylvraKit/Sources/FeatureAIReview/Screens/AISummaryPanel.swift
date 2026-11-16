@@ -33,6 +33,9 @@ struct AISummaryCardView: View {
     @Binding var isExpanded: Bool
     @Binding var showsReadingOrder: Bool
     var openFile: (String) -> Void = { _ in }
+    @State private var contentHeight: CGFloat = 60
+
+    static let maxExpandedHeight: CGFloat = 220
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -45,19 +48,34 @@ struct AISummaryCardView: View {
                     .buttonStyle(.link)
                     .font(.caption)
             }
-            Text(summary)
-                .font(.callout)
-                .lineLimit(isExpanded ? nil : 3)
-                .textSelection(.enabled)
-                .fixedSize(horizontal: false, vertical: true)
-            if !readingOrder.isEmpty {
-                DisclosureGroup(isExpanded: $showsReadingOrder) {
-                    ReadingOrderView(steps: readingOrder) { openFile($0.path) }
-                        .padding(.top, 4)
-                } label: {
-                    Text("Reading order (\(readingOrder.count) files)").font(.caption).foregroundStyle(.secondary)
+            // Expanded content scrolls inside the card (at most `maxExpandedHeight`): the card sits in the PR
+            // column's pinned area, which must stay small and must not depend on the text's length.
+            ScrollView {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(summary)
+                        .font(.callout)
+                        .lineLimit(isExpanded ? nil : 3)
+                        .textSelection(.enabled)
+                        .fixedSize(horizontal: false, vertical: true)
+                    if !readingOrder.isEmpty {
+                        DisclosureGroup(isExpanded: $showsReadingOrder) {
+                            ReadingOrderView(steps: readingOrder) { openFile($0.path) }
+                                .padding(.top, 4)
+                        } label: {
+                            Text("Reading order (\(readingOrder.count) files)").font(.caption).foregroundStyle(
+                                .secondary)
+                        }
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .onGeometryChange(for: CGFloat.self) {
+                    $0.size.height
+                } action: {
+                    contentHeight = $0
                 }
             }
+            .scrollBounceBehavior(.basedOnSize)
+            .frame(height: min(max(contentHeight, 1), Self.maxExpandedHeight))
         }
         .padding(10)
         .background(AIAccent.lineGradient(opacity: 0.12), in: RoundedRectangle(cornerRadius: 10))
