@@ -135,11 +135,16 @@ public final class DiffScreenModel {
         public let token = UUID()
     }
 
-    /// Scrolls to a line of the new version and expands its file if it is collapsed.
+    /// Scrolls to a line of the new version and expands its file if it is collapsed. A line the diff doesn't
+    /// show (e.g. an AI finding on unchanged code) snaps to the nearest shown line, so the jump still lands.
     public func focus(path: String, line: Int) {
-        if let file = files.first(where: { $0.path == path }), isCollapsed(file) { toggleExpanded(path) }
+        var target = line
+        if let file = files.first(where: { $0.path == path }) {
+            if isCollapsed(file) { toggleExpanded(path) }
+            target = Self.nearestShownLine(to: line, in: hunks(for: file)) ?? line
+        }
         selectedPath = path
-        focusedLine = FocusedLine(path: path, line: line)
+        focusedLine = FocusedLine(path: path, line: target)
     }
 
     // MARK: - Change navigation and find

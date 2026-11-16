@@ -17,4 +17,16 @@ extension DiffScreenModel {
         let line = firstChange?.newNumber ?? firstChange?.oldNumber ?? file.hunks.first?.newStart ?? 1
         focus(path: path, line: requestedLine ?? line)
     }
+
+    /// Shows an AI finding: findings refer to all changes, so a single commit (other line numbers) is left.
+    public func revealFinding(path: String, line: Int) async {
+        if selectedCommit != nil { await showCommit(nil) }
+        focus(path: path, line: line)
+    }
+
+    /// The shown new-side line closest to `line` (itself if shown); nil when no hunk has a new-side line.
+    nonisolated static func nearestShownLine(to line: Int, in hunks: [Hunk]) -> Int? {
+        let shown = hunks.lazy.flatMap(\.lines).compactMap(\.newNumber)
+        return shown.min { abs($0 - line) < abs($1 - line) || (abs($0 - line) == abs($1 - line) && $0 < $1) }
+    }
 }

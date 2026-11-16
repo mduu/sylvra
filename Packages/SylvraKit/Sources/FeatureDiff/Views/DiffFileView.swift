@@ -145,6 +145,30 @@ struct DiffFileBodyView<Accessory: View>: View {
             case .sideBySide(let hunk, let index, _, _, _): "s\(hunk)-\(index)"
             }
         }
+
+        /// Scroll anchor: new-side lines use `DiffScreenModel.lineAnchor`, so jumps can target them.
+        func anchor(path: String) -> String {
+            switch self {
+            case .header(let hunk, _): "\(path)#hunk\(hunk)"
+            case .inline(_, _, let line, _):
+                line.kind == .removed || line.newNumber == nil
+                    ? "\(path)#old\(line.oldNumber ?? 0)"
+                    : DiffScreenModel.lineAnchor(path: path, line: line.newNumber ?? 0)
+            case .sideBySide(_, _, let row, _, _):
+                row.right?.newNumber.map { DiffScreenModel.lineAnchor(path: path, line: $0) }
+                    ?? "\(path)#old\(row.left?.oldNumber ?? 0)"
+            }
+        }
+    }
+
+    /// Rows with their scroll anchors as identity. They are direct children of the diff's lazy stack: a nested
+    /// lazy stack hid the IDs of rows not built yet, so jumps to lines further down a file went nowhere.
+    private var identifiedRows: [(id: String, row: Row)] {
+        var seen = Set<String>()
+        return rows.map { row in
+            let anchor = row.anchor(path: path)
+            return (seen.insert(anchor).inserted ? anchor : "\(path)#\(row.id)", row)
+        }
     }
 
     private var rows: [Row] {
@@ -175,9 +199,10 @@ struct DiffFileBodyView<Accessory: View>: View {
     }
 
     var body: some View {
-        LazyVStack(spacing: 0) {  // lazy: only visible lines are built, even for 10k-line files
-            ForEach(rows) { row in
-                switch row {
+        // No own stack: the rows are built lazily by the diff's LazyVStack, even for 10k-line files.
+        ForEach(identifiedRows, id: \.id) { entry in
+            Group {
+                switch entry.row {
                 case .header(let index, let hunk):
                     HunkHeaderView(
                         hunk: hunk,
@@ -194,11 +219,6 @@ struct DiffFileBodyView<Accessory: View>: View {
                             .overlay { searchOverlay(texts: [line.text], newLine: line.newNumber) }
                         inlineAccessories(line, continuation: continuation)
                     }
-                    // Unique per line: removed lines used to share one ID, which confused SwiftUI's diffing.
-                    .id(
-                        line.kind == .removed
-                            ? "\(path)#old\(line.oldNumber ?? 0)"
-                            : DiffScreenModel.lineAnchor(path: path, line: line.newNumber ?? 0))
                 case .sideBySide(_, _, let row, let connector, let continuation):
                     VStack(spacing: 0) {
                         SideBySideRowView(row: row, connector: connector, onComment: onComment)
@@ -216,11 +236,9 @@ struct DiffFileBodyView<Accessory: View>: View {
                             }
                         sideBySideAccessories(row, continuation: continuation)
                     }
-                    .id(
-                        DiffScreenModel.lineAnchor(
-                            path: path, line: row.right?.newNumber ?? -(row.left?.oldNumber ?? 0)))
                 }
             }
+            .id(entry.id)
         }
         .environment(\.syntaxLanguage, SyntaxHighlighter.Language(path: path))
     }

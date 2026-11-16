@@ -91,7 +91,7 @@ struct RootScreen: View {
                 model: environment.aiReview,
                 pullRequest: selection,
                 pullRequestBody: environment.pullRequest.detail?.body ?? "",
-                jump: { finding in environment.diff.focus(path: finding.path, line: finding.startLine) },
+                jump: { finding in jump(to: finding) },
                 turnIntoComment: { finding in startComment(from: finding) },
                 chat: environment.chat,
                 jumpToLocation: { path, line in Task { await environment.diff.reveal(path, line: line) } },
@@ -221,7 +221,7 @@ struct RootScreen: View {
     func jump(to finding: ReviewFinding?) {
         guard let finding else { return }
         isInspectorPresented = true
-        environment.diff.focus(path: finding.path, line: finding.startLine)
+        Task { await environment.diff.revealFinding(path: finding.path, line: finding.startLine) }
     }
 
     /// Below a diff line: review threads, and the selected AI finding as an inline card at its last line.
