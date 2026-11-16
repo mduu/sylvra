@@ -40,6 +40,7 @@ struct SylvraApp: App {
             ReviewCommands()
             TerminalCommands(terminal: environment.terminal, panel: environment.bottomPanel)
             CommandLogCommands(panel: environment.bottomPanel)
+            WindowLayoutCommands()
             DiagnosticCommands()
         }
 

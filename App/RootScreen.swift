@@ -14,18 +14,26 @@ import SylvraCore
 struct RootScreen: View {
     @Environment(\.openURL) var openURL
     let environment: AppEnvironment
-    @State private var selectedID: PullRequestID?
+    @State var selectedID: PullRequestID?
 
     /// The selected PR's latest summary from the inbox.
     var selection: PullRequestSummary? { selectedID.flatMap(environment.inbox.summary(for:)) }
     @State var isInspectorPresented: Bool
-    @State private var columnVisibility: NavigationSplitViewVisibility
+    @State var columnVisibility: NavigationSplitViewVisibility
     @State var overlay: Overlay?
     @State private var keyboard = KeyboardNavigator()
     /// Column widths of the last session (read once at launch, see `ColumnLayout`).
     private let inboxWidth = ColumnLayout.initialWidth(.inbox)
     private let pullRequestWidth = ColumnLayout.initialWidth(.pullRequest)
-    private let inspectorWidth = ColumnLayout.initialWidth(.inspector)
+    let inspectorWidth = ColumnLayout.initialWidth(.inspector)
+    @AppStorage(WindowLayout.storageKey) var layoutMode = WindowLayout.automatic.rawValue
+    /// The window is narrower than `WindowLayout.compactBelow` (only this changes the automatic layout).
+    @State var isNarrowWindow = false
+    /// Compact layout: the inbox floats over the pull request column while open.
+    @State var isInboxFloating = false
+
+    /// The layout in effect (automatic resolves by window width).
+    var layout: WindowLayout { (WindowLayout(rawValue: layoutMode) ?? .automatic).resolved(isNarrow: isNarrowWindow) }
 
     init(environment: AppEnvironment) {
         self.environment = environment
@@ -87,22 +95,14 @@ struct RootScreen: View {
         .toolbarBackgroundVisibility(.visible, for: .windowToolbar)
         .navigationTitle(Text(verbatim: selection.map { "\($0.id.repository) #\($0.id.number)" } ?? "Sylvra"))
         .navigationSubtitle(Text(verbatim: selection?.title ?? ""))
-        .inspector(isPresented: $isInspectorPresented) {
-            FindingsInspectorScreen(
-                model: environment.aiReview,
-                pullRequest: selection,
-                pullRequestBody: environment.pullRequest.detail?.body ?? "",
-                jump: { finding in jump(to: finding) },
-                turnIntoComment: { finding in startComment(from: finding) },
-                chat: environment.chat,
-                jumpToLocation: { path, line in Task { await environment.diff.reveal(path, line: line) } },
-                useAsComment: { answer, location in useAsComment(answer, at: location) }
-            )
-            .rememberedColumn(.inspector, ideal: inspectorWidth)
-            .inspectorColumnWidth(
-                min: ColumnLayout.Column.inspector.range.lowerBound, ideal: inspectorWidth,
-                max: ColumnLayout.Column.inspector.range.upperBound)
+        .inspector(isPresented: dockedInspector) {
+            inspectorContent
+                .rememberedColumn(.inspector, ideal: inspectorWidth)
+                .inspectorColumnWidth(
+                    min: ColumnLayout.Column.inspector.range.lowerBound, ideal: inspectorWidth,
+                    max: ColumnLayout.Column.inspector.range.upperBound)
         }
+        .windowLayout(self)
         .task(id: selection?.id) {
             guard environment.autoRunsAIReview, let selection else { return }
             await environment.aiReview.run(selection.id, title: selection.title, body: "")
@@ -196,7 +196,7 @@ struct RootScreen: View {
 
     /// Prefills the review composer with an AI finding; the reviewer edits and owns the comment.
     /// - Parameter reveal: scrolls the diff to the finding; not needed from the inline card (already in view).
-    private func startComment(from finding: ReviewFinding, reveal: Bool = true) {
+    func startComment(from finding: ReviewFinding, reveal: Bool = true) {
         let location = CodeLocation(
             path: finding.path, line: finding.endLine, side: .right, startLine: finding.startLine)
         var body = finding.rationale
@@ -308,7 +308,7 @@ extension RootScreen {
     }
 
     /// Chat answer → short, factual draft comment on the discussed code (edited before posting).
-    private func useAsComment(_ answer: String, at location: CodeLocation) {
+    func useAsComment(_ answer: String, at location: CodeLocation) {
         // About an existing discussion ("Ask AI" on a thread): the suggestion goes into its reply field.
         if let thread = environment.review.threads(at: location).first(where: \.viewerCanReply) {
             environment.review.setReplyDraft(ReviewScreenModel.suggestedReply(in: answer), for: thread.id)

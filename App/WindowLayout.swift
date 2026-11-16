@@ -1,0 +1,137 @@
+import SwiftUI
+
+/// How the main window arranges inbox, pull request, diff and AI inspector (toolbar menu, ⌃⌘0–3).
+enum WindowLayout: String, CaseIterable, Identifiable {
+    /// Wide below `compactBelow`, compact otherwise.
+    case automatic
+    /// Inbox · pull request · diff · inspector side by side (wide screens).
+    case wide
+    /// Pull request · diff; the inbox and the inspector float on demand (laptops).
+    case compact
+    /// Only the diff, with the inspector as a sidebar; files in a popover.
+    case focus
+
+    static let storageKey = "layout.mode"
+    /// Windows narrower than this use the compact layout in `automatic`.
+    static let compactBelow: CGFloat = 1400
+
+    var id: String { rawValue }
+
+    /// The layout to use; `automatic` depends on whether the window is narrower than `compactBelow`.
+    func resolved(isNarrow: Bool) -> WindowLayout {
+        guard self == .automatic else { return self }
+        return isNarrow ? .compact : .wide
+    }
+
+    var title: LocalizedStringKey {
+        switch self {
+        case .automatic: "Automatic"
+        case .wide: "Wide"
+        case .compact: "Compact"
+        case .focus: "Focus"
+        }
+    }
+
+    var detail: LocalizedStringKey {
+        switch self {
+        case .automatic: "Compact on narrow windows, wide otherwise"
+        case .wide: "Inbox, pull request, diff and AI side by side"
+        case .compact: "Pull request and diff; inbox and AI float on demand"
+        case .focus: "Only the diff and the AI sidebar"
+        }
+    }
+
+    var icon: String {
+        switch self {
+        case .automatic: "rectangle.3.group"
+        case .wide: "rectangle.split.3x1"
+        case .compact: "rectangle.split.2x1"
+        case .focus: "rectangle"
+        }
+    }
+
+    var shortcut: KeyEquivalent {
+        switch self {
+        case .automatic: "0"
+        case .wide: "1"
+        case .compact: "2"
+        case .focus: "3"
+        }
+    }
+
+    /// Which split view columns are visible.
+    var columnVisibility: NavigationSplitViewVisibility {
+        switch self {
+        case .automatic, .wide: .all
+        case .compact: .doubleColumn
+        case .focus: .detailOnly
+        }
+    }
+
+    /// The AI inspector is a sidebar here; elsewhere it floats over the diff.
+    var docksInspector: Bool { self != .compact }
+}
+
+/// Toolbar menu to choose the layout; shows the active one.
+struct WindowLayoutMenu: View {
+    @Binding var selection: String
+    let resolved: WindowLayout
+
+    var body: some View {
+        Menu {
+            Picker("Layout", selection: $selection) {
+                ForEach(WindowLayout.allCases) { layout in
+                    Label {
+                        Text(layout.title)
+                        Text(layout.detail)
+                    } icon: {
+                        Image(systemName: layout.icon)
+                    }
+                    .tag(layout.rawValue)
+                }
+            }
+            .pickerStyle(.inline)
+        } label: {
+            Label("Layout", systemImage: resolved.icon)
+        }
+        .menuIndicator(.hidden)
+        .help("Window layout: wide, compact (laptop) or focus on the diff")
+    }
+}
+
+/// View → layout commands (⌃⌘0 automatic, ⌃⌘1 wide, ⌃⌘2 compact, ⌃⌘3 focus).
+struct WindowLayoutCommands: Commands {
+    @AppStorage(WindowLayout.storageKey) private var layout = WindowLayout.automatic.rawValue
+
+    var body: some Commands {
+        CommandGroup(after: .sidebar) {
+            ForEach(WindowLayout.allCases) { option in
+                Toggle(isOn: Binding(get: { layout == option.rawValue }, set: { if $0 { layout = option.rawValue } })) {
+                    Text(option.title)
+                }
+                .keyboardShortcut(option.shortcut, modifiers: [.control, .command])
+            }
+        }
+    }
+}
+
+/// A panel floating over the content at one edge (inbox left, AI inspector right), closed with Esc.
+struct FloatingPanel<Content: View>: View {
+    let edge: HorizontalEdge
+    let width: CGFloat
+    @Binding var isPresented: Bool
+    @ViewBuilder let content: Content
+
+    var body: some View {
+        content
+            .frame(width: width)
+            .frame(maxHeight: .infinity)
+            .background(.regularMaterial)
+            .clipShape(RoundedRectangle(cornerRadius: 12))
+            .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(.separator))
+            .shadow(color: .black.opacity(0.25), radius: 18, x: edge == .leading ? 6 : -6)
+            .padding(8)
+            .onExitCommand { isPresented = false }
+            .transition(.move(edge: edge == .leading ? .leading : .trailing).combined(with: .opacity))
+    }
+}
