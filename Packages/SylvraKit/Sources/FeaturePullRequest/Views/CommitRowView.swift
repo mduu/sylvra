@@ -132,9 +132,10 @@ struct AllChangesRowView: View {
     }
 }
 
-/// One check run with a link to its logs on GitHub (pure).
+/// One check run (pure): a click shows what it reported, the arrow opens it on GitHub.
 struct CheckRowView: View {
     let check: PullRequestDetail.CheckRun
+    var showReport: (() -> Void)?
     let open: () -> Void
 
     var body: some View {
@@ -156,5 +157,8 @@ struct CheckRowView: View {
             .help(check.state == .failure ? "Open run on GitHub" : "Details on GitHub")
         }
         .padding(.vertical, 2)
+        .contentShape(Rectangle())
+        .onTapGesture { showReport?() }
+        .help(showReport == nil ? "" : String(localized: "Show what this check reported"))
     }
 }

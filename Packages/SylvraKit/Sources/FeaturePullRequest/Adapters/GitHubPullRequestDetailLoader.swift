@@ -4,7 +4,7 @@ import SylvraCore
 
 /// Loads PR details with one GraphQL request.
 public struct GitHubPullRequestDetailLoader: PullRequestDetailLoading {
-    private let client: GitHubClient
+    let client: GitHubClient
 
     public init(client: GitHubClient) {
         self.client = client
@@ -55,8 +55,8 @@ public struct GitHubPullRequestDetailLoader: PullRequestDetailLoading {
               } } }
               checks: commits(last: 1) { nodes { commit { statusCheckRollup { state contexts(first: 50) { nodes {
                 __typename
-                ... on CheckRun { name status conclusion startedAt completedAt detailsUrl }
-                ... on StatusContext { context state targetUrl createdAt }
+                ... on CheckRun { id name status conclusion startedAt completedAt detailsUrl }
+                ... on StatusContext { context state targetUrl createdAt description }
               } } } } } }
             }
           }
@@ -229,6 +229,8 @@ struct DetailNode: Decodable, Sendable {
 
     struct CheckContext: Decodable, Sendable {
         let typename: String
+        let id: String?
+        let description: String?
         let name: String?
         let status: String?
         let conclusion: String?
@@ -240,8 +242,8 @@ struct DetailNode: Decodable, Sendable {
         let targetUrl: URL?
 
         enum CodingKeys: String, CodingKey {
-            case typename = "__typename", name, status, conclusion, startedAt, completedAt, detailsUrl
-            case context, state, targetUrl
+            case typename = "__typename", id, description, name, status, conclusion, startedAt, completedAt
+            case detailsUrl, context, state, targetUrl
         }
 
         var checkRun: PullRequestDetail.CheckRun? {
@@ -251,11 +253,12 @@ struct DetailNode: Decodable, Sendable {
                 }
                 return .init(
                     name: name, state: Self.state(status: status, conclusion: conclusion), duration: duration,
-                    url: detailsUrl)
+                    url: detailsUrl, nodeID: id)
             }
             if typename == "StatusContext", let context {
                 let state = state.flatMap { CheckState(rawValue: $0.lowercased()) } ?? .none
-                return .init(name: context, state: state, duration: nil, url: targetUrl)
+                return .init(
+                    name: context, state: state, duration: nil, url: targetUrl, statusDescription: description)
             }
             return nil
         }

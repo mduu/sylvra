@@ -18,8 +18,16 @@ public final class PullRequestScreenModel {
     public private(set) var detail: PullRequestDetail?
     public private(set) var loadState: LoadState = .idle
     public var tab: Tab = .overview
+    /// The check whose report is shown (sheet).
+    public var openedCheck: PullRequestDetail.CheckRun?
 
     private let loader: any PullRequestDetailLoading
+
+    /// GitHub's summary of a check run; commit statuses only have their description.
+    public func report(for check: PullRequestDetail.CheckRun) async throws -> CheckReport {
+        guard let nodeID = check.nodeID else { return CheckReport(summary: check.statusDescription) }
+        return try await loader.loadCheckReport(nodeID: nodeID)
+    }
 
     public init(loader: any PullRequestDetailLoading) {
         self.loader = loader

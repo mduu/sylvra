@@ -9,6 +9,29 @@ public struct DemoPullRequestDetailLoader: PullRequestDetailLoading {
         Self.detail(for: id)
     }
 
+    public func loadCheckReport(nodeID: String) async throws -> CheckReport {
+        CheckReport(
+            title: "1 test failed, 41 passed",
+            summary: """
+                ## Test results
+                **41 passed**, **1 failed**, 0 skipped in 4m 12s.
+
+                ### Failed
+                - `InvoiceServiceTests.totalRoundsPerLine()`
+                """,
+            text: """
+                ```
+                InvoiceServiceTests.swift:31: error: #expect(service.total(for: .sample) == 42.30)
+                  -> 42.29 != 42.30
+                ```
+                """,
+            annotations: [
+                .init(
+                    path: "Tests/BillingTests/InvoiceServiceTests.swift", line: 31, level: .failure,
+                    title: "totalRoundsPerLine()", message: "Expectation failed: 42.29 != 42.30")
+            ])
+    }
+
     // swiftlint:disable:next function_body_length
     static func detail(for id: PullRequestID) -> PullRequestDetail {
         let lena = UserRef(login: "lkeller", name: "Lena Keller")
@@ -18,7 +41,9 @@ public struct DemoPullRequestDetailLoader: PullRequestDetailLoading {
         func ago(_ hours: Double) -> Date { now.addingTimeInterval(-hours * 3600) }
 
         let checks: [PullRequestDetail.CheckRun] = [
-            .init(name: "build / unit tests", state: .failure, duration: .seconds(252), url: demoURL(id, "checks")),
+            .init(
+                name: "build / unit tests", state: .failure, duration: .seconds(252), url: demoURL(id, "checks"),
+                nodeID: "demo-unit-tests"),
             .init(name: "lint", state: .success, duration: .seconds(38), url: demoURL(id, "checks")),
             .init(name: "build / server", state: .success, duration: .seconds(171), url: demoURL(id, "checks")),
             .init(name: "danger", state: .pending, duration: nil, url: demoURL(id, "checks")),

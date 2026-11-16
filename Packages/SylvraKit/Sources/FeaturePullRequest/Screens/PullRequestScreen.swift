@@ -40,6 +40,10 @@ public struct PullRequestScreen<Files: View, OverviewTop: View>: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(SylvraColor.surfacePrimary)
         .task(id: pullRequest?.id) { await model.load(pullRequest?.id) }
+        .sheet(item: $model.openedCheck) { check in
+            CheckReportSheet(
+                check: check, load: { try await model.report(for: check) }, openOnGitHub: { open(check.url) })
+        }
     }
 
     private func content(_ detail: PullRequestDetail) -> some View {
@@ -66,7 +70,8 @@ public struct PullRequestScreen<Files: View, OverviewTop: View>: View {
                 case .checks:
                     LazyVStack(alignment: .leading, spacing: 6) {
                         ForEach(detail.checks) { check in
-                            CheckRowView(check: check) { open(check.url) }
+                            CheckRowView(
+                                check: check, showReport: { model.openedCheck = check }, open: { open(check.url) })
                         }
                         if detail.checks.isEmpty { Text("No checks").foregroundStyle(.secondary) }
                     }

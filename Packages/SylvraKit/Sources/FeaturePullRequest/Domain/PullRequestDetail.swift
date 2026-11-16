@@ -60,6 +60,53 @@ public struct PullRequestDetail: Sendable, Equatable {
         public let state: CheckState
         public let duration: Duration?
         public let url: URL?
+        /// GitHub node ID of a check run (loads its report); `nil` for commit statuses.
+        public var nodeID: String?
+        /// Description of a commit status (statuses have no report).
+        public var statusDescription: String?
+    }
+}
+
+/// What a check run reported: GitHub's "Summary" of the run plus its annotations.
+public struct CheckReport: Sendable, Equatable {
+    public struct Annotation: Sendable, Equatable, Identifiable {
+        public enum Level: String, Sendable {
+            case failure = "FAILURE", warning = "WARNING", notice = "NOTICE"
+        }
+
+        public var id: String { "\(path):\(line ?? 0):\(message.prefix(40))" }
+        public let path: String
+        public let line: Int?
+        public let level: Level
+        public let title: String?
+        public let message: String
+
+        public init(path: String, line: Int?, level: Level, title: String?, message: String) {
+            self.path = path
+            self.line = line
+            self.level = level
+            self.title = title
+            self.message = message
+        }
+    }
+
+    public var title: String?
+    /// Markdown summary written by the check.
+    public var summary: String?
+    /// Markdown details (often logs or test output).
+    public var text: String?
+    public var annotations: [Annotation]
+
+    public init(title: String? = nil, summary: String? = nil, text: String? = nil, annotations: [Annotation] = []) {
+        self.title = title
+        self.summary = summary
+        self.text = text
+        self.annotations = annotations
+    }
+
+    public var isEmpty: Bool {
+        [title, summary, text].allSatisfy { ($0 ?? "").trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+            && annotations.isEmpty
     }
 }
 
