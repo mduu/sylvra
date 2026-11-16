@@ -20,6 +20,7 @@ public struct GitHubPullRequestDetailLoader: PullRequestDetailLoading {
             throw GitHubError.graphQL(["Pull request \(id) not found"])
         }
         var detail = node.detail
+        detail.discussion = node.discussion
         if let login = response.viewer?.login {
             detail.involvement = node.involvement(of: login)
         }
@@ -43,9 +44,9 @@ public struct GitHubPullRequestDetailLoader: PullRequestDetailLoading {
               milestone { title }
               closingIssuesReferences(first: 5) { nodes { number title url } }
               reviewRequests(first: 20) { nodes { requestedReviewer { __typename ... on User { login avatarUrl name } ... on Team { name slug } } } }
-              comments(last: 60) { nodes { author { login avatarUrl ... on User { name } } body createdAt url } }
-              reviews(last: 30) { nodes { author { login avatarUrl ... on User { name } } body submittedAt url } }
-              reviewThreads(last: 50) { nodes { path line comments(first: 10) { nodes { author { login avatarUrl ... on User { name } } body createdAt url } } } }
+              comments(last: 60) { nodes { id author { login avatarUrl ... on User { name } } body createdAt url } }
+              reviews(last: 30) { nodes { id author { login avatarUrl ... on User { name } } body submittedAt url } }
+              reviewThreads(last: 50) { nodes { id path line isResolved comments(first: 20) { nodes { author { login avatarUrl ... on User { name } } body createdAt url } } } }
               latestReviews(first: 30) { nodes { state submittedAt author { login avatarUrl ... on User { name } } } }
               commits(first: 100) { totalCount nodes { commit {
                 oid abbreviatedOid messageHeadline messageBody authoredDate url
@@ -112,6 +113,7 @@ struct DetailNode: Decodable, Sendable {
 
     /// An issue comment, review or review comment (`submittedAt` for reviews).
     struct CommentNode: Decodable, Sendable {
+        let id: String?
         let author: GitHubActorNode?
         let body: String
         let createdAt: Date?
@@ -121,8 +123,10 @@ struct DetailNode: Decodable, Sendable {
     }
 
     struct ThreadNode: Decodable, Sendable {
+        let id: String?
         let path: String
         let line: Int?
+        let isResolved: Bool?
         let comments: Nodes<CommentNode>
     }
 

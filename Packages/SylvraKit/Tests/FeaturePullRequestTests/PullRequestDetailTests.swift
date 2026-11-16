@@ -66,6 +66,27 @@ struct PullRequestDetailMappingTests {
         #expect(try #require(response.repository?.pullRequest).involvement(of: "zed").isEmpty)
     }
 
+    /// The Comments tab: general comments without a code jump, threads with path and line, empty reviews skipped.
+    @Test func collectsAllCommentsWithTheirPlace() throws {
+        let response = try GitHubJSON.decoder.decode(DetailResponse.self, from: Data(Self.json.utf8))
+        let items = try #require(response.repository?.pullRequest).discussion
+        #expect(items.count == 3)
+        #expect(items.filter { $0.codeLocation == nil }.count == 2)
+        let thread = try #require(items.first { $0.codeLocation != nil })
+        #expect(thread.codeLocation?.path == "Sources/Export.swift")
+        #expect(thread.codeLocation?.line == 12)
+        #expect(!thread.isResolved)
+
+        let sorted = DiscussionFilter.all.apply(items)
+        #expect(sorted.first?.body == "@mduu is this right?")
+        #expect(DiscussionFilter.code.apply(items).count == 1)
+        #expect(DiscussionFilter.general.apply(items).count == 2)
+        #expect(DiscussionFilter.open.apply(items).count == 1)
+        var detail = try detail()
+        detail.discussion = items
+        #expect(detail.commentCount == 3)
+    }
+
     @Test func mapsSummaryAndCommits() throws {
         let detail = try detail()
         #expect(detail.summary.id.description == "o/r#5")

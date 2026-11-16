@@ -110,6 +110,27 @@ public struct DemoPullRequestDetailLoader: PullRequestDetailLoading {
             checks: checks,
             commits: commits
         )
+        detail.discussion = [
+            DiscussionItem(
+                id: "t1", place: .code(path: "Sources/Billing/InvoiceService.swift", line: 9, isResolved: false),
+                author: jonas,
+                body: "Rounding each line before summing can drift from the invoice total by a few "
+                    + "cents. Should we round **once** at the end instead?",
+                date: ago(5), url: demoURL(id, "#discussion_r1"),
+                replies: [
+                    .init(
+                        author: lena, body: "Accounting wants per-line rounding to match the PDF (see BILL-311).",
+                        date: ago(3))
+                ]),
+            DiscussionItem(
+                id: "t2", place: .code(path: "Sources/Export/CSVEncoder.swift", line: 8, isResolved: true),
+                author: marc, body: "Quote names with commas?", date: ago(30),
+                replies: [.init(author: lena, body: "Done in 3be7d12.", date: ago(28))]),
+            DiscussionItem(
+                id: "c1", place: .conversation, author: lena,
+                body: "Ready for review. The rounding change is the part that needs a careful look.", date: ago(26),
+                url: demoURL(id, "#issuecomment-1")),
+        ]
         if id.number == 1229 {
             // Demo for the "Involved" section: why the PR concerns the user.
             detail.involvement = Involvement(

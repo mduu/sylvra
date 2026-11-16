@@ -7,7 +7,7 @@ import SylvraCore
 @Observable
 public final class PullRequestScreenModel {
     public enum Tab: String, CaseIterable, Identifiable {
-        case overview, files, commits, checks
+        case overview, files, commits, checks, comments
         public var id: String { rawValue }
     }
 
@@ -18,6 +18,8 @@ public final class PullRequestScreenModel {
     public private(set) var detail: PullRequestDetail?
     public private(set) var loadState: LoadState = .idle
     public var tab: Tab = .overview
+    /// Which comments the Comments tab shows.
+    public var discussionFilter: DiscussionFilter = .all
     /// The check whose report is shown (sheet).
     public var openedCheck: PullRequestDetail.CheckRun?
 

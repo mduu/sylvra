@@ -20,6 +20,11 @@ public struct PullRequestDetail: Sendable, Equatable {
     public var commits: [Commit]
     /// Where the signed-in user was mentioned or took part.
     public var involvement = Involvement()
+    /// All comments: conversation, review texts and code threads.
+    public var discussion: [DiscussionItem] = []
+
+    /// Comments in total, replies included.
+    public var commentCount: Int { discussion.reduce(0) { $0 + $1.commentCount } }
 
     public enum State: String, Sendable {
         case open = "OPEN", closed = "CLOSED", merged = "MERGED"

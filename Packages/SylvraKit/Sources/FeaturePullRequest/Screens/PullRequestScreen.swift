@@ -15,11 +15,13 @@ public struct PullRequestScreen<Files: View, OverviewTop: View, Summary: View>: 
     private let summary: Summary
     private let selectedCommitSHA: String?
     private let selectCommit: ((Commit?) -> Void)?
+    private let showInCode: ((String, Int?) -> Void)?
     @Environment(\.openURL) private var openURL
 
     public init(
         model: PullRequestScreenModel, pullRequest: PullRequestSummary?,
         selectedCommitSHA: String? = nil, selectCommit: ((Commit?) -> Void)? = nil,
+        showInCode: ((String, Int?) -> Void)? = nil,
         @ViewBuilder summary: () -> Summary,
         @ViewBuilder overviewTop: () -> OverviewTop,
         @ViewBuilder files: () -> Files
@@ -29,6 +31,7 @@ public struct PullRequestScreen<Files: View, OverviewTop: View, Summary: View>: 
         self.pullRequest = pullRequest
         self.selectedCommitSHA = selectedCommitSHA
         self.selectCommit = selectCommit
+        self.showInCode = showInCode
         self.overviewTop = overviewTop()
         self.files = files()
     }
@@ -61,6 +64,7 @@ public struct PullRequestScreen<Files: View, OverviewTop: View, Summary: View>: 
                     Text("Files \(detail.changedFiles)").tag(PullRequestScreenModel.Tab.files)
                     Text("Commits \(detail.commits.count)").tag(PullRequestScreenModel.Tab.commits)
                     Text("Checks \(detail.checks.count)").tag(PullRequestScreenModel.Tab.checks)
+                    Text("Comments \(detail.commentCount)").tag(PullRequestScreenModel.Tab.comments)
                 }
                 .pickerStyle(.segmented)
                 .labelsHidden()
@@ -87,6 +91,9 @@ public struct PullRequestScreen<Files: View, OverviewTop: View, Summary: View>: 
             files
         case .commits:
             commitList(detail)
+        case .comments:
+            DiscussionListView(
+                items: detail.discussion, filter: $model.discussionFilter, showInCode: showInCode, open: open)
         case .checks:
             LazyVStack(alignment: .leading, spacing: 6) {
                 ForEach(detail.checks) { check in
