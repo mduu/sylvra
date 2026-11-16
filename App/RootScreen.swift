@@ -114,23 +114,7 @@ struct RootScreen: View {
         .focusedSceneValue(\.reviewActions, reviewActions)
         .onChange(of: environment.pullRequest.detail?.commits, initial: true) { _, commits in
             // Commit-by-commit review needs the PR's commits (oldest first, as GitHub lists them).
-            environment.diff.commits = commits ?? []
-            if let number = environment.initialCommit, let commits, commits.indices.contains(number - 1) {
-                environment.pullRequest.tab = .commits
-                Task {
-                    // The diff of the PR loads in parallel; the commit needs it first.
-                    for _ in 0..<30 where environment.diff.loadState != .loaded {
-                        try? await Task.sleep(for: .milliseconds(100))
-                    }
-                    await environment.diff.showCommit(commits[number - 1])
-                }
-            }
-            if environment.opensFailingCheck,
-                let failing = environment.pullRequest.detail?.checks.first(where: { $0.state == .failure })
-            {
-                environment.pullRequest.tab = .checks
-                environment.pullRequest.openedCheck = failing
-            }
+            applyCommits(commits)
         }
         .onChange(of: environment.diff.selectedPath) { _, path in
             environment.chat.context.file = path
@@ -295,6 +279,27 @@ struct RootScreen: View {
 // MARK: - AI discussion
 
 extension RootScreen {
+    /// Hands the PR's commits to the diff (commit-by-commit review); demo launches open a commit or a check.
+    func applyCommits(_ commits: [Commit]?) {
+        environment.diff.commits = commits ?? []
+        if let number = environment.initialCommit, let commits, commits.indices.contains(number - 1) {
+            environment.pullRequest.tab = .commits
+            Task {
+                // The diff of the PR loads in parallel; the commit needs it first.
+                for _ in 0..<30 where environment.diff.loadState != .loaded {
+                    try? await Task.sleep(for: .milliseconds(100))
+                }
+                await environment.diff.showCommit(commits[number - 1])
+            }
+        }
+        if environment.opensFailingCheck,
+            let failing = environment.pullRequest.detail?.checks.first(where: { $0.state == .failure })
+        {
+            environment.pullRequest.tab = .checks
+            environment.pullRequest.openedCheck = failing
+        }
+    }
+
     private func openChat() {
         environment.aiReview.tab = .chat
         isInspectorPresented = true

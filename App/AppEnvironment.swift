@@ -49,6 +49,7 @@ final class AppEnvironment {
     let terminal = TerminalModel()
     let customTools = CustomToolStore()
 
+    // swiftlint:disable:next function_body_length
     init(arguments: [String] = CommandLine.arguments) {
         isDemo = arguments.contains("--demo")
         initialSelection = Self.value(of: "--select", in: arguments)
