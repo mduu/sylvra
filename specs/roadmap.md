@@ -50,7 +50,7 @@ Decisions made while building without the product owner present. Revisit when co
 
 - Package tests run via `swift test`; the app scheme only builds (Xcode does not pick up local-package test targets in app schemes).
 - SwiftLint pinned to 0.65.1 in CI.
-- Screenshots: `scripts/screenshot.sh <name> [app args]` builds, launches and captures the main window into `docs/screenshots/`.
+- Screenshots: `scripts/screenshot.sh <name> [app args]` builds, launches and captures the main window into `docs/screenshots/`. README screenshots come in pairs: `<name>.png` (light, `--appearance=light`) and `<name>-dark.png` (`--appearance=dark`), shown via `<picture>` by the reader's theme.
 - Launch argument `--demo` switches all loaders to fixture data (used for screenshots; real GitHub data otherwise).
 - Inbox hides empty sections; the "Watched" and "Recently closed" sections follow with settings (M10).
 - Team requests use `review-requested:@me -user-review-requested:@me` (GitHub expands teams), so no team list is needed.
