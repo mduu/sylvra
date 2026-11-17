@@ -44,6 +44,9 @@ for attempt in 1 2 3; do
 done
 [ -n "$WINDOW_ID" ] || { echo "Sylvra window not visible — the Mac may be locked or the window stayed in the background." >&2; exit 1; }
 /bin/sleep "${SYLVRA_SCREENSHOT_DELAY:-2}"
+# Look again: windows found right at launch can be replaced meanwhile (e.g. when a sheet opens).
+WINDOW_ID=$("$WINDOW_ID_TOOL" "$APP_PID" 2>/dev/null | head -1 || true)
+[ -n "$WINDOW_ID" ] || { echo "Sylvra window disappeared before the capture." >&2; exit 1; }
 
 mkdir -p docs/screenshots
 screencapture -x -o -l "$WINDOW_ID" "docs/screenshots/$NAME.png"
