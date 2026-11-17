@@ -109,10 +109,15 @@ public final class AIReviewModel {
         progress = []
         workspaceWarning = nil
         tab = .findings
+        // A new run starts from scratch: old findings (and their diff highlights) go away right away and
+        // only come back if the run fails or is cancelled.
+        let previous = results.removeValue(forKey: id)
+        selectedFindingID = nil
         let task = Task { await perform(id, title: title, body: body) }
         runTask = task
         await task.value
         runTask = nil
+        if results[id] == nil, let previous, runState != .done { results[id] = previous }
     }
 
     /// Stops a running review; agent processes are terminated.
@@ -205,6 +210,9 @@ public final class AIReviewModel {
     public func findings(in path: String, for id: PullRequestID?) -> [ReviewFinding] {
         visibleFindings(for: id).filter { $0.path == path && $0.isAnchored }
     }
+
+    /// Puts a result in place (tests).
+    func restoreForTesting(_ result: ReviewResult?, for id: PullRequestID) { results[id] = result }
 
     // MARK: Persistence helpers
 

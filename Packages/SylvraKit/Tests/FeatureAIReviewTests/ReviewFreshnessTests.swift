@@ -50,4 +50,42 @@ struct ReviewFreshnessTests {
         #expect(result.headSHA == nil)
         #expect(result.reviewedAt == nil)
     }
+
+    @Test func runningAgainClearsTheOldFindingsRightAway() async {
+        let model = model()
+        await model.run(id, title: "Add invoice export", body: "")
+        #expect(!model.visibleFindings(for: id).isEmpty)
+        let rerun = Task { await model.run(id, title: "Add invoice export", body: "") }
+        await Task.yield()
+        #expect(model.results[id] == nil || model.runState == .done)
+        await rerun.value
+        #expect(model.runState == .done)
+        #expect(!model.visibleFindings(for: id).isEmpty)
+    }
+
+    @Test func aCancelledRunBringsTheOldFindingsBack() async {
+        let slow = AIReviewModel(
+            engine: ReviewEngine(provider: DemoAgentProvider(delay: .seconds(5))),
+            files: { _ in
+                [
+                    ReviewableFile(
+                        path: "Sources/Billing/InvoiceService.swift", patch: "@@ -1 +1 @@\n+x",
+                        changedNewLines: Set(8...10), visibleNewLines: Set(5...13), isNoise: false)
+                ]
+            },
+            workspace: { _ in nil },
+            defaults: UserDefaults(suiteName: "sylvra-ai-\(UUID().uuidString)")!)
+        let fast = model()
+        await fast.run(id, title: "t", body: "")
+        let old = fast.results[id]
+        #expect(old != nil)
+        // Seed the slow model with the finished result, then cancel a new run.
+        slow.restoreForTesting(old, for: id)
+        let rerun = Task { await slow.run(id, title: "t", body: "") }
+        try? await Task.sleep(for: .milliseconds(50))
+        #expect(slow.results[id] == nil)
+        slow.cancel()
+        await rerun.value
+        #expect(slow.results[id] == old)
+    }
 }
