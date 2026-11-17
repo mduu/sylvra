@@ -317,7 +317,7 @@ Built single-key shortcuts (active whenever no text is being edited — composer
 
 ## 15. Settings
 
-- **General** — appearance (Auto / Light / Dark), agent language, comment language.
+- **General** — appearance (Auto / Light / Dark), agent language, comment language, app version and build.
 - **Accounts** — GitHub sign-in, organizations, teams.
 - **Repositories** — watched repos, path rules, local clone mapping, default IDE, default checkout target, file classification overrides, custom review prompt.
 - **IDEs** — detected IDEs, paths, default IDE, Rider recent-projects cleanup.

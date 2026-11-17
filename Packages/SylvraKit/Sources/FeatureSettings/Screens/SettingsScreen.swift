@@ -55,6 +55,11 @@ struct GeneralSettingsView: View {
             Picker("Language of GitHub comments", selection: $commentLanguage) {
                 ForEach(["English", "German", "French", "Italian", "Spanish"], id: \.self) { Text($0).tag($0) }
             }
+            Section {
+                LabeledContent("Version") {
+                    Text(verbatim: AppVersion.display()).textSelection(.enabled).monospacedDigit()
+                }
+            }
         }
         .formStyle(.grouped)
     }
