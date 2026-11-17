@@ -4,6 +4,9 @@ import SylvraCore
 
 extension FindingsInspectorScreen {
     static let chatBottomID = "chat-bottom"
+    /// Room inside the scroll view for focus rings (≈3 pt outside a field), which it would clip.
+    /// The scroll view widens by the same amount, so the content stays aligned with the header.
+    static let focusRingInset: CGFloat = 4
 
     /// The tab content in its scroll view. The chat follows new messages (an answer from its first line)
     /// and offers a button back to the end when scrolled up.
@@ -15,8 +18,10 @@ extension FindingsInspectorScreen {
                     if model.tab == .chat { Color.clear.frame(height: 1).id(Self.chatBottomID) }
                 }
                 .padding(.bottom, 14)
+                .padding(.horizontal, Self.focusRingInset)
                 .animation(.snappy, value: model.selectedFindingID)
             }
+            .padding(.horizontal, -Self.focusRingInset)
             .onScrollGeometryChange(for: Bool.self) { geometry in
                 geometry.contentOffset.y + geometry.containerSize.height >= geometry.contentSize.height - 24
             } action: { _, isAtBottom in
