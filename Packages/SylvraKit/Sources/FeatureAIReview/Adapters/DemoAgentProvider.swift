@@ -13,10 +13,20 @@ public struct DemoAgentProvider: AgentProvider {
 
     public func chat(_ request: ChatRequest) async throws -> ChatReply {
         try await Task.sleep(for: delay)
-        let text =
-            "Die Summen werden jetzt **pro Position** gerundet (Sources/Billing/InvoiceService.swift:9). "
-            + "Bei vielen kleinen Positionen weicht das Total dadurch um einige Rappen vom bisherigen Wert ab. "
-            + "Ein Test dafür fehlt (Tests/BillingTests/InvoiceServiceTests.swift:16)."
+        let text = """
+            ## Rounding
+            Totals are now rounded **per line** (Sources/Billing/InvoiceService.swift:9). With many small \
+            lines the total drifts by a few cents from today's value.
+
+            - The PDF export still rounds once, so both can disagree
+            - A test for this is missing (Tests/BillingTests/InvoiceServiceTests.swift:16)
+
+            Rounding once after summing keeps the old totals:
+
+            ```swift
+            let total = lines.map(\\.amount).reduce(0, +).rounded(to: 2)
+            ```
+            """
         return ChatReply(text: text, sessionID: request.sessionID ?? "demo-session")
     }
 

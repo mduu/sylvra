@@ -23,10 +23,13 @@ Sylvra is **not a Git client** and not a code generator. It helps you understand
 - **Your repositories** below the inbox, with their number of open PRs. Open one to browse *all* its open PRs (waiting for you, yours, the rest), searched on GitHub and loaded while you scroll — usable even for a monolith with hundreds of open PRs.
 - **Filters**: hide bots (Renovate, Dependabot …), specific authors or other people's drafts; quick chips for author, *needs review*, *CI failing* and small PRs. Right-click a PR to hide its author.
 - **Why you're involved**: where you were @-mentioned (description, comments, code comments with file and line).
+- **Waiting on others**: PRs where you acted last are dimmed and grouped, until someone answers. New replies to you show up as *New activity* and as a macOS notification; a click opens the PR.
 - Works with large organizations: you choose the repositories, searches stay small, GitHub timeouts are retried and SSO restrictions are explained.
 
 ### 2. Understand the change quickly
 - **PR at a glance**: description, reviewers, merge status in plain words, change map, checks, commits.
+- **All comments in one list** (Comments tab): conversation, reviews and code threads, latest first, filterable; code comments jump to their line.
+- **Repository and `#number` in the title** open the repository and the pull request on GitHub.
 - **AI summary and reading order** pinned above the tabs, visible during the whole review. The diff sorts itself by the reading order.
 - **Since my last review**: only what changed since you last reviewed, plus a banner when someone pushes.
 - **Commit by commit**: select a commit and review only its changes; step through with `⌥]` / `⌥[`.
@@ -43,7 +46,8 @@ Sylvra is **not a Git client** and not a code generator. It helps you understand
 - **Several models in parallel** (e.g. Opus + Fable); findings are merged and show who found them. Large PRs are split across agents.
 - **Findings in the diff**: highlighted lines — click one to open its card with rationale and the suggestion as a mini diff.
 - **Patterns**: which conventions the change follows, violates or introduces.
-- **Discuss code privately**: ask Claude about selected lines in a private chat.
+- **Discuss code privately**: ask Claude about selected lines or a review thread (*Ask AI*) in a private chat. Answers are formatted (headings, lists, code, tables), code references are clickable, and a suggested reply can go straight into the thread.
+- **Adjustable AI text size** for chat, findings and summary.
 - The AI agents run **read-only** and **never post anything**. A finding becomes a comment only when you turn it into one.
 
 ### 5. Factual, short review comments
@@ -54,12 +58,20 @@ Sylvra is **not a Git client** and not a code generator. It helps you understand
 
 ### 6. Into the code when needed
 - **Open in IDE** (Rider, VS Code, Xcode or the default app) in a Sylvra-managed worktree, so your working copy stays untouched.
-- **Terminal panel** and your own **custom tools** on files and folders.
+- **Terminal panel** (adjustable font size) and your own **custom tools** on files and folders.
+- **Commands** (`⌥⌘K`): every GitHub request and command Sylvra ran, without tokens or code.
 - **Log window** (Help → Show Log, `⌥⌘L`) with the errors of the current run, ready to copy.
+
+### 7. Fits the screen you're on
+- **Window layouts** (`⌃⌘0`–`⌃⌘4`): *Automatic*, *Wide* (all columns), *Compact* for laptops (inbox and AI float in on demand), *Focus* (only the diff), *Two windows* for two screens.
 
 <p align="center">
   <img src="docs/screenshots/app-26-repository-browser.png" alt="All open pull requests of a repository, grouped and filtered" width="49%">
   <img src="docs/screenshots/app-31-commit-by-commit.png" alt="Reviewing commit 2 of 4 on its own" width="49%">
+</p>
+<p align="center">
+  <img src="docs/screenshots/app-33-ai-chat.png" alt="AI chat with a formatted answer and clickable code references" width="49%">
+  <img src="docs/screenshots/app-34-compact.png" alt="Compact layout for laptops: pull request and a wide diff" width="49%">
 </p>
 <p align="center">
   <img src="docs/screenshots/app-32-check-report.png" alt="What a failing check reported, with annotations" width="49%">

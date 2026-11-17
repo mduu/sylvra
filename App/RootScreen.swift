@@ -72,6 +72,11 @@ struct RootScreen: View {
                     if environment.autoTurnsIntoComment { startComment(from: first) }
                 }
             }
+            .task(id: selection?.id) {
+                guard role == .main, let question = environment.initialQuestion, let id = selection?.id else { return }
+                environment.aiReview.tab = .chat
+                await environment.chat.send(question, for: id)
+            }
             .focusedSceneValue(\.reviewActions, reviewActions)
             .onChange(of: environment.pullRequest.detail?.commits, initial: true) { _, commits in
                 // Commit-by-commit review needs the PR's commits (oldest first, as GitHub lists them).

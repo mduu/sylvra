@@ -138,6 +138,7 @@ Screens follow the container / presentational split described in `architecture.m
 - Below them, **Repositories** lists the repositories the user added (6–8 typically), each with its number of open pull requests. Clicking one replaces the sidebar content with *all* open pull requests of that repository, grouped into *Waiting for you*, *Yours* and *Open*; `‹ Inbox` or Esc goes back. The search field then searches on GitHub (debounced), and pages load while scrolling (*Load more*), so huge repositories (monoliths with hundreds of open PRs) stay usable.
 - Repositories are added with a search sheet (e.g. `org:acme billing`) or from repositories already in the inbox. *My teams*, *Involved* and *Recently closed* only search the added repositories; *Requested from me* and *My PRs* always search all repositories so nothing addressed to the user is missed. Reason: one broad search over a large organization can exceed GitHub's time limit (502).
 - Sections are collapsible; the state is remembered.
+- **Waiting on others**: a PR where the user acted last (review, comment, reply) is dimmed with an hourglass and grouped below the others until someone else adds a comment, review or commit; then it shows *New activity*. Rows show `#number` in the brand color and a comment count bubble.
 
 **Why you're involved**: the PR overview shows where the user was @-mentioned (description, comments, reviews, code comments with file and line; excerpt with the mention highlighted, link to GitHub) and how often they commented — so *Involved* PRs explain themselves.
 
@@ -169,7 +170,10 @@ Title, author avatar and name, `head → base` refs (with fork owner), merge sta
 | **Overview** | **change map** at the top · rendered description · labels, assignees, milestone, linked issues · reviewers with state and avatars · **merge status** in plain words ("Blocked: 1 approving review required, `build` failing") · change map · patterns · files by namespace |
 | **Commits** | Commit list: avatar, subject, short SHA (click = copy, ⌥-click = copy full SHA), author / committer, date, verified badge, CI state. Expand for full message body. Select a commit to review it on its own in the diff (*All changes* goes back); the diff shows a banner with ◀ ▶ and `⌥]` / `⌥[`. Review threads, AI findings and new comments refer to the whole PR's line numbers, so they are hidden while a single commit is shown. *Open commit on GitHub*. |
 | **Checks** | All checks with status, duration and result; failing ones on top. **A click shows what the check reported** (GitHub's *Summary*: title, summary, annotations with file and line, details); the arrow opens the run on GitHub (build logs). Re-run is done on GitHub. |
-| **Conversation** | PR comments, reviews and timeline events; reply, react, edit own comments. |
+| **Files** | Changed files by folder (tree or list) with tools per file and folder. |
+| **Comments** | Every comment of the PR in one list, latest activity first: conversation comments, review bodies and code threads (with replies, *Resolved* / *Outdated* chips). Filter *All · Code · General · Open*. Code comments jump to their line in the diff (outdated ones to the file); *Open on GitHub*. |
+
+On narrow columns the segmented tabs turn into a menu.
 
 ### 6.3 Change essence
 
@@ -269,7 +273,10 @@ stateDiagram-v2
 
 - Inspector tab *Chat* or floating panel (⌘⇧K).
 - Context chips: PR, current file, selected lines, selected finding, current commit — removable.
-- Answers in the configured **agent language** (e.g. German), rendered Markdown, clickable `path:line` references.
+- Answers in the configured **agent language** (e.g. German), rendered Markdown (headings, nested lists, fenced code, quotes, rules, tables with aligned columns; long code lines wrap), clickable `path:line` references. The reviewer's own messages stay plain.
+- The chat follows new messages: an answer is scrolled to its first line, a sent question to the end, and opening the tab shows the end. Scrolled up, a round ↓ button floats at the bottom centre and jumps to the latest message.
+- Questions are bubbles on the right; answers use the full width with the AI accent border. Round send button (⌘↩).
+- **Ask AI on a review thread** asks about the discussion; an answer with a *Suggested reply:* section can fill the thread's reply field.
 - Quick prompts: *Explain this change*, *Is this tested?*, *What could break?*, *Which patterns does this follow?*, *Summarize discussion*.
 
 ## 11. Open in IDE
@@ -289,6 +296,7 @@ stateDiagram-v2
 
 - **Activity indicator** in the toolbar whenever something runs in the background; click opens a popover with all jobs (progress, cancel).
 - **macOS notification** when a job finishes while Sylvra is not focused, e.g. "AI review of #1234 finished — 2 major, 5 minor". Configurable per job type in settings.
+- **Replies**: new comments by others on a PR the user is involved in raise a notification; clicking it opens the PR. Open PRs reload their review threads every 60 s and only redraw when something changed.
 
 ## 14. Keyboard
 

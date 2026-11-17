@@ -26,6 +26,7 @@ import SylvraCore
 /// - `--submit-review`: open the submit review sheet; `--compose=path:line`: open the comment composer
 ///   (`--draft=text` prefills it)
 /// - `--terminal`: show the terminal panel with one tab; `--commands`: show the Commands list
+/// - `--ask=question`: ask the AI chat this question once a PR is selected (screenshots)
 @MainActor
 final class AppEnvironment {
     let isDemo: Bool
@@ -34,6 +35,8 @@ final class AppEnvironment {
     let showsInspector: Bool
     let autoRunsAIReview: Bool
     let autoTurnsIntoComment: Bool
+    /// Screenshots: a question for the AI chat once a PR is selected (`--ask=…`).
+    let initialQuestion: String?
     /// Screenshots: review this commit (1-based) on its own (`--commit=2`).
     let initialCommit: Int?
     /// Screenshots: open the report of the first failing check (`--open-check`).
@@ -63,6 +66,7 @@ final class AppEnvironment {
         window = WindowState(isInspectorPresented: !arguments.contains("--no-inspector"))
         autoRunsAIReview = arguments.contains("--run-ai-review")
         autoTurnsIntoComment = arguments.contains("--turn-into-comment")
+        initialQuestion = Self.value(of: "--ask", in: arguments)
         initialCommit = Self.value(of: "--commit", in: arguments).flatMap(Int.init)
         opensFailingCheck = arguments.contains("--open-check")
         gitHub = GitHubClient(tokenProvider: GitHubCLITokenProvider())
