@@ -11,17 +11,18 @@ func windows(_ options: CGWindowListOption) -> [[String: Any]] {
         let matches =
             pid.map { window[kCGWindowOwnerPID as String] as? Int32 == $0 }
             ?? (window[kCGWindowOwnerName as String] as? String == target)
-        return matches && window[kCGWindowLayer as String] as? Int == 0
+        // The review window of the two-window layout exists in the background in every layout; skip it.
+        let isReviewWindow = window[kCGWindowName as String] as? String == "Sylvra Review"
+        return matches && window[kCGWindowLayer as String] as? Int == 0 && !isReviewWindow
     }
 }
 
-func area(_ window: [String: Any]) -> Double {
-    let bounds = window[kCGWindowBounds as String] as? [String: Any] ?? [:]
-    return (bounds["Width"] as? Double ?? 0) * (bounds["Height"] as? Double ?? 0)
-}
+func number(_ window: [String: Any]) -> Int { window[kCGWindowNumber as String] as? Int ?? .max }
 
-// Visible windows first; otherwise the largest (the main window) wherever it is.
+// Visible windows first, otherwise any (e.g. on another Space). The main window is created first, so
+// the lowest number wins over the review window when its name isn't set yet.
 let visible = windows([.optionOnScreenOnly])
-for window in visible.isEmpty ? windows([.optionAll]).sorted(by: { area($0) > area($1) }) : visible {
-    if let number = window[kCGWindowNumber as String] { print(number) }
+let candidates = visible.isEmpty ? windows([.optionAll]) : visible
+for window in candidates.sorted(by: { number($0) < number($1) }) {
+    print(number(window))
 }

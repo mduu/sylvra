@@ -28,7 +28,7 @@ Sylvra is **not a Git client** and not a code generator. It helps you understand
 
 ### 2. Understand the change quickly
 - **PR at a glance**: description, reviewers, merge status in plain words, change map, checks, commits.
-- **All comments in one list** (Comments tab): conversation, reviews and code threads, latest first, filterable; code comments jump to their line.
+- **The PR conversation, like on GitHub** (Comments tab): write comments with preview, tone check and writing help, react with emoji, quote-reply, edit and delete your own; updates every minute. Code threads are listed separately and jump to their line.
 - **Repository and `#number` in the title** open the repository and the pull request on GitHub.
 - **AI summary and reading order** pinned above the tabs, visible during the whole review. The diff sorts itself by the reading order.
 - **Since my last review**: only what changed since you last reviewed, plus a banner when someone pushes.
@@ -70,11 +70,14 @@ Sylvra is **not a Git client** and not a code generator. It helps you understand
   <a href="docs/screenshots/app-31-commit-by-commit-dark.png"><img src="docs/screenshots/app-31-commit-by-commit-detail-dark.png#gh-dark-mode-only" alt="Reviewing commit 2 of 4 on its own" width="49%"></a><a href="docs/screenshots/app-31-commit-by-commit.png"><img src="docs/screenshots/app-31-commit-by-commit-detail.png#gh-light-mode-only" alt="Reviewing commit 2 of 4 on its own" width="49%"></a>
 </p>
 <p align="center">
+  <a href="docs/screenshots/app-35-conversation-dark.png"><img src="docs/screenshots/app-35-conversation-detail-dark.png#gh-dark-mode-only" alt="Pull request conversation with reactions, an approval and the comment field with writing help" width="49%"></a><a href="docs/screenshots/app-35-conversation.png"><img src="docs/screenshots/app-35-conversation-detail.png#gh-light-mode-only" alt="Pull request conversation with reactions, an approval and the comment field with writing help" width="49%"></a>
   <a href="docs/screenshots/app-33-ai-chat-dark.png"><img src="docs/screenshots/app-33-ai-chat-detail-dark.png#gh-dark-mode-only" alt="AI chat with a formatted answer and clickable code references" width="49%"></a><a href="docs/screenshots/app-33-ai-chat.png"><img src="docs/screenshots/app-33-ai-chat-detail.png#gh-light-mode-only" alt="AI chat with a formatted answer and clickable code references" width="49%"></a>
-  <a href="docs/screenshots/app-34-compact-dark.png"><img src="docs/screenshots/app-34-compact-detail-dark.png#gh-dark-mode-only" alt="Compact layout for laptops: pull request and a wide diff" width="49%"></a><a href="docs/screenshots/app-34-compact.png"><img src="docs/screenshots/app-34-compact-detail.png#gh-light-mode-only" alt="Compact layout for laptops: pull request and a wide diff" width="49%"></a>
 </p>
 <p align="center">
+  <a href="docs/screenshots/app-34-compact-dark.png"><img src="docs/screenshots/app-34-compact-detail-dark.png#gh-dark-mode-only" alt="Compact layout for laptops: pull request and a wide diff" width="49%"></a><a href="docs/screenshots/app-34-compact.png"><img src="docs/screenshots/app-34-compact-detail.png#gh-light-mode-only" alt="Compact layout for laptops: pull request and a wide diff" width="49%"></a>
   <a href="docs/screenshots/app-32-check-report-dark.png"><img src="docs/screenshots/app-32-check-report-detail-dark.png#gh-dark-mode-only" alt="What a failing check reported, with annotations" width="49%"></a><a href="docs/screenshots/app-32-check-report.png"><img src="docs/screenshots/app-32-check-report-detail.png#gh-light-mode-only" alt="What a failing check reported, with annotations" width="49%"></a>
+</p>
+<p align="center">
   <a href="docs/screenshots/app-21-tone-check-dark.png"><img src="docs/screenshots/app-21-tone-check-detail-dark.png#gh-dark-mode-only" alt="Comment composer with tone check" width="49%"></a><a href="docs/screenshots/app-21-tone-check.png"><img src="docs/screenshots/app-21-tone-check-detail.png#gh-light-mode-only" alt="Comment composer with tone check" width="49%"></a>
 </p>
 
