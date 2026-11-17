@@ -128,6 +128,8 @@ struct DiffFileBodyView<Accessory: View>: View {
     /// Unchanged lines hidden above each hunk, and how to reveal them (`nil`: all).
     var hiddenAbove: [Int] = []
     var expand: ((_ hunk: Int, _ count: Int?) -> Void)?
+    /// Puts copied code on the clipboard (right-click menu of a line).
+    var copy: (String) -> Void = { DiffCopy.toClipboard($0) }
     @Environment(\.diffSearchQuery) private var searchQuery
     @Environment(\.diffCurrentMatch) private var currentMatch
     @Environment(\.diffIsWide) private var diffIsWide
@@ -208,9 +210,14 @@ struct DiffFileBodyView<Accessory: View>: View {
                         hunk: hunk,
                         hiddenLines: hiddenAbove.indices.contains(index) ? hiddenAbove[index] : 0,
                         expand: expand.map { expand in { count in expand(index, count) } })
-                case .inline(_, _, let line, let continuation):
+                case .inline(let hunkIndex, _, let line, let continuation):
                     VStack(spacing: 0) {
                         InlineLineView(line: line, onComment: onComment)
+                            .contextMenu {
+                                DiffCopyMenu(
+                                    newLine: line.kind == .removed ? nil : line,
+                                    oldLine: line.kind == .removed ? line : nil, hunk: hunks[hunkIndex], copy: copy)
+                            }
                             .overlay {
                                 AIHighlightOverlay(
                                     highlight: line.kind == .removed ? nil : line.newNumber.flatMap(highlight),
@@ -219,9 +226,12 @@ struct DiffFileBodyView<Accessory: View>: View {
                             .overlay { searchOverlay(texts: [line.text], newLine: line.newNumber) }
                         inlineAccessories(line, continuation: continuation)
                     }
-                case .sideBySide(_, _, let row, let connector, let continuation):
+                case .sideBySide(let hunkIndex, _, let row, let connector, let continuation):
                     VStack(spacing: 0) {
                         SideBySideRowView(row: row, connector: connector, onComment: onComment)
+                            .contextMenu {
+                                DiffCopyMenu(newLine: row.right, oldLine: row.left, hunk: hunks[hunkIndex], copy: copy)
+                            }
                             .overlay {
                                 searchOverlay(
                                     texts: [row.left?.text, row.right?.text].compactMap { $0 },

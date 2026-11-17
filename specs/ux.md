@@ -217,6 +217,7 @@ The diff must feel like the best diff one has ever used: fast, beautiful and ins
 
 - **Gradient background**: soft horizontal gradient in the AI accent colors across the affected lines, fading out to the right; opacity scales with severity.
 - **Gradient border**: thin rounded gradient stroke (with a touch of gold) around the *selected* finding.
+- **Copy code**: right-click a diff line for *Copy Line* (side by side: new / old line), *Copy Hunk* (new or old version) and *Copy Hunk as Diff* (with `+`/`-` prefixes).
 - **Marker** ✦ at the end of highlighted lines. **Clicking a highlighted line** (code area; the gutter keeps its comment action) selects that finding: its inline card opens below the lines and the inspector switches to it.
 - **Inline finding card**: title, severity, category, models that found it, rationale, suggested code as mini-diff; actions *Turn into comment*, *Dismiss*, *Ask in chat*, *Open in IDE*.
 - **Pattern evidence**: a subtle dotted underline in the AI accent; hover shows the pattern name and verdict.
