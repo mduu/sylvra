@@ -14,7 +14,7 @@ Sylvra is **not a Git client** and not a code generator. It helps you understand
   <a href="docs/screenshots/app-30-overview-dark.png"><img src="docs/screenshots/app-30-overview-dark.png#gh-dark-mode-only" alt="Sylvra: inbox with filters and repositories, pull request with AI summary and change map, diff with a review thread and an inline AI finding, AI inspector" width="100%"></a><a href="docs/screenshots/app-30-overview.png"><img src="docs/screenshots/app-30-overview.png#gh-light-mode-only" alt="Sylvra: inbox with filters and repositories, pull request with AI summary and change map, diff with a review thread and an inline AI finding, AI inspector" width="100%"></a>
 </p>
 
-*The name is a coined word from Latin* silva */ English* sylvan *— forest, wooded.*
+**Why "Sylvra"?** The name is a coined word from Latin *silva* and English *sylvan*: forest, wooded. A forest is a quiet place where you can think — that is the mood Sylvra aims for: a calm space to read a change carefully, without the noise of a busy web page. It also fits the subject: code lives in (work-)trees and branches, and a good review sees the forest, not just the trees.
 
 ## What it focuses on
 

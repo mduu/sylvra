@@ -1,6 +1,6 @@
 # Sylvra — Project Idea
 
-> *Sylvra* — a coined word from Latin *silva* / English *sylvan*: forest, wooded.
+> *Sylvra* — a coined word from Latin *silva* / English *sylvan*: forest, wooded. Mood: a quiet place for focused work. It also fits the subject: code lives in (work-)trees and branches, and a good review sees the forest, not just the trees.
 > **Mood:** a quiet place for focused work.
 
 ## 1. Vision
