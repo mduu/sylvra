@@ -30,6 +30,8 @@ struct RootScreen: View {
     @AppStorage(WindowLayout.storageKey) var layoutMode = WindowLayout.automatic.rawValue
     /// The window is narrower than `WindowLayout.compactBelow` (only this changes the automatic layout).
     @State var isNarrowWindow = false
+    /// Width of the pull request box in the toolbar, in steps by window width.
+    @State var titleBoxWidth = PullRequestTitleView.narrowWidth
     /// Compact layout: the inbox floats over the pull request column while open.
     @State var isInboxFloating = false
 

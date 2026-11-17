@@ -84,7 +84,7 @@ Toolbar (like Fork: the pull request in the middle, buttons split by purpose):
 `[Sidebar] [⟳] [Changes ▾] [Commits ▾] [▥|☰]   ( repo · #1234 · Title / head → base · 1 of 2 approvals · 1 check failing )   [Open in ▾] [>_ ▾] [✦ AI Review ▾] [Submit review 1]  [activity] [layout ▾] [AI panel]`
 
 - **Left — what you see**: sidebar, refresh, which changes (scope, commit by commit) and how (side by side / inline).
-- **Middle — what it is about**: a box with constant width per window size band (400 / 560 pt). Repository and number chips open GitHub; the title is one line; the status line shows head → base, the approvals (jumps to the Overview tab) and the checks (jumps to the Checks tab). Empty box space drags and zooms the window.
+- **Middle — what it is about**: a glass box with gently rounded corners. Its width grows in steps with the window (400 / 560 / 720 / 880 pt from 0 / 1760 / 2000 / 2300 pt window width, 40 pt hysteresis) and stays constant within a step, so AppKit never sees it change during a layout pass. Repository and number chips open GitHub; the title is one line; the status line shows head → base, the approvals (jumps to the Overview tab) and the checks (jumps to the Checks tab). Empty box space drags and zooms the window.
 - **Right — what you do**: open in IDE, terminal, AI review and *Submit review* as the one prominent button, then the window controls (background activity, window layout, AI panel).
 
 The repository and `#1234` in the middle box are chip buttons (light rounded background, no underline) that open the repository and the pull request on GitHub. Double-clicking empty title bar or toolbar space zooms or minimizes the window as set in System Settings, also where SwiftUI's toolbar background would swallow the click.

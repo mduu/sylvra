@@ -6,9 +6,16 @@ import Testing
 
 @MainActor
 struct PullRequestTitleViewTests {
-    @Test func boxIsWiderInWideWindows() {
-        #expect(PullRequestTitleView.narrowWidth >= 380)
-        #expect(PullRequestTitleView.wideWidth > PullRequestTitleView.narrowWidth)
+    @Test func boxGrowsInStepsWithTheWindow() {
+        let width = PullRequestTitleView.width(forWindowWidth:current:)
+        #expect(width(1470, 400) == 400)
+        #expect(width(1800, 400) == 560)
+        #expect(width(2718, 400) == 880)
+        // Near a step boundary the box keeps its width (no flicker while resizing).
+        #expect(width(1990, 720) == 720)
+        #expect(width(2030, 560) == 560)
+        #expect(width(1950, 720) == 560)
+        #expect(width(2060, 560) == 720)
     }
 
     @Test func statusLineNamesApprovalsAndChecks() {

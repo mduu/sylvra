@@ -1,6 +1,7 @@
 import FeatureAIReview
 import FeatureDiff
 import FeatureInbox
+import FeaturePullRequest
 import SwiftUI
 
 // MARK: - Window layouts (wide, compact, focus)
@@ -46,6 +47,16 @@ private struct WindowLayoutModifier: ViewModifier {
                 // After the current layout pass: flipping the columns inside AppKit's constraint pass can
                 // make it loop (crash in _postWindowNeedsUpdateConstraints on windows near the threshold).
                 Task { @MainActor in root.isNarrowWindow = isNarrow }
+            }
+            .onGeometryChange(for: Int.self) {
+                // 20 pt steps: the box only needs to know roughly how wide the window is.
+                Int($0.size.width / 20)
+            } action: { step in
+                let width = PullRequestTitleView.width(
+                    forWindowWidth: CGFloat(step) * 20, current: root.titleBoxWidth)
+                guard width != root.titleBoxWidth else { return }
+                // After the current layout pass, like the layout switch above.
+                Task { @MainActor in root.titleBoxWidth = width }
             }
             .onChange(of: layout, initial: true) { _, layout in
                 withAnimation(.snappy) {

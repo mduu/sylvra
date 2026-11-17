@@ -14,10 +14,24 @@ public struct PullRequestTitleView: View {
     let showTab: (PullRequestScreenModel.Tab) -> Void
     let doubleClick: () -> Void
 
-    /// Widths for narrow and wide windows. Constant per window size: a toolbar item that changes width
-    /// while AppKit lays out the toolbar can loop its constraint pass.
+    /// Width without a window size yet.
     public static let narrowWidth: CGFloat = 400
-    public static let wideWidth: CGFloat = 560
+    /// Box widths by window width: wider windows give the title more room. Constant within a step: a toolbar
+    /// item that changes width while AppKit lays out the toolbar can loop its constraint pass.
+    static let widthSteps: [(minWindowWidth: CGFloat, width: CGFloat)] = [
+        (0, 400), (1760, 560), (2000, 720), (2300, 880),
+    ]
+    /// A window must be this far into another step before the box changes (no flicker while resizing).
+    static let hysteresis: CGFloat = 40
+
+    /// The box width for a window width, keeping `current` near the step boundaries.
+    public static func width(forWindowWidth window: CGFloat, current: CGFloat) -> CGFloat {
+        let plain = widthSteps.last { window >= $0.minWindowWidth }?.width ?? narrowWidth
+        guard plain != current, let step = widthSteps.firstIndex(where: { $0.width == current }) else { return plain }
+        let lower = widthSteps[step].minWindowWidth - hysteresis
+        let upper = step + 1 < widthSteps.count ? widthSteps[step + 1].minWindowWidth + hysteresis : .infinity
+        return window >= lower && window < upper ? current : plain
+    }
 
     public init(
         pullRequest: PullRequestSummary?, detail: PullRequestDetail? = nil, width: CGFloat = narrowWidth,
@@ -55,6 +69,11 @@ public struct PullRequestTitleView: View {
         .padding(.horizontal, 10)
         .frame(width: width)
         .frame(maxHeight: .infinity)
+        // Own glass with gently rounded corners instead of the toolbar's capsule; behind the content, so the
+        // chips keep their fill.
+        .background {
+            Color.clear.glassEffect(.regular, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+        }
         // Click-through to the title bar: the chips and statuses are buttons, the rest moves or zooms the window.
         .contentShape(Rectangle())
         .gesture(WindowDragGesture())
@@ -156,7 +175,7 @@ public struct PullRequestTitleView: View {
     let id = PullRequestID(owner: "acme", repository: "billing", number: 1234)
     let detail = DemoPullRequestDetailLoader.detail(for: id)
     VStack(spacing: 12) {
-        PullRequestTitleView(pullRequest: detail.summary, detail: detail, width: PullRequestTitleView.wideWidth) { _ in
+        PullRequestTitleView(pullRequest: detail.summary, detail: detail, width: 560) { _ in
         }
         PullRequestTitleView(pullRequest: nil) { _ in }
     }

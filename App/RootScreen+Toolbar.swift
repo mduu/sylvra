@@ -17,7 +17,7 @@ extension RootScreen {
             PullRequestTitleView(
                 pullRequest: selection,
                 detail: environment.pullRequest.detail,
-                width: isNarrowWindow ? PullRequestTitleView.narrowWidth : PullRequestTitleView.wideWidth,
+                width: titleBoxWidth,
                 open: { NSWorkspace.shared.open($0) },
                 showTab: { environment.pullRequest.tab = $0 },
                 doubleClick: {
@@ -25,6 +25,7 @@ extension RootScreen {
                     TitlebarDoubleClick.performDoubleClickAction(on: window)
                 })
         }
+        .sharedBackgroundVisibility(.hidden)
         ToolbarItem(placement: .primaryAction) {
             OpenInIDEToolbarPanel(model: environment.openInIDE, pullRequestID: selection?.id)
         }
