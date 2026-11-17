@@ -81,6 +81,8 @@ A three-column `NavigationSplitView` plus an optional inspector and a bottom ter
 
 Toolbar: `◀ ▶  owner/repo #1234 Title   [Open in ▾] [✦ AI Review ▾] [⟳ activity] [Open on GitHub] [Submit]`
 
+The repository and `#1234` in the title are chip buttons (light rounded background, no underline) that open the repository and the pull request on GitHub. Double-clicking empty title bar or toolbar space zooms or minimizes the window as set in System Settings, also where SwiftUI's toolbar background would swallow the click.
+
 ```mermaid
 flowchart LR
     subgraph Inbox["Inbox (sidebar)"]

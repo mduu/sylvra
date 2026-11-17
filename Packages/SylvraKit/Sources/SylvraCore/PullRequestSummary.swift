@@ -135,3 +135,23 @@ public enum ChangeSize: String, Sendable, CaseIterable {
         }
     }
 }
+
+extension PullRequestSummary {
+    /// The pull request on GitHub (falls back to github.com when the API gave no URL).
+    public var webURL: URL? {
+        url ?? URL(string: "https://github.com/\(id.owner)/\(id.repository)/pull/\(id.number)")
+    }
+
+    /// The repository on GitHub: the pull request URL without `/pull/<number>` (keeps GitHub Enterprise hosts).
+    public var repositoryWebURL: URL? {
+        if let url, url.pathComponents.suffix(2) == ["pull", String(id.number)],
+            var components = URLComponents(url: url, resolvingAgainstBaseURL: false)
+        {
+            components.path = "/" + url.pathComponents.dropFirst().dropLast(2).joined(separator: "/")
+            components.query = nil
+            components.fragment = nil
+            return components.url
+        }
+        return URL(string: "https://github.com/\(id.owner)/\(id.repository)")
+    }
+}

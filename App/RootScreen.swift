@@ -1,3 +1,4 @@
+import AppKit
 import DesignSystem
 import FeatureAIReview
 import FeatureActivity
@@ -52,6 +53,8 @@ struct RootScreen: View {
             .toolbarBackgroundVisibility(.visible, for: .windowToolbar)
             .navigationTitle(Text(verbatim: selection.map { "\($0.id.repository) #\($0.id.number)" } ?? "Sylvra"))
             .navigationSubtitle(Text(verbatim: selection?.title ?? ""))
+            // The title stays set for the Window menu; the toolbar shows clickable chips instead.
+            .toolbar(removing: .title)
             .inspector(isPresented: dockedInspector) {
                 inspectorContent
                     .rememberedColumn(.inspector, ideal: inspectorWidth)
@@ -129,6 +132,10 @@ struct RootScreen: View {
                     .animation(.snappy, value: environment.openInIDE.status)
             }
             .toolbar {
+                ToolbarItem(placement: .navigation) {
+                    PullRequestTitleView(pullRequest: selection) { NSWorkspace.shared.open($0) }
+                }
+                .sharedBackgroundVisibility(.hidden)
                 ToolbarItem(placement: .primaryAction) {
                     ActivityToolbarPanel(center: environment.activity)
                 }
@@ -306,6 +313,7 @@ extension RootScreen {
 extension RootScreen {
     /// Wires the slices' callbacks to each other (they never import each other).
     fileprivate func connectModels() {
+        TitlebarDoubleClick.shared.start()
         // A click on an AI highlight in the diff opens that finding (card in the diff, row in the inspector).
         environment.diff.selectFinding = { id in
             guard let id = UUID(uuidString: id) else { return }
