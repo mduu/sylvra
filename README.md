@@ -11,7 +11,7 @@ Sylvra is a native macOS app for reviewing **your team's GitHub pull requests**,
 Sylvra is **not a Git client** and not a code generator. It helps you understand a change, find what matters and write clear, factual review comments. You stay the reviewer.
 
 <p align="center">
-  <picture><source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/app-30-overview-dark.png"><img src="docs/screenshots/app-30-overview.png" alt="Sylvra: inbox with filters and repositories, pull request with AI summary and change map, diff with a review thread and an inline AI finding, AI inspector" width="100%"></picture>
+  <a href="docs/screenshots/app-30-overview.png"><img src="docs/screenshots/app-30-overview.png#gh-light-mode-only" alt="Sylvra: inbox with filters and repositories, pull request with AI summary and change map, diff with a review thread and an inline AI finding, AI inspector" width="100%"></a><a href="docs/screenshots/app-30-overview-dark.png"><img src="docs/screenshots/app-30-overview-dark.png#gh-dark-mode-only" alt="Sylvra: inbox with filters and repositories, pull request with AI summary and change map, diff with a review thread and an inline AI finding, AI inspector" width="100%"></a>
 </p>
 
 *The name is a coined word from Latin* silva */ English* sylvan *— forest, wooded.*
@@ -66,16 +66,16 @@ Sylvra is **not a Git client** and not a code generator. It helps you understand
 - **Window layouts** (`⌃⌘0`–`⌃⌘4`): *Automatic*, *Wide* (all columns), *Compact* for laptops (inbox and AI float in on demand), *Focus* (only the diff), *Two windows* for two screens.
 
 <p align="center">
-  <picture><source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/app-26-repository-browser-dark.png"><img src="docs/screenshots/app-26-repository-browser.png" alt="All open pull requests of a repository, grouped and filtered" width="49%"></picture>
-  <picture><source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/app-31-commit-by-commit-dark.png"><img src="docs/screenshots/app-31-commit-by-commit.png" alt="Reviewing commit 2 of 4 on its own" width="49%"></picture>
+  <a href="docs/screenshots/app-26-repository-browser.png"><img src="docs/screenshots/app-26-repository-browser.png#gh-light-mode-only" alt="All open pull requests of a repository, grouped and filtered" width="49%"></a><a href="docs/screenshots/app-26-repository-browser-dark.png"><img src="docs/screenshots/app-26-repository-browser-dark.png#gh-dark-mode-only" alt="All open pull requests of a repository, grouped and filtered" width="49%"></a>
+  <a href="docs/screenshots/app-31-commit-by-commit.png"><img src="docs/screenshots/app-31-commit-by-commit.png#gh-light-mode-only" alt="Reviewing commit 2 of 4 on its own" width="49%"></a><a href="docs/screenshots/app-31-commit-by-commit-dark.png"><img src="docs/screenshots/app-31-commit-by-commit-dark.png#gh-dark-mode-only" alt="Reviewing commit 2 of 4 on its own" width="49%"></a>
 </p>
 <p align="center">
-  <picture><source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/app-33-ai-chat-dark.png"><img src="docs/screenshots/app-33-ai-chat.png" alt="AI chat with a formatted answer and clickable code references" width="49%"></picture>
-  <picture><source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/app-34-compact-dark.png"><img src="docs/screenshots/app-34-compact.png" alt="Compact layout for laptops: pull request and a wide diff" width="49%"></picture>
+  <a href="docs/screenshots/app-33-ai-chat.png"><img src="docs/screenshots/app-33-ai-chat.png#gh-light-mode-only" alt="AI chat with a formatted answer and clickable code references" width="49%"></a><a href="docs/screenshots/app-33-ai-chat-dark.png"><img src="docs/screenshots/app-33-ai-chat-dark.png#gh-dark-mode-only" alt="AI chat with a formatted answer and clickable code references" width="49%"></a>
+  <a href="docs/screenshots/app-34-compact.png"><img src="docs/screenshots/app-34-compact.png#gh-light-mode-only" alt="Compact layout for laptops: pull request and a wide diff" width="49%"></a><a href="docs/screenshots/app-34-compact-dark.png"><img src="docs/screenshots/app-34-compact-dark.png#gh-dark-mode-only" alt="Compact layout for laptops: pull request and a wide diff" width="49%"></a>
 </p>
 <p align="center">
-  <picture><source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/app-32-check-report-dark.png"><img src="docs/screenshots/app-32-check-report.png" alt="What a failing check reported, with annotations" width="49%"></picture>
-  <picture><source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/app-21-tone-check-dark.png"><img src="docs/screenshots/app-21-tone-check.png" alt="Comment composer with tone check" width="49%"></picture>
+  <a href="docs/screenshots/app-32-check-report.png"><img src="docs/screenshots/app-32-check-report.png#gh-light-mode-only" alt="What a failing check reported, with annotations" width="49%"></a><a href="docs/screenshots/app-32-check-report-dark.png"><img src="docs/screenshots/app-32-check-report-dark.png#gh-dark-mode-only" alt="What a failing check reported, with annotations" width="49%"></a>
+  <a href="docs/screenshots/app-21-tone-check.png"><img src="docs/screenshots/app-21-tone-check.png#gh-light-mode-only" alt="Comment composer with tone check" width="49%"></a><a href="docs/screenshots/app-21-tone-check-dark.png"><img src="docs/screenshots/app-21-tone-check-dark.png#gh-dark-mode-only" alt="Comment composer with tone check" width="49%"></a>
 </p>
 
 ## Principles
