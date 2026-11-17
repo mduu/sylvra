@@ -19,9 +19,7 @@ struct OverviewView: View {
                 if detail.body.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                     Text("No description provided.").foregroundStyle(.secondary)
                 } else {
-                    Text(Self.markdown(detail.body))
-                        .textSelection(.enabled)
-                        .fixedSize(horizontal: false, vertical: true)
+                    MarkdownView(text: detail.body)
                 }
             }
             section("Reviewers") {
@@ -76,11 +74,6 @@ struct OverviewView: View {
                 .foregroundStyle(.secondary)
             content()
         }
-    }
-
-    static func markdown(_ text: String) -> AttributedString {
-        let options = AttributedString.MarkdownParsingOptions(interpretedSyntax: .inlineOnlyPreservingWhitespace)
-        return (try? AttributedString(markdown: text, options: options)) ?? AttributedString(text)
     }
 }
 

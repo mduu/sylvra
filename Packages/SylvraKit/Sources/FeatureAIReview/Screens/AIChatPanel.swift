@@ -160,7 +160,7 @@ struct ChatMessageView: View {
                 // AI answers (and errors) use the full width; answers carry the AI accent and Markdown blocks.
                 Group {
                     if message.role == .assistant {
-                        ChatMarkdownView(text: message.text) { Self.render($0, scale: textScale) }
+                        MarkdownView(text: message.text, style: .ai) { Self.render($0, scale: textScale) }
                     } else {
                         Text(Self.render(message.text, scale: textScale))
                             .aiFont(.callout)

@@ -167,7 +167,7 @@ Title, author avatar and name, `head → base` refs (with fork owner), merge sta
 
 | Tab | Content |
 |---|---|
-| **Overview** | **change map** at the top · rendered description · labels, assignees, milestone, linked issues · reviewers with state and avatars · **merge status** in plain words ("Blocked: 1 approving review required, `build` failing") · change map · patterns · files by namespace |
+| **Overview** | **change map** at the top · description rendered as Markdown like AI chat answers (plus GitHub extras: template comments hidden, task lists as ☐/☑, `<details>`/`<summary>` text kept, images as links) · labels, assignees, milestone, linked issues · reviewers with state and avatars · **merge status** in plain words ("Blocked: 1 approving review required, `build` failing") · change map · patterns · files by namespace |
 | **Commits** | Commit list: avatar, subject, short SHA (click = copy, ⌥-click = copy full SHA), author / committer, date, verified badge, CI state. Expand for full message body. Select a commit to review it on its own in the diff (*All changes* goes back); the diff shows a banner with ◀ ▶ and `⌥]` / `⌥[`. Review threads, AI findings and new comments refer to the whole PR's line numbers, so they are hidden while a single commit is shown. *Open commit on GitHub*. |
 | **Checks** | All checks with status, duration and result; failing ones on top. **A click shows what the check reported** (GitHub's *Summary*: title, summary, annotations with file and line, details); the arrow opens the run on GitHub (build logs). Re-run is done on GitHub. |
 | **Files** | Changed files by folder (tree or list) with tools per file and folder. |

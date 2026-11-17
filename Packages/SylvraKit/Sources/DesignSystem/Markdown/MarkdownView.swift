@@ -1,26 +1,44 @@
-import DesignSystem
 import SwiftUI
 
-/// An AI chat answer with block Markdown (pure). `inline` renders a block's text (bold, code spans,
-/// links, clickable code references).
-struct ChatMarkdownView: View {
+/// Block Markdown (pure): AI chat answers and pull request descriptions. `inline` renders a block's
+/// text (bold, code spans, links; the chat adds clickable code references).
+public struct MarkdownView: View {
+    /// `.ai` scales with the AI text size setting; `.standard` uses the system text styles.
+    public enum Style: Sendable { case standard, ai }
+
     let text: String
+    let style: Style
     let inline: (String) -> AttributedString
 
-    var body: some View {
+    public init(
+        text: String, style: Style = .standard,
+        inline: @escaping (String) -> AttributedString = MarkdownView.inlineMarkdown
+    ) {
+        self.text = text
+        self.style = style
+        self.inline = inline
+    }
+
+    /// Inline Markdown (bold, italics, code spans, links), keeping line breaks.
+    public nonisolated static func inlineMarkdown(_ text: String) -> AttributedString {
+        let options = AttributedString.MarkdownParsingOptions(interpretedSyntax: .inlineOnlyPreservingWhitespace)
+        return (try? AttributedString(markdown: text, options: options)) ?? AttributedString(text)
+    }
+
+    public var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            ForEach(Array(ChatMarkdown.parse(text).enumerated()), id: \.offset) { _, block in
+            ForEach(Array(MarkdownBlocks.parse(text).enumerated()), id: \.offset) { _, block in
                 blockView(block)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    @ViewBuilder private func blockView(_ block: ChatMarkdownBlock) -> some View {
+    @ViewBuilder private func blockView(_ block: MarkdownBlock) -> some View {
         switch block {
         case .heading(let level, let text):
             Text(inline(text))
-                .aiFont(level <= 2 ? .headline : .subheadline, weight: .semibold)
+                .markdownFont(style, level <= 2 ? .headline : .subheadline, weight: .semibold)
                 .padding(.top, level <= 2 ? 4 : 2)
                 .textSelection(.enabled)
         case .paragraph(let text):
@@ -30,8 +48,9 @@ struct ChatMarkdownView: View {
                 ForEach(Array(items.enumerated()), id: \.offset) { _, item in
                     HStack(alignment: .firstTextBaseline, spacing: 6) {
                         Text(item.marker)
+                            .markdownFont(style, .callout)
                             .foregroundStyle(.secondary)
-                            .monospacedDigit()
+                            .monospacedDigit().frame(minWidth: 12, alignment: .leading)
                         prose(item.text)
                     }
                     .padding(.leading, CGFloat(item.level) * 14)
@@ -55,16 +74,16 @@ struct ChatMarkdownView: View {
 
     private func prose(_ text: String) -> some View {
         Text(inline(text))
-            .aiFont(.callout)
+            .markdownFont(style, .callout)
             .textSelection(.enabled)
             .fixedSize(horizontal: false, vertical: true)
     }
 
-    /// Code and tables keep their line breaks; long lines wrap (a sideways scroll area inside the chat's
+    /// Code and tables keep their line breaks; long lines wrap (a sideways scroll area inside a
     /// vertical scroll view would catch the mouse wheel).
     private func monospaced(_ text: String) -> some View {
         Text(text.isEmpty ? " " : text)
-            .aiFont(.caption, design: .monospaced)
+            .markdownFont(style, .caption, design: .monospaced)
             .textSelection(.enabled)
             .fixedSize(horizontal: false, vertical: true)
             .padding(8)
@@ -73,15 +92,29 @@ struct ChatMarkdownView: View {
     }
 }
 
+extension View {
+    @ViewBuilder fileprivate func markdownFont(
+        _ style: MarkdownView.Style, _ textStyle: Font.TextStyle, weight: Font.Weight? = nil,
+        design: Font.Design? = nil
+    ) -> some View {
+        switch style {
+        case .ai: aiFont(textStyle, weight: weight, design: design)
+        case .standard: font(.system(textStyle, design: design, weight: weight))
+        }
+    }
+}
+
 #Preview {
     ScrollView {
-        ChatMarkdownView(
+        MarkdownView(
             text: """
                 ## Summary
                 The export rounds **each line** before summing (`InvoiceService.swift:9`).
+                <!-- template hint -->
 
+                - [x] Tests added
+                - [ ] Docs updated
                 - Rounding per line can drift from the total
-                - Totals differ by up to 1 cent
                   on large invoices
                 1. Round once at the end
                 2. Or document the rule
@@ -95,10 +128,9 @@ struct ChatMarkdownView: View {
                 | Case | Result |
                 |------|--------|
                 | 3 lines | ok |
-                """,
-            inline: { (try? AttributedString(markdown: $0)) ?? AttributedString($0) }
+                """
         )
         .padding()
     }
-    .frame(width: 340, height: 520)
+    .frame(width: 340, height: 560)
 }

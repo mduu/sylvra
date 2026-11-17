@@ -82,11 +82,17 @@ public struct DemoPullRequestDetailLoader: PullRequestDetailLoading {
         var detail = PullRequestDetail(
             summary: summary,
             body: """
+                <!-- What does this change and why? -->
+                ### What
                 Adds **CSV export** next to JSON and changes how invoice totals are summed.
 
                 - New `CSVEncoder` for line items
                 - `export(_:as:)` takes an `ExportFormat`
                 - Totals are now rounded per line item
+
+                ### Checklist
+                - [x] Tests added
+                - [ ] Docs updated
 
                 Closes #1180
                 """,
