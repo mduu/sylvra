@@ -1,29 +1,22 @@
 import DesignSystem
 import SwiftUI
 
-/// Renders a comment body: prose with inline Markdown, fenced code, and suggestions (pure).
+/// Renders a comment body (pure): full Markdown like GitHub (headings, lists, tables, quotes, the HTML and
+/// emoji bots use), with fenced code and review suggestions in their own blocks.
 struct MarkdownBodyView: View {
     let markdown: String
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            ForEach(Array(MarkdownBlock.parse(markdown).enumerated()), id: \.offset) { _, block in
-                switch block {
-                case .text(let text):
-                    Text(Self.attributed(text))
-                        .textSelection(.enabled)
-                        .fixedSize(horizontal: false, vertical: true)
-                case .code(let language, let code):
-                    CodeBlockView(code: code, isSuggestion: language == "suggestion")
-                }
-            }
-        }
-        .font(.callout)
+        MarkdownView(
+            text: markdown,
+            codeBlock: { language, code in
+                AnyView(CodeBlockView(code: code, isSuggestion: language == "suggestion"))
+            })
     }
 
+    /// Inline Markdown only (one-line previews).
     static func attributed(_ text: String) -> AttributedString {
-        let options = AttributedString.MarkdownParsingOptions(interpretedSyntax: .inlineOnlyPreservingWhitespace)
-        return (try? AttributedString(markdown: text, options: options)) ?? AttributedString(text)
+        MarkdownView.inlineMarkdown(text)
     }
 }
 
@@ -57,7 +50,8 @@ private struct CodeBlockView: View {
 
 #Preview {
     MarkdownBodyView(
-        markdown: "Making it **String**-backed lets the menu list `ExportFormat`:\n\n"
+        markdown: "### Coverage\n| File | Δ |\n|---|---|\n| `Invoice.swift` | :white_check_mark: +2% |\n\n"
+            + "Making it **String**-backed lets the menu list `ExportFormat`:\n\n"
             + SuggestionBlock.make(code: "enum ExportFormat: String, CaseIterable {")
     )
     .padding()

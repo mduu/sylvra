@@ -75,6 +75,58 @@ public enum MarkdownBlocks {
         return result.replacingOccurrences(of: "[🖼 ](", with: "[🖼 Image](")
     }
 
+    /// Formatting HTML that bots and templates use inside text: `<a href>` becomes a link, `<b>`/`<strong>`
+    /// bold, `<i>`/`<em>` italics, `<br>` a line break; layout tags (`<sub>`, `<p>`, `<div>`, table tags …) only
+    /// keep their text. Unknown tags (and `<T>` generics) stay as written.
+    static func inlineHTML(_ line: String) -> String {
+        guard line.contains("<") else { return line }
+        var result = line.replacingOccurrences(
+            of: #"<a\b[^>]*\bhref="([^"]+)"[^>]*>(.*?)</a>"#, with: "[$2]($1)",
+            options: [.regularExpression, .caseInsensitive])
+        for (pattern, replacement) in [
+            (#"</t[dh]>"#, "  "), (#"</?(?:b|strong)>"#, "**"), (#"</?(?:i|em)>"#, "_"), (#"<br\s*/?>"#, "\n"),
+            (
+                #"</?(?:sub|sup|small|p|div|span|kbd|ins|u|center|font|table|thead|tbody|tr|td|th|ul|ol|li"#
+                    + #"|h[1-6]|hr|picture|source)\b[^>]*/?>"#,
+                ""
+            ),
+        ] {
+            result = result.replacingOccurrences(
+                of: pattern, with: replacement, options: [.regularExpression, .caseInsensitive])
+        }
+        return result
+    }
+
+    /// GitHub emoji shortcodes that bots like (`:white_check_mark:` → ✅); unknown ones stay as written.
+    static func emojiShortcodes(_ line: String) -> String {
+        guard line.contains(":"), let regex = try? NSRegularExpression(pattern: #":([a-z0-9_+\-]+):"#) else {
+            return line
+        }
+        var result = line
+        let matches = regex.matches(in: line, range: NSRange(line.startIndex..., in: line))
+        for match in matches.reversed() {
+            guard let name = Range(match.range(at: 1), in: line),
+                let emoji = shortcodes[String(line[name])], let target = Range(match.range, in: result)
+            else { continue }
+            result.replaceSubrange(target, with: emoji)
+        }
+        return result
+    }
+
+    private static let shortcodes: [String: String] = [
+        "white_check_mark": "✅", "heavy_check_mark": "✔️", "x": "❌", "warning": "⚠️", "rocket": "🚀",
+        "tada": "🎉", "information_source": "ℹ️", "bulb": "💡", "memo": "📝", "robot": "🤖", "exclamation": "❗",
+        "question": "❓", "red_circle": "🔴", "green_circle": "🟢", "yellow_circle": "🟡", "orange_circle": "🟠",
+        "construction": "🚧", "mag": "🔍", "lock": "🔒", "+1": "👍", "-1": "👎", "thumbsup": "👍",
+        "thumbsdown": "👎", "eyes": "👀", "fire": "🔥", "bug": "🐛", "sparkles": "✨", "zap": "⚡", "package": "📦",
+        "chart_with_upwards_trend": "📈", "chart_with_downwards_trend": "📉", "arrow_up": "⬆️",
+        "arrow_down": "⬇️", "arrow_right": "➡️", "no_entry_sign": "🚫", "no_entry": "⛔", "hourglass": "⌛",
+        "stop_sign": "🛑", "heavy_plus_sign": "➕", "heavy_minus_sign": "➖", "recycle": "♻️", "lipstick": "💄",
+        "art": "🎨", "wrench": "🔧", "hammer": "🔨", "gear": "⚙️", "link": "🔗", "clipboard": "📋",
+        "page_facing_up": "📄", "books": "📚", "speech_balloon": "💬", "bell": "🔔", "star": "⭐",
+        "checkered_flag": "🏁", "shield": "🛡️", "test_tube": "🧪", "boom": "💥", "pushpin": "📌",
+    ]
+
     /// A line made only of HTML tags (`<details>`, `<summary>Title</summary>`, `<br>`) keeps its text.
     static func htmlLineText(_ trimmed: String) -> String? {
         guard trimmed.hasPrefix("<"), trimmed.hasSuffix(">"), !trimmed.hasPrefix("<http") else { return nil }
@@ -116,7 +168,7 @@ extension MarkdownBlocks {
                 fence = (language.isEmpty ? nil : language, [])
                 return
             }
-            var line = MarkdownBlocks.imagesAsLinks(rawLine)
+            var line = MarkdownBlocks.emojiShortcodes(MarkdownBlocks.inlineHTML(MarkdownBlocks.imagesAsLinks(rawLine)))
             if let text = MarkdownBlocks.htmlLineText(line.trimmingCharacters(in: .whitespaces)) {
                 line = text
             }

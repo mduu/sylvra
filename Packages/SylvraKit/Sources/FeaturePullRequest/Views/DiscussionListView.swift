@@ -43,12 +43,17 @@ struct DiscussionRowView: View {
             }
             .font(.caption)
             placeLine
-            Text(Self.markdown(item.body))
-                .font(.callout)
-                .lineLimit(isExpanded ? nil : 4)
-                .textSelection(.enabled)
-                .fixedSize(horizontal: false, vertical: true)
-            if !item.replies.isEmpty || item.body.count > 240 {
+            if isExpanded {
+                MarkdownView(text: item.body)
+            } else {
+                // Collapsed: a short inline preview; expanding shows the full Markdown (tables, lists …).
+                Text(Self.markdown(item.body))
+                    .font(.callout)
+                    .lineLimit(4)
+                    .textSelection(.enabled)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            if !item.replies.isEmpty || item.body.count > 240 || item.body.contains("\n") {
                 Button(isExpanded ? "Less" : moreTitle) { withAnimation(.snappy) { isExpanded.toggle() } }
                     .buttonStyle(.link)
                     .font(.caption)
@@ -114,8 +119,7 @@ struct DiscussionRowView: View {
                 Text(reply.date, format: .relative(presentation: .named)).foregroundStyle(.secondary)
             }
             .font(.caption)
-            Text(Self.markdown(reply.body)).font(.callout).textSelection(.enabled)
-                .fixedSize(horizontal: false, vertical: true)
+            MarkdownView(text: reply.body)
         }
         .padding(.leading, 12)
         .overlay(alignment: .leading) { Rectangle().fill(.separator).frame(width: 2) }

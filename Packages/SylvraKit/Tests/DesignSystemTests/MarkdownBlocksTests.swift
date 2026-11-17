@@ -96,4 +96,28 @@ struct MarkdownBlocksTests {
             MarkdownBlocks.parse("```html\n<details>\n![x](y)\n```")
                 == [.code(language: "html", code: "<details>\n![x](y)")])
     }
+
+    @Test func readsWhatBotsPost() {
+        let blocks = MarkdownBlocks.parse(
+            """
+            ## :white_check_mark: Coverage
+            | File | Δ |
+            |---|---|
+            | <b>Invoice.swift</b> | +2% |
+
+            See <a href="https://example.com/report">the report</a>.<br>Thanks :robot: :unknown_code:
+            <sub>Powered by Bot</sub>
+            """)
+        #expect(
+            blocks == [
+                .heading(level: 2, text: "✅ Coverage"),
+                .table("File              | Δ  \n------------------+----\n**Invoice.swift** | +2%"),
+                .paragraph("See [the report](https://example.com/report).\nThanks 🤖 :unknown_code:\nPowered by Bot"),
+            ])
+    }
+
+    @Test func leavesGenericsAndTimesAlone() {
+        #expect(MarkdownBlocks.inlineHTML("Use Array<Int> here") == "Use Array<Int> here")
+        #expect(MarkdownBlocks.emojiShortcodes("at 10:30:00 :x:") == "at 10:30:00 ❌")
+    }
 }

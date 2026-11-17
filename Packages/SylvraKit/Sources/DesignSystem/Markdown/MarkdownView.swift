@@ -9,14 +9,19 @@ public struct MarkdownView: View {
     let text: String
     let style: Style
     let inline: (String) -> AttributedString
+    let codeBlock: ((_ language: String?, _ code: String) -> AnyView?)?
 
+    /// - Parameter codeBlock: renders a fenced code block itself (e.g. review suggestions); `nil` from it
+    ///   falls back to the default monospaced block.
     public init(
         text: String, style: Style = .standard,
-        inline: @escaping (String) -> AttributedString = MarkdownView.inlineMarkdown
+        inline: @escaping (String) -> AttributedString = MarkdownView.inlineMarkdown,
+        codeBlock: ((_ language: String?, _ code: String) -> AnyView?)? = nil
     ) {
         self.text = text
         self.style = style
         self.inline = inline
+        self.codeBlock = codeBlock
     }
 
     /// Inline Markdown (bold, italics, code spans, links), keeping line breaks.
@@ -56,8 +61,12 @@ public struct MarkdownView: View {
                     .padding(.leading, CGFloat(item.level) * 14)
                 }
             }
-        case .code(_, let code):
-            monospaced(code)
+        case .code(let language, let code):
+            if let custom = codeBlock?(language, code) {
+                custom
+            } else {
+                monospaced(code)
+            }
         case .table(let rows):
             monospaced(rows)
         case .quote(let text):
