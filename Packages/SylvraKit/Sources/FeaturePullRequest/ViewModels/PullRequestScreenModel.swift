@@ -18,8 +18,8 @@ public final class PullRequestScreenModel {
     public private(set) var detail: PullRequestDetail?
     public private(set) var loadState: LoadState = .idle
     public var tab: Tab = .overview
-    /// Which comments the Comments tab shows.
-    public var discussionFilter: DiscussionFilter = .all
+    /// Which section of the Comments tab is shown.
+    public var discussionFilter: DiscussionFilter = .conversation
     /// The check whose report is shown (sheet).
     public var openedCheck: PullRequestDetail.CheckRun?
 

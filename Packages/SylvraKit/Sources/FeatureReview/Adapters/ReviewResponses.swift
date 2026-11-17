@@ -71,7 +71,8 @@ struct CommentNode: Decodable, Sendable {
     let body: String
     let createdAt: Date
     let url: URL?
-    let state: String
+    /// Review comments and reviews have a state; conversation comments don't.
+    let state: String?
     let viewerCanUpdate: Bool
     let viewerCanDelete: Bool
     let author: Author?

@@ -94,6 +94,12 @@ extension RootScreen {
                 DiffFileNavigatorPanel(model: environment.diff) { item in
                     NavigatorToolsMenu(environment: environment, item: item, pullRequest: selection?.id)
                 }
+            },
+            conversation: {
+                ConversationPanel(model: environment.conversation, pullRequestID: selection?.id) {
+                    guard let id = selection?.id else { return }
+                    Task { await environment.pullRequest.load(id) }
+                }
             }
         )
     }

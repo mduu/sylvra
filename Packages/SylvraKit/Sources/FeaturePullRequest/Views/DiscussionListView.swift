@@ -2,29 +2,18 @@ import DesignSystem
 import SwiftUI
 import SylvraCore
 
-/// The Comments tab (pure): every comment of the pull request, latest activity first. Code comments jump to
-/// their line in the diff; general comments have no code to show.
+/// Comments of one section of the Comments tab (pure). Code comments jump to their line in the diff.
 struct DiscussionListView: View {
     let items: [DiscussionItem]
-    @Binding var filter: DiscussionFilter
     var showInCode: ((String, Int?) -> Void)?
     var open: (URL?) -> Void = { _ in }
 
     var body: some View {
-        let visible = filter.apply(items)
         LazyVStack(alignment: .leading, spacing: 10) {
-            Picker("Show", selection: $filter) {
-                ForEach(DiscussionFilter.allCases) { Text($0.title).tag($0) }
+            if items.isEmpty {
+                Text("No comments here").foregroundStyle(.secondary).padding(.top, 4)
             }
-            .pickerStyle(.segmented)
-            .labelsHidden()
-            .controlSize(.small)
-            if visible.isEmpty {
-                Text(items.isEmpty ? "No comments yet" : "No matching comments")
-                    .foregroundStyle(.secondary)
-                    .padding(.top, 4)
-            }
-            ForEach(visible) { item in
+            ForEach(items) { item in
                 DiscussionRowView(item: item, showInCode: showInCode, open: open)
             }
         }
@@ -143,7 +132,6 @@ struct DiscussionRowView: View {
 }
 
 #Preview {
-    @Previewable @State var filter = DiscussionFilter.all
     ScrollView {
         DiscussionListView(
             items: [
@@ -160,7 +148,7 @@ struct DiscussionRowView: View {
                 DiscussionItem(
                     id: "2", place: .conversation, author: UserRef(login: "mduu", name: "Marc Dürst"),
                     body: "Looks good overall, two small things inline.", date: .now.addingTimeInterval(-3_600)),
-            ], filter: $filter, showInCode: { _, _ in }
+            ], showInCode: { _, _ in }
         )
         .padding()
     }

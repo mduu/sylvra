@@ -51,6 +51,7 @@ final class AppEnvironment {
     let activity = ActivityCenter()
     let notifications = NotificationRouter()
     let review: ReviewScreenModel
+    let conversation: ConversationModel
     let terminal = TerminalModel()
     let bottomPanel = BottomPanelState()
     /// Selection and inspector state shared by the main and the review window.
@@ -101,6 +102,8 @@ final class AppEnvironment {
             workspace: { id in try await checkout?.prepareWorktree(for: id, purpose: .agent) }
         )
         review = ReviewScreenModel(service: isDemo ? DemoReviewService() : GitHubReviewService(client: gitHub))
+        conversation = ConversationModel(
+            service: isDemo ? DemoConversationService() : GitHubConversationService(client: gitHub))
         Self.configureCommentRewriting(review, agent: agent, isDemo: isDemo)
         review.isSubmitSheetPresented = arguments.contains("--submit-review")
         if let compose = Self.value(of: "--compose", in: arguments)?.split(separator: ":"), compose.count == 2,

@@ -5,14 +5,16 @@ import SylvraCore
 
 /// The PR column (container): loads details for the selected PR and handles copy / open actions.
 /// Slots provided by the app (slices don't import each other): `summary` (pinned above the tabs, e.g. the AI
-/// summary), `overviewTop` (e.g. the change map) and `files` (file navigator). Selecting a commit reviews it on
-/// its own (`selectCommit`, `nil` = all changes).
-public struct PullRequestScreen<Files: View, OverviewTop: View, Summary: View>: View {
+/// summary), `overviewTop` (e.g. the change map), `files` (file navigator) and `conversation` (the comments on
+/// the pull request itself, with writing). Selecting a commit reviews it on its own (`selectCommit`, `nil` = all
+/// changes).
+public struct PullRequestScreen<Files: View, OverviewTop: View, Summary: View, Conversation: View>: View {
     @Bindable private var model: PullRequestScreenModel
     private let pullRequest: PullRequestSummary?
     private let files: Files
     private let overviewTop: OverviewTop
     private let summary: Summary
+    private let conversation: Conversation
     private let selectedCommitSHA: String?
     private let selectCommit: ((Commit?) -> Void)?
     private let showInCode: ((String, Int?) -> Void)?
@@ -24,9 +26,11 @@ public struct PullRequestScreen<Files: View, OverviewTop: View, Summary: View>: 
         showInCode: ((String, Int?) -> Void)? = nil,
         @ViewBuilder summary: () -> Summary,
         @ViewBuilder overviewTop: () -> OverviewTop,
-        @ViewBuilder files: () -> Files
+        @ViewBuilder files: () -> Files,
+        @ViewBuilder conversation: () -> Conversation
     ) {
         self.summary = summary()
+        self.conversation = conversation()
         self.model = model
         self.pullRequest = pullRequest
         self.selectedCommitSHA = selectedCommitSHA
@@ -99,8 +103,18 @@ public struct PullRequestScreen<Files: View, OverviewTop: View, Summary: View>: 
         case .commits:
             commitList(detail)
         case .comments:
-            DiscussionListView(
-                items: detail.discussion, filter: $model.discussionFilter, showInCode: showInCode, open: open)
+            Picker("Show", selection: $model.discussionFilter) {
+                ForEach(DiscussionFilter.allCases) { Text($0.title).tag($0) }
+            }
+            .pickerStyle(.segmented)
+            .labelsHidden()
+            .controlSize(.small)
+            if model.discussionFilter == .conversation, Conversation.self != EmptyView.self {
+                conversation
+            } else {
+                DiscussionListView(
+                    items: model.discussionFilter.apply(detail.discussion), showInCode: showInCode, open: open)
+            }
         case .checks:
             LazyVStack(alignment: .leading, spacing: 6) {
                 ForEach(detail.checks) { check in
@@ -172,11 +186,12 @@ public struct PullRequestScreen<Files: View, OverviewTop: View, Summary: View>: 
     }
 }
 
-extension PullRequestScreen where Files == EmptyView, OverviewTop == EmptyView, Summary == EmptyView {
+extension PullRequestScreen
+where Files == EmptyView, OverviewTop == EmptyView, Summary == EmptyView, Conversation == EmptyView {
     public init(model: PullRequestScreenModel, pullRequest: PullRequestSummary?) {
         self.init(
             model: model, pullRequest: pullRequest, summary: { EmptyView() }, overviewTop: { EmptyView() },
-            files: { EmptyView() })
+            files: { EmptyView() }, conversation: { EmptyView() })
     }
 }
 

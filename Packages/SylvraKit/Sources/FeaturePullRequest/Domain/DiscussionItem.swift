@@ -64,31 +64,34 @@ public struct DiscussionItem: Identifiable, Hashable, Sendable {
     public var commentCount: Int { 1 + replies.count }
 }
 
-/// Filters of the Comments tab.
+/// Sections of the Comments tab.
 public enum DiscussionFilter: String, CaseIterable, Identifiable, Sendable {
-    case all, code, general, open
+    /// Comments on the pull request itself (and review summaries), oldest first like on GitHub.
+    case conversation
+    /// Code threads, latest activity first.
+    case code
+    /// Unresolved code threads.
+    case open
 
     public var id: String { rawValue }
 
     public var title: String {
         switch self {
-        case .all: String(localized: "All")
+        case .conversation: String(localized: "Conversation")
         case .code: String(localized: "Code")
-        case .general: String(localized: "General")
         case .open: String(localized: "Unresolved")
         }
     }
 
-    /// Matching items, latest activity first.
+    /// Matching items in the section's order.
     public func apply(_ items: [DiscussionItem]) -> [DiscussionItem] {
-        items.filter { item in
-            switch self {
-            case .all: true
-            case .code: item.codeLocation != nil
-            case .general: item.codeLocation == nil
-            case .open: item.codeLocation != nil && !item.isResolved
-            }
+        switch self {
+        case .conversation:
+            items.filter { $0.codeLocation == nil }.sorted { $0.date < $1.date }
+        case .code:
+            items.filter { $0.codeLocation != nil }.sorted { $0.lastActivity > $1.lastActivity }
+        case .open:
+            items.filter { $0.codeLocation != nil && !$0.isResolved }.sorted { $0.lastActivity > $1.lastActivity }
         }
-        .sorted { $0.lastActivity > $1.lastActivity }
     }
 }

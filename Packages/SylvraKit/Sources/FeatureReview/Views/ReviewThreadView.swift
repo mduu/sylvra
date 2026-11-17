@@ -13,6 +13,10 @@ struct ReviewThreadActions {
     var delete: (ReviewComment) -> Void = { _ in }
     var react: (Reaction, ReviewComment) -> Void = { _, _ in }
     var open: (URL) -> Void = { _ in }
+    /// Quotes a comment in a new one (conversation comments have no threads; `nil` hides it).
+    var quoteReply: ((ReviewComment) -> Void)?
+    /// Whether a comment can be deleted (defaults to GitHub's permission).
+    var canDelete: (ReviewComment) -> Bool = { $0.viewerCanDelete }
     /// Asks the AI agent privately about the discussion (`nil` hides the button).
     var askAI: (() -> Void)?
 }
@@ -168,9 +172,10 @@ struct ReviewCommentView: View {
 
     private var menu: some View {
         Menu {
+            if let quoteReply = actions.quoteReply { Button("Quote reply") { quoteReply(comment) } }
             if comment.viewerCanUpdate { Button("Edit") { actions.beginEditing(comment) } }
             if let url = comment.url { Button("Open on GitHub") { actions.open(url) } }
-            if comment.viewerCanDelete {
+            if actions.canDelete(comment) {
                 Divider()
                 Button("Delete", role: .destructive) { actions.delete(comment) }
             }

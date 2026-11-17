@@ -77,10 +77,10 @@ struct PullRequestDetailMappingTests {
         #expect(thread.codeLocation?.line == 12)
         #expect(!thread.isResolved)
 
-        let sorted = DiscussionFilter.all.apply(items)
-        #expect(sorted.first?.body == "@mduu is this right?")
+        let conversation = DiscussionFilter.conversation.apply(items)
+        #expect(conversation.count == 2)
+        #expect(conversation == conversation.sorted { $0.date < $1.date })
         #expect(DiscussionFilter.code.apply(items).count == 1)
-        #expect(DiscussionFilter.general.apply(items).count == 2)
         #expect(DiscussionFilter.open.apply(items).count == 1)
         var detail = try detail()
         detail.discussion = items
