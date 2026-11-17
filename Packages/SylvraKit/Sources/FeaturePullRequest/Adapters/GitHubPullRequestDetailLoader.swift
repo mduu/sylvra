@@ -19,8 +19,10 @@ public struct GitHubPullRequestDetailLoader: PullRequestDetailLoading {
         guard let node = response.repository?.pullRequest else {
             throw GitHubError.graphQL(["Pull request \(id) not found"])
         }
+        async let rules = loadApprovalRules(for: id)
         var detail = node.detail
         detail.discussion = node.discussion
+        detail.approvalRules = await rules
         if let login = response.viewer?.login {
             detail.involvement = node.involvement(of: login)
         }
@@ -43,7 +45,7 @@ public struct GitHubPullRequestDetailLoader: PullRequestDetailLoading {
               assignees(first: 10) { nodes { login avatarUrl name } }
               milestone { title }
               closingIssuesReferences(first: 5) { nodes { number title url } }
-              reviewRequests(first: 20) { nodes { requestedReviewer { __typename ... on User { login avatarUrl name } ... on Team { name slug } } } }
+              reviewRequests(first: 20) { nodes { asCodeOwner requestedReviewer { __typename ... on User { login avatarUrl name } ... on Team { name slug } } } }
               comments(last: 60) { nodes { id author { login avatarUrl ... on User { name } } body createdAt url } }
               reviews(last: 30) { nodes { id author { login avatarUrl ... on User { name } } body submittedAt url } }
               reviewThreads(last: 50) { nodes { id path line isResolved comments(first: 20) { nodes { author { login avatarUrl ... on User { name } } body createdAt url } } } }
@@ -186,6 +188,7 @@ struct DetailNode: Decodable, Sendable {
     struct IssueNode: Decodable, Sendable { let number: Int; let title: String; let url: URL? }
 
     struct ReviewRequestNode: Decodable, Sendable {
+        let asCodeOwner: Bool?
         let requestedReviewer: Reviewer?
         struct Reviewer: Decodable, Sendable {
             let typename: String
@@ -331,24 +334,6 @@ struct DetailNode: Decodable, Sendable {
         )
     }
 
-    private var reviewers: [PullRequestDetail.Reviewer] {
-        var result: [PullRequestDetail.Reviewer] = latestReviews.values.compactMap { review in
-            guard let author = review.author else { return nil }
-            let status = PullRequestDetail.Reviewer.Status(rawValue: review.state) ?? .commented
-            return .init(name: author.login, user: author.userRef, isTeam: false, status: status)
-        }
-        for request in reviewRequests.values {
-            guard let reviewer = request.requestedReviewer else { continue }
-            if reviewer.typename == "Team", let slug = reviewer.slug {
-                result.append(
-                    .init(name: "@\(repository.owner.login)/\(slug)", user: nil, isTeam: true, status: .pending))
-            } else if let login = reviewer.login, !result.contains(where: { $0.name == login }) {
-                let user = UserRef(login: login, name: reviewer.name, avatarURL: reviewer.avatarUrl)
-                result.append(.init(name: login, user: user, isTeam: false, status: .pending))
-            }
-        }
-        return result
-    }
 }
 
 extension DetailNode.CommitNode {
@@ -375,5 +360,32 @@ extension CheckState {
         case .success: 2
         case .none: 3
         }
+    }
+}
+
+extension DetailNode {
+    /// Latest review per person plus pending requests (people and teams, code owners marked).
+    fileprivate var reviewers: [PullRequestDetail.Reviewer] {
+        var result: [PullRequestDetail.Reviewer] = latestReviews.values.compactMap { review in
+            guard let author = review.author else { return nil }
+            let status = PullRequestDetail.Reviewer.Status(rawValue: review.state) ?? .commented
+            return .init(name: author.login, user: author.userRef, isTeam: false, status: status)
+        }
+        for request in reviewRequests.values {
+            guard let reviewer = request.requestedReviewer else { continue }
+            if reviewer.typename == "Team", let slug = reviewer.slug {
+                result.append(
+                    .init(
+                        name: "@\(repository.owner.login)/\(slug)", user: nil, isTeam: true, status: .pending,
+                        isCodeOwner: request.asCodeOwner ?? false))
+            } else if let login = reviewer.login, !result.contains(where: { $0.name == login }) {
+                let user = UserRef(login: login, name: reviewer.name, avatarURL: reviewer.avatarUrl)
+                result.append(
+                    .init(
+                        name: login, user: user, isTeam: false, status: .pending,
+                        isCodeOwner: request.asCodeOwner ?? false))
+            }
+        }
+        return result
     }
 }

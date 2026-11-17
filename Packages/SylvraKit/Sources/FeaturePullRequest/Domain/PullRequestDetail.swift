@@ -22,6 +22,8 @@ public struct PullRequestDetail: Sendable, Equatable {
     public var involvement = Involvement()
     /// All comments: conversation, review texts and code threads.
     public var discussion: [DiscussionItem] = []
+    /// Approval rules of the base branch; `nil` when they aren't visible to the viewer.
+    public var approvalRules: ApprovalRules?
 
     /// Comments in total, replies included.
     public var commentCount: Int { discussion.reduce(0) { $0 + $1.commentCount } }
@@ -57,6 +59,8 @@ public struct PullRequestDetail: Sendable, Equatable {
         public let user: UserRef?
         public let isTeam: Bool
         public let status: Status
+        /// Requested because of CODEOWNERS.
+        public var isCodeOwner = false
     }
 
     public struct CheckRun: Hashable, Sendable, Identifiable {

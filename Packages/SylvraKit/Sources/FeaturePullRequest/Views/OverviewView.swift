@@ -10,7 +10,7 @@ struct OverviewView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
             if !detail.mergeStatus.reasons.isEmpty {
-                MergeStatusCardView(status: detail.mergeStatus)
+                MergeStatusCardView(status: detail.mergeStatus, reasons: detail.mergeReasons)
             }
             if !detail.involvement.isEmpty {
                 InvolvementCardView(involvement: detail.involvement, open: open)
@@ -23,6 +23,9 @@ struct OverviewView: View {
                 }
             }
             section("Reviewers") {
+                if detail.state == .open {
+                    ApprovalSummaryView(status: detail.approvalStatus)
+                }
                 ForEach(detail.reviewers) { reviewer in
                     ReviewerRowView(reviewer: reviewer)
                 }
@@ -80,13 +83,15 @@ struct OverviewView: View {
 /// Merge blockers in plain words.
 struct MergeStatusCardView: View {
     let status: MergeStatus
+    /// The reasons to list (e.g. with the review part spelled out); defaults to the status's own.
+    var reasons: [String]?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             Label(status.title, systemImage: status.symbol)
                 .font(.callout.weight(.semibold))
                 .foregroundStyle(status.tint)
-            ForEach(status.reasons, id: \.self) { reason in
+            ForEach(reasons ?? status.reasons, id: \.self) { reason in
                 Text(verbatim: "· \(reason)").font(.callout).foregroundStyle(.secondary)
             }
         }
@@ -110,6 +115,13 @@ struct ReviewerRowView: View {
                     .background(.quaternary, in: Circle())
             }
             Text(reviewer.user?.displayName ?? reviewer.name).lineLimit(1)
+            if reviewer.isCodeOwner {
+                Image(systemName: "shield.lefthalf.filled")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .help("Code owner (requested because of CODEOWNERS)")
+                    .accessibilityLabel("Code owner")
+            }
             Spacer(minLength: 4)
             StatusChip(reviewer.status.title, systemImage: reviewer.status.symbol, tint: reviewer.status.tint)
         }

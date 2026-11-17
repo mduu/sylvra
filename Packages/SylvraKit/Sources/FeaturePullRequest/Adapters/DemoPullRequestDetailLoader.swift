@@ -108,7 +108,7 @@ public struct DemoPullRequestDetailLoader: PullRequestDetailLoading {
             reviewers: [
                 .init(name: jonas.login, user: jonas, isTeam: false, status: .approved),
                 .init(name: marc.login, user: marc, isTeam: false, status: .pending),
-                .init(name: "@acme/billing", user: nil, isTeam: true, status: .pending),
+                .init(name: "@acme/billing", user: nil, isTeam: true, status: .pending, isCodeOwner: true),
             ],
             mergeStatus: .derive(
                 state: .open, mergeStateStatus: "BLOCKED", reviewDecision: .reviewRequired, checks: checks,
@@ -116,6 +116,7 @@ public struct DemoPullRequestDetailLoader: PullRequestDetailLoading {
             checks: checks,
             commits: commits
         )
+        detail.approvalRules = ApprovalRules(requiredApprovals: 2, requiresCodeOwnerReview: true)
         detail.discussion = [
             DiscussionItem(
                 id: "t1", place: .code(path: "Sources/Billing/InvoiceService.swift", line: 9, isResolved: false),

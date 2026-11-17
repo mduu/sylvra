@@ -83,7 +83,12 @@ struct PullRequestTabBar: View {
             selection = item.tab
         } label: {
             HStack(spacing: 4) {
-                if style != .compact { Image(systemName: item.symbol) }
+                if item.isAlert {
+                    // A failing check shows a warning in every style (also where other tabs have no symbol).
+                    Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(.red)
+                } else if style != .compact {
+                    Image(systemName: item.symbol)
+                }
                 if Self.showsTitle(style, isSelected: isSelected) { Text(item.title) }
                 if let count = item.count {
                     CountBadge(count: count, isAlert: item.isAlert, isSelected: isSelected)
@@ -102,7 +107,11 @@ struct PullRequestTabBar: View {
         }
         .buttonStyle(.plain)
         .keyboardShortcut(item.shortcut, modifiers: .command)
-        .help("\(item.title) (⌘\(String(item.shortcut.character)))")
+        .help(
+            item.isAlert
+                ? "\(item.title) — failing (⌘\(String(item.shortcut.character)))"
+                : "\(item.title) (⌘\(String(item.shortcut.character)))"
+        )
         .accessibilityLabel(item.title)
         .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
