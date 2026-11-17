@@ -173,7 +173,7 @@ Title, author avatar and name, `head → base` refs (with fork owner), merge sta
 | **Files** | Changed files by folder (tree or list) with tools per file and folder. |
 | **Comments** | Sections *Conversation · Code · Unresolved*. **Conversation** works like GitHub's PR conversation, oldest first: comments and review summaries (approvals without text as a slim line), reactions, *Quote reply* (conversation comments have no threads), edit and delete own comments (with confirmation), a Markdown field with preview and tone check (*Comment*, ⌘↩, posts right away). Reloads every minute while shown, plus a refresh button. **Code** / **Unresolved** list the code threads (latest activity first, *Resolved* / *Outdated* chips); they jump to their line in the diff, where they are answered. |
 
-On narrow columns the segmented tabs turn into a menu.
+All tabs stay visible side by side (⌘1–⌘5) with their counts; the checks count turns red while a check fails. Narrower columns use smaller text, then symbols with only the selected tab named, then symbols only (names in tooltips) — never a menu.
 
 ### 6.3 Change essence
 
