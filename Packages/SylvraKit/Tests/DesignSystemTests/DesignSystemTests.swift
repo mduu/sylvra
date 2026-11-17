@@ -29,3 +29,13 @@ struct ToolbarSymbolCacheTests {
         #expect(ToolbarSymbolCache.image("not-a-symbol-name", leading: 9) == nil)
     }
 }
+
+struct ScrollerPreferenceTests {
+    /// Regression: legacy scroll bars appearing and disappearing changed the columns' content width.
+    @Test func usesOverlayScrollBarsUnlessTheUserChoseAlways() {
+        #expect(ScrollerPreference.override(forGlobal: nil) == "WhenScrolling")
+        #expect(ScrollerPreference.override(forGlobal: "Automatic") == "WhenScrolling")
+        #expect(ScrollerPreference.override(forGlobal: "WhenScrolling") == "WhenScrolling")
+        #expect(ScrollerPreference.override(forGlobal: "Always") == nil)
+    }
+}

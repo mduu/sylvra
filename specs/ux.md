@@ -25,6 +25,7 @@ We deviate **only with a clearly documented reason**. Every deviation is listed 
 | Brand colors (violet / gold) beyond the system accent color | Recognizability and the calm, premium mood derived from the app icon. The user's system accent color is still respected for standard controls (selection, focus rings) where possible. |
 | Multi-hue AI gradient | AI-generated content must be instantly recognizable and never confused with human content. |
 | Review shortcuts with modifiers (`⌘]`, `⌥⌘↓`, `⌥⌘V`) instead of single letters (`]`, `J`, `V`) | Single-letter menu shortcuts would fire while typing in the comment composer and the chat. |
+| Overlay scroll bars unless System Settings says "Always" (`ScrollerPreference`, this launch only) | With a mouse, "Automatically" shows legacy scroll bars that take width; they came and went with content height and window focus, so column content got narrower and wider and truncated text jumped. |
 
 ## 3. Visual language
 

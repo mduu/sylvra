@@ -19,6 +19,7 @@ struct SylvraApp: App {
 
     init() {
         ProcessSignals.ignoreBrokenPipes()
+        ScrollerPreference.apply()
     }
 
     var body: some Scene {
