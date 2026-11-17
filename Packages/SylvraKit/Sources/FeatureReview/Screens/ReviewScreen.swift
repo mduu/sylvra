@@ -2,8 +2,8 @@ import DesignSystem
 import SwiftUI
 import SylvraCore
 
-/// Review layer around the diff (container): loads the threads of the selected PR, shows the pending
-/// review counter and *Submit review* in the toolbar, presents the submit sheet and errors.
+/// Review layer around the diff (container): loads the threads of the selected PR, presents the submit sheet
+/// and errors. *Submit review* sits in the window toolbar (`SubmitReviewToolbarButton`).
 /// `content` is the diff, provided by the app (slices don't import each other).
 public struct ReviewScreen<Content: View>: View {
     @Bindable private var model: ReviewScreenModel
@@ -23,18 +23,6 @@ public struct ReviewScreen<Content: View>: View {
                 // Replies by others appear without reopening the pull request.
                 await model.keepRefreshingThreads()
             }
-            .toolbar {
-                if pullRequestID != nil, model.snapshot != nil {
-                    ToolbarItem(placement: .primaryAction) {
-                        SubmitReviewButton(
-                            pendingCount: model.pendingCount, hasPendingReview: model.hasPendingReview,
-                            isComposing: model.draft != nil
-                        ) {
-                            model.isSubmitSheetPresented = true
-                        }
-                    }
-                }
-            }
             .sheet(isPresented: $model.isSubmitSheetPresented) {
                 SubmitReviewSheet(model: model)
             }
@@ -46,6 +34,28 @@ public struct ReviewScreen<Content: View>: View {
             } message: {
                 Text(model.errorMessage ?? "")
             }
+    }
+}
+
+/// *Submit review* for the window toolbar (container); hidden until the review state is loaded.
+public struct SubmitReviewToolbarButton: View {
+    private let model: ReviewScreenModel
+    private let pullRequestID: PullRequestID?
+
+    public init(model: ReviewScreenModel, pullRequestID: PullRequestID?) {
+        self.model = model
+        self.pullRequestID = pullRequestID
+    }
+
+    public var body: some View {
+        if pullRequestID != nil, model.snapshot != nil {
+            SubmitReviewButton(
+                pendingCount: model.pendingCount, hasPendingReview: model.hasPendingReview,
+                isComposing: model.draft != nil
+            ) {
+                model.isSubmitSheetPresented = true
+            }
+        }
     }
 }
 

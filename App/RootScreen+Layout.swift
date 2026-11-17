@@ -84,7 +84,7 @@ private struct WindowLayoutModifier: ViewModifier {
 }
 
 extension WindowLayoutModifier {
-    /// Inbox button (compact), files (focus) or review window (two windows), and the layout menu.
+    /// Inbox button (compact), files (focus) or review window (two windows); the layout menu is in `mainToolbar`.
     @ToolbarContentBuilder
     fileprivate func layoutToolbar(_ layout: WindowLayout) -> some ToolbarContent {
         ToolbarItem(placement: .navigation) {
@@ -106,9 +106,6 @@ extension WindowLayoutModifier {
                 }
                 .help("Bring the review window (diff and AI) to the front")
             }
-        }
-        ToolbarItem(placement: .primaryAction) {
-            WindowLayoutMenu(selection: root.$layoutMode, resolved: layout)
         }
     }
 }

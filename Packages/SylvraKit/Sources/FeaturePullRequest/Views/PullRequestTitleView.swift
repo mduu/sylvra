@@ -2,55 +2,101 @@ import DesignSystem
 import SwiftUI
 import SylvraCore
 
-/// Window title (pure): the repository and the pull request number as buttons to GitHub, then the title on up
-/// to two lines. The rest of the area behaves like a title bar: drag moves the window, a double-click zooms it.
+/// The pull request info in the middle of the window toolbar (pure): repository and number as buttons to
+/// GitHub with the title, below it the branch, approvals and checks (each status jumps to its tab). The rest
+/// of the box behaves like a title bar: drag moves the window, a double-click zooms it.
 public struct PullRequestTitleView: View {
     let pullRequest: PullRequestSummary?
+    /// Details of the same pull request, for the status line (`nil` while loading or for another PR).
+    let detail: PullRequestDetail?
     let width: CGFloat
     let open: (URL) -> Void
+    let showTab: (PullRequestScreenModel.Tab) -> Void
     let doubleClick: () -> Void
 
-    /// Minimum widths for narrow and wide windows. The item also grows into the free toolbar space (like the
-    /// system title it replaces), which keeps the buttons at the trailing edge on wide screens; its minimum
-    /// only changes with the window size band, never while AppKit lays out the toolbar.
+    /// Widths for narrow and wide windows. Constant per window size: a toolbar item that changes width
+    /// while AppKit lays out the toolbar can loop its constraint pass.
     public static let narrowWidth: CGFloat = 400
-    public static let wideWidth: CGFloat = 640
+    public static let wideWidth: CGFloat = 560
 
     public init(
-        pullRequest: PullRequestSummary?, width: CGFloat = narrowWidth, open: @escaping (URL) -> Void,
+        pullRequest: PullRequestSummary?, detail: PullRequestDetail? = nil, width: CGFloat = narrowWidth,
+        open: @escaping (URL) -> Void, showTab: @escaping (PullRequestScreenModel.Tab) -> Void = { _ in },
         doubleClick: @escaping () -> Void = {}
     ) {
         self.pullRequest = pullRequest
+        self.detail = detail.flatMap { $0.summary.id == pullRequest?.id ? $0 : nil }
         self.width = width
         self.open = open
+        self.showTab = showTab
         self.doubleClick = doubleClick
     }
 
     public var body: some View {
-        HStack(spacing: 6) {
+        VStack(spacing: 2) {
             if let pullRequest {
-                chip(pullRequest.id.repository, url: pullRequest.repositoryWebURL)
-                    .help("Open \(pullRequest.id.owner)/\(pullRequest.id.repository) on GitHub")
-                chip("#\(pullRequest.id.number)", url: pullRequest.webURL)
-                    .help("Open the pull request on GitHub")
-                Text(verbatim: pullRequest.title)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(2)
-                    .truncationMode(.tail)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .help(pullRequest.title)
+                HStack(spacing: 6) {
+                    chip(pullRequest.id.repository, url: pullRequest.repositoryWebURL)
+                        .help("Open \(pullRequest.id.owner)/\(pullRequest.id.repository) on GitHub")
+                    chip("#\(pullRequest.id.number)", url: pullRequest.webURL)
+                        .help("Open the pull request on GitHub")
+                    Text(verbatim: pullRequest.title)
+                        .fontWeight(.semibold)
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                        .help(pullRequest.title)
+                }
+                .font(.callout)
+                statusLine(pullRequest)
             } else {
-                Text(verbatim: "Sylvra").fontWeight(.semibold)
+                Text(verbatim: "Sylvra").font(.callout.weight(.semibold))
             }
         }
-        .font(.callout)
-        .frame(minWidth: width, idealWidth: width, maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 10)
+        .frame(width: width)
         .frame(maxHeight: .infinity)
-        // Click-through to the title bar: the chips are buttons, everything else moves or zooms the window.
+        // Click-through to the title bar: the chips and statuses are buttons, the rest moves or zooms the window.
         .contentShape(Rectangle())
         .gesture(WindowDragGesture())
         .onTapGesture(count: 2, perform: doubleClick)
         .allowsWindowActivationEvents(true)
+    }
+
+    private func statusLine(_ pullRequest: PullRequestSummary) -> some View {
+        HStack(spacing: 10) {
+            Text(verbatim: "\(pullRequest.headRefName) → \(pullRequest.baseRefName)")
+                .font(.caption.monospaced())
+                .lineLimit(1)
+                .truncationMode(.middle)
+                .layoutPriority(-1)
+                .help("\(pullRequest.headRefName) into \(pullRequest.baseRefName)")
+            if let detail {
+                if let approvals = Self.approvals(detail.approvalStatus) {
+                    status(approvals.text, symbol: approvals.symbol, tint: approvals.tint) { showTab(.overview) }
+                        .help("Approvals — show the reviewers")
+                }
+                if let checks = Self.checks(detail) {
+                    status(checks.text, symbol: checks.symbol, tint: checks.tint) { showTab(.checks) }
+                        .help("Checks — show them")
+                }
+            }
+        }
+        .font(.caption)
+        .foregroundStyle(.secondary)
+    }
+
+    private func status(_ text: String, symbol: String, tint: Color, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            // Not a `Label`: inside the toolbar it would show only the symbol.
+            HStack(spacing: 3) {
+                Image(systemName: symbol)
+                Text(text)
+            }
+            .foregroundStyle(tint)
+            .lineLimit(1)
+        }
+        .buttonStyle(.plain)
+        .fixedSize()
     }
 
     private func chip(_ title: String, url: URL?) -> some View {
@@ -63,18 +109,57 @@ public struct PullRequestTitleView: View {
         .disabled(url == nil)
         .fixedSize()
     }
+
+    struct Status: Equatable {
+        let text: String
+        let symbol: String
+        let tint: Color
+    }
+
+    /// "1 of 2 approvals", "Approved", "Changes requested" or "Review required" (`nil`: nothing to say).
+    static func approvals(_ status: ApprovalStatus) -> Status? {
+        if status.isSatisfied {
+            return Status(text: String(localized: "Approved"), symbol: "checkmark.seal.fill", tint: .green)
+        }
+        if !status.changesRequestedBy.isEmpty {
+            return Status(text: String(localized: "Changes requested"), symbol: "exclamationmark.circle", tint: .red)
+        }
+        if let required = status.requiredApprovals, required > 0 {
+            return Status(
+                text: String(localized: "\(status.approvedBy.count) of \(required) approvals"),
+                symbol: "person.badge.clock", tint: .orange)
+        }
+        if status.reviewDecision == .reviewRequired {
+            return Status(text: String(localized: "Review required"), symbol: "person.badge.clock", tint: .orange)
+        }
+        return nil
+    }
+
+    /// Failing, running or passed checks (`nil`: no checks).
+    static func checks(_ detail: PullRequestDetail) -> Status? {
+        guard !detail.checks.isEmpty else { return nil }
+        let failing = detail.checks.count { $0.state == .failure || $0.state == .error }
+        if failing > 0 {
+            return Status(
+                text: failing == 1
+                    ? String(localized: "1 check failing") : String(localized: "\(failing) checks failing"),
+                symbol: "exclamationmark.triangle.fill", tint: .red)
+        }
+        if detail.checks.contains(where: { $0.state == .pending }) {
+            return Status(text: String(localized: "Checks running"), symbol: "clock", tint: .secondary)
+        }
+        return Status(text: String(localized: "Checks passed"), symbol: "checkmark.circle", tint: .green)
+    }
 }
 
 #Preview {
-    VStack(alignment: .leading, spacing: 12) {
-        PullRequestTitleView(
-            pullRequest: PullRequestSummary(
-                id: PullRequestID(owner: "acme", repository: "billing", number: 1234),
-                title: "Add invoice export with per-line rounding", author: UserRef(login: "lkeller"),
-                createdAt: .now, updatedAt: .now, additions: 182, deletions: 41, headRefName: "feat",
-                baseRefName: "main"),
-            open: { _ in })
-        PullRequestTitleView(pullRequest: nil, open: { _ in })
+    let id = PullRequestID(owner: "acme", repository: "billing", number: 1234)
+    let detail = DemoPullRequestDetailLoader.detail(for: id)
+    VStack(spacing: 12) {
+        PullRequestTitleView(pullRequest: detail.summary, detail: detail, width: PullRequestTitleView.wideWidth) { _ in
+        }
+        PullRequestTitleView(pullRequest: nil) { _ in }
     }
+    .frame(height: 120)
     .padding()
 }

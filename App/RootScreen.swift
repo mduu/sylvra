@@ -136,40 +136,7 @@ struct RootScreen: View {
                     .padding(.bottom, 16)
                     .animation(.snappy, value: environment.openInIDE.status)
             }
-            .toolbar {
-                ToolbarItem(placement: .navigation) {
-                    PullRequestTitleView(
-                        pullRequest: selection,
-                        width: isNarrowWindow ? PullRequestTitleView.narrowWidth : PullRequestTitleView.wideWidth,
-                        open: { NSWorkspace.shared.open($0) },
-                        doubleClick: {
-                            guard let window = NSApp.keyWindow else { return }
-                            TitlebarDoubleClick.performDoubleClickAction(on: window)
-                        })
-                }
-                .sharedBackgroundVisibility(.hidden)
-                ToolbarItem(placement: .primaryAction) {
-                    ActivityToolbarPanel(center: environment.activity)
-                }
-                ToolbarItem(placement: .primaryAction) {
-                    OpenInIDEToolbarPanel(model: environment.openInIDE, pullRequestID: selection?.id)
-                }
-                ToolbarItem(placement: .primaryAction) {
-                    TerminalToolbarMenu(environment: environment, pullRequest: selection?.id)
-                }
-                ToolbarItem(placement: .primaryAction) {
-                    AIReviewToolbarPanel(
-                        model: environment.aiReview, pullRequest: selection,
-                        pullRequestBody: environment.pullRequest.detail?.body ?? "")
-                }
-                ToolbarItem(placement: .primaryAction) {
-                    Button {
-                        isInspectorPresented.toggle()
-                    } label: {
-                        Label("AI Inspector", systemImage: "sidebar.right")
-                    }
-                }
-            }
+            .toolbar { mainToolbar }
     }
 
     /// Prefills the review composer with an AI finding; the reviewer edits and owns the comment.
