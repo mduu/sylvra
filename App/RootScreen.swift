@@ -138,9 +138,18 @@ struct RootScreen: View {
             }
             .toolbar {
                 ToolbarItem(placement: .navigation) {
-                    PullRequestTitleView(pullRequest: selection) { NSWorkspace.shared.open($0) }
+                    PullRequestTitleView(
+                        pullRequest: selection,
+                        width: isNarrowWindow ? PullRequestTitleView.narrowWidth : PullRequestTitleView.wideWidth,
+                        open: { NSWorkspace.shared.open($0) },
+                        doubleClick: {
+                            guard let window = NSApp.keyWindow else { return }
+                            TitlebarDoubleClick.performDoubleClickAction(on: window)
+                        })
                 }
                 .sharedBackgroundVisibility(.hidden)
+                // Keeps the buttons at the trailing edge (without the system title they would follow the chips).
+                ToolbarSpacer(.flexible, placement: .primaryAction)
                 ToolbarItem(placement: .primaryAction) {
                     ActivityToolbarPanel(center: environment.activity)
                 }

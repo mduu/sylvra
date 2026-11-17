@@ -21,7 +21,9 @@ public struct DemoInboxLoader: InboxLoading {
                 "billing", 1234, "Add invoice export", "lkeller", "Lena Keller", hoursAgo: 2, 182, 41, .success,
                 .reviewRequired),
             pr(
-                "payments", 881, "Retry failed webhooks with backoff", "jmeier", "Jonas Meier", hoursAgo: 5, 64, 12,
+                "payments", 881,
+                "Retry failed webhooks with exponential backoff and move permanent failures to a dead-letter queue",
+                "jmeier", "Jonas Meier", hoursAgo: 5, 64, 12,
                 .pending),
         ],
         .myTeams: [

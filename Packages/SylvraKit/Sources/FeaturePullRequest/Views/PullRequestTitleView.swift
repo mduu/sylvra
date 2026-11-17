@@ -2,17 +2,27 @@ import DesignSystem
 import SwiftUI
 import SylvraCore
 
-/// Window title (pure): the repository and the pull request number as buttons to GitHub, then the title.
+/// Window title (pure): the repository and the pull request number as buttons to GitHub, then the title on up
+/// to two lines. The rest of the area behaves like a title bar: drag moves the window, a double-click zooms it.
 public struct PullRequestTitleView: View {
     let pullRequest: PullRequestSummary?
+    let width: CGFloat
     let open: (URL) -> Void
+    let doubleClick: () -> Void
 
-    /// Constant width: a toolbar item that changes width can loop AppKit's constraint pass.
-    public static let width: CGFloat = 380
+    /// Widths for narrow and wide windows. Constant per window size: a toolbar item that changes width
+    /// while AppKit lays out the toolbar can loop its constraint pass.
+    public static let narrowWidth: CGFloat = 400
+    public static let wideWidth: CGFloat = 640
 
-    public init(pullRequest: PullRequestSummary?, open: @escaping (URL) -> Void) {
+    public init(
+        pullRequest: PullRequestSummary?, width: CGFloat = narrowWidth, open: @escaping (URL) -> Void,
+        doubleClick: @escaping () -> Void = {}
+    ) {
         self.pullRequest = pullRequest
+        self.width = width
         self.open = open
+        self.doubleClick = doubleClick
     }
 
     public var body: some View {
@@ -24,15 +34,22 @@ public struct PullRequestTitleView: View {
                     .help("Open the pull request on GitHub")
                 Text(verbatim: pullRequest.title)
                     .foregroundStyle(.secondary)
-                    .lineLimit(1)
+                    .lineLimit(2)
                     .truncationMode(.tail)
+                    .fixedSize(horizontal: false, vertical: true)
                     .help(pullRequest.title)
             } else {
                 Text(verbatim: "Sylvra").fontWeight(.semibold)
             }
         }
         .font(.callout)
-        .frame(width: Self.width, alignment: .leading)
+        .frame(width: width, alignment: .leading)
+        .frame(maxHeight: .infinity)
+        // Click-through to the title bar: the chips are buttons, everything else moves or zooms the window.
+        .contentShape(Rectangle())
+        .gesture(WindowDragGesture())
+        .onTapGesture(count: 2, perform: doubleClick)
+        .allowsWindowActivationEvents(true)
     }
 
     private func chip(_ title: String, url: URL?) -> some View {

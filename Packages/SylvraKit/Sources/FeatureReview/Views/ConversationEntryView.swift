@@ -33,11 +33,14 @@ struct ConversationEntryView: View {
             if case .review(let state) = entry.kind {
                 Image(systemName: Self.symbol(of: state)).foregroundStyle(Self.tint(of: state))
                 AvatarView(entry.comment.author, size: 16)
-                Text(verbatim: "\(entry.comment.author.displayName) \(Self.event(of: state))").lineLimit(1)
+                Text(verbatim: "\(entry.comment.author.displayName) \(Self.event(of: state))")
+                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
             }
             Text(entry.comment.createdAt, format: .relative(presentation: .named))
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
+                .fixedSize()
         }
         .font(.caption)
         .padding(.horizontal, 10)
