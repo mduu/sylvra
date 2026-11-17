@@ -41,16 +41,15 @@ public struct AIChatPanel: View {
                 FlowPrompts(prompts: AIChatModel.quickPrompts) { prompt in Task { await model.send(prompt, for: id) } }
             }
             contextChips
-            HStack(alignment: .bottom, spacing: 6) {
+            HStack(alignment: .bottom, spacing: 8) {
                 TextField("Ask about this pull request…", text: $model.draft, axis: .vertical)
                     .textFieldStyle(.roundedBorder)
                     .lineLimit(1...5)
                     .onSubmit(send)
-                Button(action: send) { Image(systemName: "arrow.up.circle.fill").aiFont(.title2) }
-                    .buttonStyle(.borderless)
-                    .disabled(model.draft.isEmpty || model.isSending || pullRequestID == nil)
-                    .keyboardShortcut(.return, modifiers: .command)
+                SendButton(isEnabled: !model.draft.isEmpty && !model.isSending && pullRequestID != nil, send: send)
             }
+            // Clear of the scroll bar, which overlays the inspector's right edge.
+            .padding(.trailing, 12)
         }
         .environment(
             \.openURL,
@@ -102,6 +101,28 @@ public struct AIChatPanel: View {
     private func send() {
         guard let id = pullRequestID else { return }
         Task { await model.send(for: id) }
+    }
+}
+
+/// The round send button next to the question field (pure); ⌘↩ sends as well.
+private struct SendButton: View {
+    let isEnabled: Bool
+    let send: () -> Void
+
+    var body: some View {
+        Button(action: send) {
+            Image(systemName: "arrow.up")
+                .font(.system(size: 15, weight: .bold))
+                .foregroundStyle(.white)
+                .frame(width: 30, height: 30)
+                .background(SylvraColor.brandPrimary.opacity(isEnabled ? 1 : 0.35), in: Circle())
+                .contentShape(Circle())
+        }
+        .buttonStyle(.plain)
+        .disabled(!isEnabled)
+        .keyboardShortcut(.return, modifiers: .command)
+        .help("Send (⌘↩)")
+        .accessibilityLabel("Send")
     }
 }
 
