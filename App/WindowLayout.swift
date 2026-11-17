@@ -17,7 +17,28 @@ enum WindowLayout: String, CaseIterable, Identifiable {
     /// Windows narrower than this use the compact layout in `automatic`. All columns at their default
     /// widths (inbox 290, pull request 380, inspector 320) leave the diff ~700 pt at this width; MacBook
     /// screens (1470–1728 pt) were above the old 1400 and never switched.
-    static let compactBelow: CGFloat = 1700
+    nonisolated static let compactBelow: CGFloat = 1700
+    /// Back to wide only from this width: switching layouts changes the columns' minimum widths, which can
+    /// nudge the window width; without the band the layout flipped back and forth until AppKit aborted.
+    nonisolated static let wideFrom: CGFloat = 1760
+
+    /// Where a window width lies relative to `compactBelow` and `wideFrom`.
+    nonisolated enum WidthBand: Equatable, Sendable {
+        case narrow, between, wide
+
+        init(width: CGFloat) {
+            self = width < WindowLayout.compactBelow ? .narrow : (width >= WindowLayout.wideFrom ? .wide : .between)
+        }
+
+        /// Narrow below `compactBelow`, wide from `wideFrom`; in between the window keeps its layout.
+        func isNarrow(wasNarrow: Bool) -> Bool {
+            switch self {
+            case .narrow: true
+            case .wide: false
+            case .between: wasNarrow
+            }
+        }
+    }
 
     var id: String { rawValue }
 

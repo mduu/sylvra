@@ -37,11 +37,15 @@ private struct WindowLayoutModifier: ViewModifier {
     func body(content: Content) -> some View {
         let layout = root.layout
         content
-            .onGeometryChange(for: Bool.self) {
-                $0.size.width < WindowLayout.compactBelow
-            } action: { isNarrow in
-                // A Bool, not the width: resizing only re-renders when the automatic layout flips.
-                if root.isNarrowWindow != isNarrow { root.isNarrowWindow = isNarrow }
+            .onGeometryChange(for: WindowLayout.WidthBand.self) {
+                // A band, not the width: resizing only reports something when a threshold is crossed.
+                WindowLayout.WidthBand(width: $0.size.width)
+            } action: { band in
+                let isNarrow = band.isNarrow(wasNarrow: root.isNarrowWindow)
+                guard root.isNarrowWindow != isNarrow else { return }
+                // After the current layout pass: flipping the columns inside AppKit's constraint pass can
+                // make it loop (crash in _postWindowNeedsUpdateConstraints on windows near the threshold).
+                Task { @MainActor in root.isNarrowWindow = isNarrow }
             }
             .onChange(of: layout, initial: true) { _, layout in
                 withAnimation(.snappy) {
