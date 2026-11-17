@@ -11,8 +11,10 @@ struct PullRequestTabBarTests {
         #expect(items.map(\.shortcut.character) == ["1", "2", "3", "4", "5"])
         #expect(items.first?.count == nil)
         #expect(items.first { $0.tab == .commits }?.count == detail.commits.count)
-        // The demo pull request has a failing check.
-        #expect(items.first { $0.tab == .checks }?.isAlert == true)
+        // The demo pull request has one failing check: the red badge counts that one, not all four.
+        let checks = items.first { $0.tab == .checks }
+        #expect(checks?.isAlert == true)
+        #expect(checks?.count == 1)
     }
 
     @Test func narrowBarsKeepTheSelectedTabsName() {

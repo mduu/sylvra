@@ -30,14 +30,16 @@ struct PullRequestTabItem: Identifiable {
         }
     }
 
-    /// The tabs of a pull request with their counts; failing checks turn the checks count red.
+    /// The tabs of a pull request with their counts. While checks fail, the checks badge turns red and
+    /// counts the failing ones (a red total would read as "all failing").
     static func items(for detail: PullRequestDetail) -> [PullRequestTabItem] {
-        let failing = detail.checks.contains { $0.state == .failure || $0.state == .error }
+        let failing = detail.checks.count { $0.state == .failure || $0.state == .error }
         return [
             PullRequestTabItem(tab: .overview),
             PullRequestTabItem(tab: .files, count: detail.changedFiles),
             PullRequestTabItem(tab: .commits, count: detail.commits.count),
-            PullRequestTabItem(tab: .checks, count: detail.checks.count, isAlert: failing),
+            PullRequestTabItem(
+                tab: .checks, count: failing > 0 ? failing : detail.checks.count, isAlert: failing > 0),
             PullRequestTabItem(tab: .comments, count: detail.commentCount),
         ]
     }
@@ -84,9 +86,7 @@ struct PullRequestTabBar: View {
                 if style != .compact { Image(systemName: item.symbol) }
                 if Self.showsTitle(style, isSelected: isSelected) { Text(item.title) }
                 if let count = item.count {
-                    Text(verbatim: "\(count)")
-                        .monospacedDigit()
-                        .foregroundStyle(item.isAlert ? AnyShapeStyle(.red) : AnyShapeStyle(.secondary))
+                    CountBadge(count: count, isAlert: item.isAlert, isSelected: isSelected)
                 }
             }
             .font(style == .full ? .callout : .caption)
@@ -113,6 +113,29 @@ struct PullRequestTabBar: View {
         case .selectedTitle: isSelected
         case .symbols: false
         }
+    }
+}
+
+/// A count as a small capsule (pure): grey, violet on the selected tab, red when it signals a problem.
+struct CountBadge: View {
+    let count: Int
+    var isAlert = false
+    var isSelected = false
+
+    var body: some View {
+        Text(verbatim: "\(count)")
+            .font(.caption2.weight(.semibold))
+            .monospacedDigit()
+            .foregroundStyle(isAlert || isSelected ? AnyShapeStyle(.white) : AnyShapeStyle(.secondary))
+            .padding(.horizontal, 5)
+            .frame(minWidth: 16)
+            .background(background, in: Capsule())
+    }
+
+    private var background: AnyShapeStyle {
+        if isAlert { return AnyShapeStyle(Color.red) }
+        if isSelected { return AnyShapeStyle(SylvraColor.brandPrimary) }
+        return AnyShapeStyle(.quaternary)
     }
 }
 
