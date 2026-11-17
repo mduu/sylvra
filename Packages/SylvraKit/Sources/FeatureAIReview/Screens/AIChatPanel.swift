@@ -135,19 +135,25 @@ struct ChatMessageView: View {
                     .padding(.leading, 36)
                     .frame(maxWidth: .infinity, alignment: .trailing)
             } else {
-                // AI answers (and errors) use the full width; answers carry the AI accent.
-                Text(Self.render(message.text, scale: textScale))
-                    .aiFont(.callout)
-                    .textSelection(.enabled)
-                    .padding(10)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(background, in: RoundedRectangle(cornerRadius: 12))
-                    .overlay {
-                        if message.role == .assistant {
-                            RoundedRectangle(cornerRadius: 12).strokeBorder(AIAccent.border.opacity(0.35))
-                        }
+                // AI answers (and errors) use the full width; answers carry the AI accent and Markdown blocks.
+                Group {
+                    if message.role == .assistant {
+                        ChatMarkdownView(text: message.text) { Self.render($0, scale: textScale) }
+                    } else {
+                        Text(Self.render(message.text, scale: textScale))
+                            .aiFont(.callout)
+                            .textSelection(.enabled)
                     }
-                    .foregroundStyle(message.role == .error ? AnyShapeStyle(.red) : AnyShapeStyle(.primary))
+                }
+                .padding(10)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(background, in: RoundedRectangle(cornerRadius: 12))
+                .overlay {
+                    if message.role == .assistant {
+                        RoundedRectangle(cornerRadius: 12).strokeBorder(AIAccent.border.opacity(0.35))
+                    }
+                }
+                .foregroundStyle(message.role == .error ? AnyShapeStyle(.red) : AnyShapeStyle(.primary))
             }
             if let useAsComment {
                 Button("Use as comment", systemImage: "text.bubble.badge.plus", action: useAsComment)
