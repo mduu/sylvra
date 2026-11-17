@@ -135,6 +135,8 @@ private struct ScrollingCodeText: View {
         Text(text)
             .lineLimit(1)
             .fixedSize(horizontal: true, vertical: false)
+            // Words and characters can be selected with the mouse and copied (⌘C).
+            .textSelection(.enabled)
             .offset(x: -offset)
             .frame(minWidth: 0, maxWidth: .infinity, alignment: .leading)
             .clipped()

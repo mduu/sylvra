@@ -133,6 +133,7 @@ struct DiffFileBodyView<Accessory: View>: View {
     @Environment(\.diffSearchQuery) private var searchQuery
     @Environment(\.diffCurrentMatch) private var currentMatch
     @Environment(\.diffIsWide) private var diffIsWide
+    @Environment(\.diffSelectFinding) private var selectFinding
 
     /// One lazily built row; unique string IDs (nested offset-based IDs collided and dropped rows).
     private enum Row: Identifiable {
@@ -213,6 +214,10 @@ struct DiffFileBodyView<Accessory: View>: View {
                 case .inline(let hunkIndex, _, let line, let continuation):
                     VStack(spacing: 0) {
                         InlineLineView(line: line, onComment: onComment)
+                            .selectsFinding(
+                                line.kind == .removed ? nil : line.newNumber.flatMap(highlight)?.findingID,
+                                using: selectFinding
+                            )
                             .contextMenu {
                                 DiffCopyMenu(
                                     newLine: line.kind == .removed ? nil : line,
@@ -229,6 +234,7 @@ struct DiffFileBodyView<Accessory: View>: View {
                 case .sideBySide(let hunkIndex, _, let row, let connector, let continuation):
                     VStack(spacing: 0) {
                         SideBySideRowView(row: row, connector: connector, onComment: onComment)
+                            .selectsFinding(row.right?.newNumber.flatMap(highlight)?.findingID, using: selectFinding)
                             .contextMenu {
                                 DiffCopyMenu(newLine: row.right, oldLine: row.left, hunk: hunks[hunkIndex], copy: copy)
                             }
@@ -371,27 +377,5 @@ struct Badge: View {
             .padding(.horizontal, 5)
             .padding(.vertical, 1)
             .background(tint.opacity(0.12), in: Capsule())
-    }
-}
-
-/// AI reading-order position and reason below a file name (AI accent, pure).
-struct ReadingReasonView: View {
-    let number: Int
-    let step: ReadingStep
-
-    var body: some View {
-        HStack(spacing: 5) {
-            Text(verbatim: "\(number)")
-                .font(.system(size: 9.5, weight: .bold).monospacedDigit())
-                .foregroundStyle(.white)
-                .frame(minWidth: 15, minHeight: 15)
-                .background(AIAccent.border, in: Circle())
-            if step.isRisky {
-                Image(systemName: "exclamationmark.triangle.fill").font(.caption2).foregroundStyle(
-                    SylvraColor.accentGold)
-            }
-            Text(step.reason).font(.caption).foregroundStyle(.secondary).lineLimit(1)
-        }
-        .help("Suggested reading order (AI)")
     }
 }
