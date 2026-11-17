@@ -4,14 +4,16 @@ import SylvraCore
 
 /// The AI inspector: run status, findings, patterns and summary (container).
 public struct FindingsInspectorScreen: View {
-    @Bindable private var model: AIReviewModel
+    @Bindable var model: AIReviewModel
     private let pullRequest: PullRequestSummary?
     private let prBody: String
     private let jump: (ReviewFinding) -> Void
     private let turnIntoComment: ((ReviewFinding) -> Void)?
-    private let chat: AIChatModel?
+    let chat: AIChatModel?
     private let jumpToLocation: (String, Int) -> Void
     private let useAsComment: ((String, CodeLocation) -> Void)?
+    /// The scroll view shows its end (chat: the "scroll to bottom" button hides).
+    @State var isScrolledToBottom = true
 
     /// - Parameters:
     ///   - jump: shows the finding's location in the diff (wired by the app).
@@ -44,22 +46,7 @@ public struct FindingsInspectorScreen: View {
                 }
                 .pickerStyle(.segmented)
                 .labelsHidden()
-                ScrollViewReader { proxy in
-                    ScrollView {
-                        VStack(alignment: .leading, spacing: 12) {
-                            content(for: id)
-                        }
-                        .padding(.bottom, 14)
-                        .animation(.snappy, value: model.selectedFindingID)
-                    }
-                    .onChange(of: model.findingRequest) {
-                        guard let selected = model.selectedFindingID else { return }
-                        // A highlight clicked in the diff: show the finding here as well (after the tab switch).
-                        Task { @MainActor in
-                            withAnimation(.snappy) { proxy.scrollTo(selected, anchor: .top) }
-                        }
-                    }
-                }
+                scrollingContent(for: id)
             } else {
                 ScrollView { emptyState }
             }
@@ -112,7 +99,7 @@ public struct FindingsInspectorScreen: View {
     }
 
     @ViewBuilder
-    private func content(for id: PullRequestID) -> some View {
+    func content(for id: PullRequestID) -> some View {
         switch model.tab {
         case .findings:
             ForEach(model.visibleFindings(for: id)) { finding in

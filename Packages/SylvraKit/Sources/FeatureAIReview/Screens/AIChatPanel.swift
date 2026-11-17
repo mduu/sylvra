@@ -30,6 +30,7 @@ public struct AIChatPanel: View {
                     showCode: message.location.map { location in { jump(location.path, location.line) } },
                     useAsComment: commentAction(for: message)
                 )
+                .id(message.id)
             }
             if model.isSending {
                 HStack(spacing: 6) {
