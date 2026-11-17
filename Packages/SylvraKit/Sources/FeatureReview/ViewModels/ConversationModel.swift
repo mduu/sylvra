@@ -29,10 +29,22 @@ public final class ConversationModel {
     public private(set) var composerFocusRequest = 0
 
     /// New-comment texts per pull request, so switching pull requests doesn't lose a draft.
-    private var drafts: [PullRequestID: String] = [:]
+    var drafts: [PullRequestID: String] = [:]
+
+    /// Rewrites the new comment (writing help, translation); provided by the app (AI agent).
+    public var rewriter: ReviewScreenModel.Rewriter?
+    /// Default when a repository has no remembered comment language yet.
+    public var defaultCommentLanguage = "English"
+    /// What the AI is doing with the new comment right now (`nil`: nothing).
+    public internal(set) var rewritingStyle: CommentRewriteStyle?
+    /// The text before the last AI rewrite, for *Undo rewrite*.
+    public internal(set) var textBeforeRewrite: String?
+    /// Bumped when the language changes so views observing `draftLanguage` refresh.
+    var languageRevision = 0
+    var rewriteTask: Task<Void, Never>?
     private(set) var pullRequestID: PullRequestID?
     private let service: any ConversationService
-    private let logger = SylvraLog.logger("conversation")
+    let logger = SylvraLog.logger("conversation")
 
     public init(service: any ConversationService) {
         self.service = service
@@ -50,6 +62,8 @@ public final class ConversationModel {
 
     public func load(_ id: PullRequestID?) async {
         if pullRequestID != id {
+            cancelRewrite()
+            textBeforeRewrite = nil
             conversation = nil
             editDrafts = [:]
             lastUpdated = nil
@@ -95,6 +109,7 @@ public final class ConversationModel {
         await perform("post comment") {
             let entry = try await self.service.addComment(pullRequestNodeID: nodeID, body: body)
             self.drafts[started] = nil
+            self.textBeforeRewrite = nil
             guard self.pullRequestID == started else { return }
             self.conversation?.entries.append(entry)
         }

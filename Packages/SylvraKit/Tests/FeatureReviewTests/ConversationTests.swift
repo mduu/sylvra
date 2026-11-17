@@ -103,6 +103,43 @@ struct ConversationTests {
     }
 }
 
+@MainActor
+struct ConversationWritingTests {
+    let id = PullRequestID(owner: "acme", repository: "writing-tests-\(UUID().uuidString)", number: 1)
+
+    @Test func rewritesTheNewCommentAndUndoes() async {
+        let model = ConversationModel(service: DemoConversationService())
+        model.rewriter = { text, language, style in "\(style.rawValue) \(language): \(text)" }
+        await model.load(id)
+        model.draft = "this is wrong"
+        await model.rewriteDraft(.improve)
+        #expect(model.draft == "improve English: this is wrong")
+        #expect(!model.isRewriting)
+        model.undoRewrite()
+        #expect(model.draft == "this is wrong")
+        #expect(model.textBeforeRewrite == nil)
+    }
+
+    @Test func switchingTheLanguageTranslates() async throws {
+        let model = ConversationModel(service: DemoConversationService())
+        model.rewriter = { text, language, _ in "[\(language)] \(text)" }
+        await model.load(id)
+        model.draft = "Danke"
+        model.draftLanguage = "German"
+        try await Task.sleep(for: .milliseconds(100))
+        #expect(model.draft == "[German] Danke")
+        UserDefaults.standard.removeObject(forKey: ReviewScreenModel.languageKey(id))
+    }
+
+    @Test func doesNothingWithoutARewriter() async {
+        let model = ConversationModel(service: DemoConversationService())
+        await model.load(id)
+        model.draft = "text"
+        await model.rewriteDraft()
+        #expect(model.draft == "text")
+    }
+}
+
 /// Loads the demo conversation; every write fails.
 private struct FailingConversationService: ConversationService {
     struct Failure: Error {}

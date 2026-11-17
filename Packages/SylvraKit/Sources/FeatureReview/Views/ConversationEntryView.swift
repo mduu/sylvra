@@ -82,13 +82,22 @@ struct ConversationEntryView: View {
     }
 }
 
-/// The field for a new conversation comment (pure): Markdown with preview and the tone check.
+/// The field for a new conversation comment (pure): Markdown with preview, the tone check and AI writing help.
 struct ConversationComposerView: View {
     @Binding var text: String
     let isWorking: Bool
     /// Changes when the cursor should go into the field (after *Quote reply*).
     let focusRequest: Int
     let post: () -> Void
+    /// Comment language; switching translates the text when a rewriter exists.
+    var language: Binding<String>?
+    /// What the AI is doing with the text (shown over it, the text is locked meanwhile).
+    var rewritingStyle: CommentRewriteStyle?
+    var cancelRewrite: () -> Void = {}
+    /// Rewrites the text; `nil` hides the writing help.
+    var rewrite: ((CommentRewriteStyle) -> Void)?
+    /// Restores the text before the last rewrite; `nil` when there is nothing to undo.
+    var undoRewrite: (() -> Void)?
 
     @State private var isPreviewing = false
     @FocusState private var isFocused: Bool
@@ -98,13 +107,19 @@ struct ConversationComposerView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Picker("Mode", selection: $isPreviewing) {
-                Text("Write").tag(false)
-                Text("Preview").tag(true)
+            HStack(spacing: 8) {
+                Picker("Mode", selection: $isPreviewing) {
+                    Text("Write").tag(false)
+                    Text("Preview").tag(true)
+                }
+                .pickerStyle(.segmented)
+                .labelsHidden()
+                .fixedSize()
+                Spacer()
+                WritingHelpControls(
+                    language: language, rewrite: rewrite, undoRewrite: undoRewrite,
+                    isRewriting: rewritingStyle != nil, isEmpty: isEmpty)
             }
-            .pickerStyle(.segmented)
-            .labelsHidden()
-            .fixedSize()
             .controlSize(.small)
             Group {
                 if isPreviewing {
@@ -131,8 +146,21 @@ struct ConversationComposerView: View {
             }
             .background(.background, in: RoundedRectangle(cornerRadius: 6))
             .overlay(RoundedRectangle(cornerRadius: 6).strokeBorder(.separator))
+            .disabled(rewritingStyle != nil)
+            .overlay {
+                if let rewritingStyle {
+                    RewriteProgressView(
+                        title: CommentComposerView.progressTitle(rewritingStyle, language: language?.wrappedValue),
+                        cancel: cancelRewrite
+                    )
+                    .transition(.opacity)
+                }
+            }
+            .animation(.snappy, value: rewritingStyle)
             if !toneIssues.isEmpty {
-                ToneHintView(issues: toneIssues)
+                ToneHintView(
+                    issues: toneIssues, isRewriting: rewritingStyle != nil,
+                    makeFactual: rewrite.map { rewrite in { rewrite(.improve) } })
             }
             HStack {
                 Spacer()
@@ -141,7 +169,7 @@ struct ConversationComposerView: View {
                     .buttonStyle(.borderedProminent)
                     .tint(SylvraColor.brandPrimary)
                     .keyboardShortcut(.return, modifiers: .command)
-                    .disabled(isEmpty || isWorking)
+                    .disabled(isEmpty || isWorking || rewritingStyle != nil)
                     .help("Post this comment on the pull request (⌘↩)")
             }
             .controlSize(.small)

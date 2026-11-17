@@ -45,41 +45,9 @@ struct CommentComposerView: View {
                 .fixedSize()
                 Text(lineLabel).font(.caption).foregroundStyle(.secondary).lineLimit(1).fixedSize()
                 Spacer()
-                if let language {
-                    Picker("Language", selection: language) {
-                        Text(verbatim: "EN").tag("English")
-                        Text(verbatim: "DE").tag("German")
-                    }
-                    .pickerStyle(.segmented)
-                    .labelsHidden()
-                    .fixedSize()
-                    .help("Language of this comment — switching translates the draft")
-                }
-                if let rewrite {
-                    Menu {
-                        Button("Rephrase factually", systemImage: "wand.and.sparkles") { rewrite(.improve) }
-                            .keyboardShortcut("e", modifiers: [.command, .shift])
-                        Button("Shorter and crisper", systemImage: "scissors") { rewrite(.shorten) }
-                            .keyboardShortcut("k", modifiers: [.command, .shift])
-                        if let undoRewrite {
-                            Divider()
-                            Button("Undo rewrite", systemImage: "arrow.uturn.backward", action: undoRewrite)
-                        }
-                    } label: {
-                        if isRewriting {
-                            ProgressView().controlSize(.mini)
-                        } else {
-                            Label("Writing help", systemImage: "sparkles").labelStyle(.iconOnly)
-                        }
-                    } primaryAction: {
-                        rewrite(.improve)
-                    }
-                    .menuStyle(.button)
-                    .fixedSize()
-                    .foregroundStyle(SylvraColor.accentGold)
-                    .disabled(isRewriting || isEmpty)
-                    .help("Rephrase factually and concisely (⌘⇧E). Menu: shorter (⌘⇧K), undo")
-                }
+                WritingHelpControls(
+                    language: language, rewrite: rewrite, undoRewrite: undoRewrite, isRewriting: isRewriting,
+                    isEmpty: isEmpty)
                 if let discuss {
                     Button(action: discuss) {
                         Label("Discuss with Claude", systemImage: "bubble.left.and.text.bubble.right").labelStyle(

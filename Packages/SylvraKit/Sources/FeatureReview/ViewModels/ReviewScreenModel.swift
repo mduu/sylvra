@@ -150,7 +150,8 @@ public final class ReviewScreenModel {
     /// Bumped when the language changes so views observing `draftLanguage` refresh.
     public private(set) var languageRevision = 0
 
-    private static func languageKey(_ id: PullRequestID) -> String { "commentLanguage.\(id.owner)/\(id.repository)" }
+    /// Comment language per repository (shared by code comments and the conversation).
+    static func languageKey(_ id: PullRequestID) -> String { "commentLanguage.\(id.owner)/\(id.repository)" }
 
     /// Starts a comment on a location (from the diff gutter). Keeps the text when only the range changes.
     public func startComment(at location: CodeLocation, lineText: String) {

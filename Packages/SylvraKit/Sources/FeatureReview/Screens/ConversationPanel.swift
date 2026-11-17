@@ -26,12 +26,9 @@ public struct ConversationPanel: View {
                 header
                 content
                 if model.conversation != nil {
-                    ConversationComposerView(
-                        text: $model.draft, isWorking: model.isWorking, focusRequest: model.composerFocusRequest,
-                        post: post
-                    )
-                    .id(Self.composerID)
-                    .padding(.top, 4)
+                    composer
+                        .id(Self.composerID)
+                        .padding(.top, 4)
                 }
             }
             .onChange(of: model.composerFocusRequest) {
@@ -63,6 +60,18 @@ public struct ConversationPanel: View {
         } message: {
             Text(model.errorMessage ?? "")
         }
+    }
+
+    private var composer: some View {
+        let hasRewriter = model.rewriter != nil
+        let canUndo = model.textBeforeRewrite != nil
+        return ConversationComposerView(
+            text: $model.draft, isWorking: model.isWorking, focusRequest: model.composerFocusRequest, post: post,
+            language: hasRewriter ? $model.draftLanguage : nil,
+            rewritingStyle: model.rewritingStyle,
+            cancelRewrite: { model.cancelRewrite() },
+            rewrite: hasRewriter ? { style in Task { await model.rewriteDraft(style) } } : nil,
+            undoRewrite: canUndo ? { model.undoRewrite() } : nil)
     }
 
     private var header: some View {

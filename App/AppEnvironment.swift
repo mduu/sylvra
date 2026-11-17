@@ -105,6 +105,8 @@ final class AppEnvironment {
         conversation = ConversationModel(
             service: isDemo ? DemoConversationService() : GitHubConversationService(client: gitHub))
         Self.configureCommentRewriting(review, agent: agent, isDemo: isDemo)
+        conversation.rewriter = review.rewriter
+        conversation.defaultCommentLanguage = review.defaultCommentLanguage
         review.isSubmitSheetPresented = arguments.contains("--submit-review")
         if let compose = Self.value(of: "--compose", in: arguments)?.split(separator: ":"), compose.count == 2,
             let line = Int(compose[1])
