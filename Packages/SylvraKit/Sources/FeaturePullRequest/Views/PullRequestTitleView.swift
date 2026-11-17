@@ -10,8 +10,9 @@ public struct PullRequestTitleView: View {
     let open: (URL) -> Void
     let doubleClick: () -> Void
 
-    /// Widths for narrow and wide windows. Constant per window size: a toolbar item that changes width
-    /// while AppKit lays out the toolbar can loop its constraint pass.
+    /// Minimum widths for narrow and wide windows. The item also grows into the free toolbar space (like the
+    /// system title it replaces), which keeps the buttons at the trailing edge on wide screens; its minimum
+    /// only changes with the window size band, never while AppKit lays out the toolbar.
     public static let narrowWidth: CGFloat = 400
     public static let wideWidth: CGFloat = 640
 
@@ -43,7 +44,7 @@ public struct PullRequestTitleView: View {
             }
         }
         .font(.callout)
-        .frame(width: width, alignment: .leading)
+        .frame(minWidth: width, idealWidth: width, maxWidth: .infinity, alignment: .leading)
         .frame(maxHeight: .infinity)
         // Click-through to the title bar: the chips are buttons, everything else moves or zooms the window.
         .contentShape(Rectangle())

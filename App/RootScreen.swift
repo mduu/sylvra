@@ -148,8 +148,6 @@ struct RootScreen: View {
                         })
                 }
                 .sharedBackgroundVisibility(.hidden)
-                // Keeps the buttons at the trailing edge (without the system title they would follow the chips).
-                ToolbarSpacer(.flexible, placement: .primaryAction)
                 ToolbarItem(placement: .primaryAction) {
                     ActivityToolbarPanel(center: environment.activity)
                 }
