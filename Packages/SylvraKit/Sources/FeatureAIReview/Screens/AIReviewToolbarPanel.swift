@@ -68,7 +68,11 @@ public struct AIReviewToolbarPanel: View {
             Task { await model.run(pullRequest.id, title: pullRequest.title, body: pullRequestBody) }
         }
         .disabled(pullRequest == nil || isRunning)
-        .help("Run an AI review with the local agent (⌘⇧R)")
+        .help(
+            model.isOutdated(pullRequest?.id)
+                ? "New commits since the last AI review — run it again (⌘⇧R)"
+                : "Run an AI review with the local agent (⌘⇧R)"
+        )
         .keyboardShortcut("r", modifiers: [.command, .shift])
     }
 

@@ -93,6 +93,12 @@ public struct FindingsInspectorScreen: View {
                     Text(message).aiFont(.caption).foregroundStyle(.red).lineLimit(4)
                 }
             }
+            if let pullRequest, let result = model.results[pullRequest.id], !isRunning(pullRequest.id) {
+                ReviewFreshnessView(
+                    isOutdated: model.isOutdated(pullRequest.id), reviewedAt: result.reviewedAt,
+                    isEnabled: model.runState != .running
+                ) { run(pullRequest) }
+            }
         }
         .padding(12)
         .background(.quaternary.opacity(0.4), in: RoundedRectangle(cornerRadius: 12))
@@ -151,7 +157,7 @@ public struct FindingsInspectorScreen: View {
                 .aiFont(.headline)
             if let pullRequest {
                 Button {
-                    Task { await model.run(pullRequest.id, title: pullRequest.title, body: prBody) }
+                    run(pullRequest)
                 } label: {
                     Label("Run AI Review", systemImage: "sparkles")
                 }
@@ -164,6 +170,14 @@ public struct FindingsInspectorScreen: View {
         }
         .frame(maxWidth: .infinity)
         .padding(.top, 40)
+    }
+
+    private func isRunning(_ id: PullRequestID) -> Bool {
+        model.runState == .running && model.runningPullRequest == id
+    }
+
+    private func run(_ pullRequest: PullRequestSummary) {
+        Task { await model.run(pullRequest.id, title: pullRequest.title, body: prBody) }
     }
 
     private func chip(_ text: String) -> some View {

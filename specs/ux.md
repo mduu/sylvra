@@ -110,7 +110,7 @@ flowchart LR
 - **Sidebar (Inbox)** — which PRs need my attention.
 - **PR column** — everything about the PR and where it changed.
 - **Diff** — the code.
-- **Inspector** — AI findings, patterns, chat. Its header (run status) and tabs stay fixed; only the tab content scrolls.
+- **Inspector** — AI findings, patterns, chat. Its header (run status) and tabs stay fixed; only the tab content scrolls. After a run the header shows when it ran and *Run again*; the result remembers the head commit it saw, and when the pull request got new commits since, an orange hint ("New commits since this review") offers *Run again* prominently (the toolbar button's help says so too). A new run loads the current diff.
 - **Window layouts** — toolbar menu and ⌃⌘0–3: *Automatic* (compact below 1700 pt window width, wide otherwise), *Wide* (all columns side by side), *Compact* (laptops: pull request + diff; the inbox floats in from the left with ⌘0 or the tray button and closes after picking a PR; the AI inspector floats on the right), *Focus* (diff and AI sidebar only, changed files in a toolbar popover), *Two windows* (for two screens: inbox and pull request in the main window, diff, AI and terminal in a second "Sylvra Review" window; both always show the same pull request, single-key shortcuts act on the review window).
 - **Terminal panel** — bottom panel, toggle with ⌃\`.
 - **Commands panel** — shares the bottom panel (⌥⌘K, or *Commands* in the terminal header): every GitHub request (GraphQL operation or REST path, variables, status, duration, JSON preview) and every command (git, gh, agent CLIs) of the session, newest first, filterable, failures in red. In memory only; tokens never appear, diffs, file contents and agent output only as their size.

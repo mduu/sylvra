@@ -41,6 +41,8 @@ public final class AIReviewModel {
         findingRequest = UUID()
     }
     public private(set) var dismissed: Set<UUID> = []
+    /// The pull request's head commit right now (wired by the app), to tell whether a review is outdated.
+    public var currentHeadSHA: @MainActor (PullRequestID) -> String? = { _ in nil }
     public var defaultSettings: ReviewSettings {
         didSet { save(defaultSettings, key: "aiReview.defaultSettings") }
     }
@@ -119,6 +121,7 @@ public final class AIReviewModel {
     }
 
     private func perform(_ id: PullRequestID, title: String, body: String) async {
+        let headSHA = currentHeadSHA(id)
         do {
             async let filesToReview = files(id)
             async let checkout = workspace(id)
@@ -142,7 +145,10 @@ public final class AIReviewModel {
                 runState = .failed(String(localized: "Cancelled"))
                 return
             }
-            results[id] = result
+            var reviewed = result
+            reviewed.headSHA = headSHA
+            reviewed.reviewedAt = .now
+            results[id] = reviewed
             cache?.save(
                 Dictionary(uniqueKeysWithValues: results.map { ($0.key.description, $0.value) }),
                 key: "ai-review-results")
@@ -160,6 +166,12 @@ public final class AIReviewModel {
         } else {
             progress.append(update)
         }
+    }
+
+    /// The pull request got new commits since its last review (a run again sees the current diff).
+    public func isOutdated(_ id: PullRequestID?) -> Bool {
+        guard let id, let reviewed = results[id]?.headSHA, let current = currentHeadSHA(id) else { return false }
+        return reviewed != current
     }
 
     // MARK: Findings

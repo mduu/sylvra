@@ -95,6 +95,7 @@ final class AppEnvironment {
         )
         let reviews = aiReview
         let details = pullRequest
+        aiReview.currentHeadSHA = { id in details.detail.flatMap { $0.summary.id == id ? $0.headSHA : nil } }
         chat = AIChatModel(
             provider: agent,
             settings: { id in reviews.settings(for: id) },

@@ -91,6 +91,10 @@ public struct ReviewResult: Hashable, Sendable, Codable {
     public var history: [String]
     /// Suggested reading order (core and risky files first).
     public var readingOrder: [ReadingStep]
+    /// The pull request's head commit the review saw (`nil` for reviews cached before this was recorded).
+    public var headSHA: String?
+    /// When the review finished.
+    public var reviewedAt: Date?
 
     public init(
         summary: String = "", findings: [ReviewFinding] = [], patterns: [PatternFinding] = [], history: [String] = [],
@@ -103,9 +107,11 @@ public struct ReviewResult: Hashable, Sendable, Codable {
         self.readingOrder = readingOrder
     }
 
-    private enum CodingKeys: String, CodingKey { case summary, findings, patterns, history, readingOrder }
+    private enum CodingKeys: String, CodingKey {
+        case summary, findings, patterns, history, readingOrder, headSHA, reviewedAt
+    }
 
-    // Results cached before reading orders existed decode with an empty order.
+    // Results cached before reading orders (or head commits) were recorded decode without them.
     public init(from decoder: any Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         summary = try container.decode(String.self, forKey: .summary)
@@ -113,6 +119,8 @@ public struct ReviewResult: Hashable, Sendable, Codable {
         patterns = try container.decode([PatternFinding].self, forKey: .patterns)
         history = try container.decode([String].self, forKey: .history)
         readingOrder = try container.decodeIfPresent([ReadingStep].self, forKey: .readingOrder) ?? []
+        headSHA = try container.decodeIfPresent(String.self, forKey: .headSHA)
+        reviewedAt = try container.decodeIfPresent(Date.self, forKey: .reviewedAt)
     }
 }
 
