@@ -61,7 +61,9 @@ public struct InlineFindingCard: View {
         .padding(1.2)
         .background(Self.frameGradient, in: RoundedRectangle(cornerRadius: 12))
         .shadow(color: AIAccent.colors[0].opacity(0.25), radius: 14, y: 4)
-        .frame(maxWidth: 620, alignment: .leading)
+        // Keeps the lane's indent on the left and fills the diff width to the right, so long suggestion lines
+        // have room.
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private var meta: String {
@@ -85,19 +87,32 @@ public struct InlineFindingCard: View {
         startPoint: .topLeading, endPoint: .bottomTrailing)
 }
 
-/// `− original` / `+ suggestion` lines in the diff colors (pure).
+/// `− original` / `+ suggestion` lines in the diff colors (pure). Lines are never cut: wider than the card,
+/// the block scrolls sideways.
 struct SuggestionMiniDiff: View {
     let original: String
     let suggestion: String
+    @State private var visibleWidth: CGFloat = 0
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            ForEach(Array(lines(original).enumerated()), id: \.offset) { _, line in
-                row("−", line, SylvraColor.diffRemoved)
+        ScrollView(.horizontal) {
+            // A grid makes every row as wide as the longest line (or the visible width), so the row tints
+            // stay even while scrolling.
+            Grid(alignment: .leading, horizontalSpacing: 0, verticalSpacing: 0) {
+                ForEach(Array(lines(original).enumerated()), id: \.offset) { _, line in
+                    GridRow { row("−", line, SylvraColor.diffRemoved) }
+                }
+                ForEach(Array(lines(suggestion).enumerated()), id: \.offset) { _, line in
+                    GridRow { row("+", line, SylvraColor.diffAdded) }
+                }
+                GridRow { Color.clear.frame(width: visibleWidth, height: 0) }
             }
-            ForEach(Array(lines(suggestion).enumerated()), id: \.offset) { _, line in
-                row("+", line, SylvraColor.diffAdded)
-            }
+        }
+        .scrollIndicators(.automatic)
+        .onGeometryChange(for: CGFloat.self) {
+            $0.size.width
+        } action: {
+            visibleWidth = $0
         }
         .aiFont(size: 11.5, design: .monospaced)
         .clipShape(RoundedRectangle(cornerRadius: 8))
@@ -111,11 +126,11 @@ struct SuggestionMiniDiff: View {
     private func row(_ marker: String, _ text: String, _ tint: Color) -> some View {
         HStack(spacing: 8) {
             Text(marker).foregroundStyle(tint).fontWeight(.bold)
-            Text(text).lineLimit(1)
-            Spacer(minLength: 0)
+            Text(verbatim: text).fixedSize().textSelection(.enabled)
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 4)
+        .frame(maxWidth: .infinity, alignment: .leading)
         .background(tint.opacity(0.14))
     }
 }
