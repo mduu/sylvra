@@ -239,6 +239,43 @@ struct AIChatModelTests {
         #expect(chat.options(for: other) == .init(model: "sonnet", effort: "medium"))
     }
 
+    @Test func startsNewChatsAndKeepsEarlierOnes() async throws {
+        let provider = RecordingChatProvider()
+        let chat = AIChatModel(
+            provider: provider, settings: { _ in ReviewSettings() }, prContext: { _ in "PR context" },
+            workspace: { _ in nil })
+        chat.ask(aboutFinding: "Rounding drift", for: id)
+        await chat.send("Why?", for: id)
+        chat.ask(aboutFinding: "Rounding drift", for: id)
+        #expect(chat.chatList(for: id).count == 1)
+
+        chat.ask(aboutFinding: "CSV escaping", for: id)
+        #expect(chat.chatList(for: id).count == 2)
+        #expect(chat.messages(for: id).isEmpty)
+        #expect(chat.context.finding == "CSV escaping")
+        await chat.send("And this?", for: id)
+        // A fresh chat starts a fresh agent session (with the PR context again).
+        let requests = await provider.requests
+        #expect(requests.last?.sessionID == nil)
+        #expect(requests.last?.message.hasPrefix("PR context") == true)
+
+        let first = try #require(chat.chatList(for: id).first)
+        #expect(first.title == "Why?")
+        chat.selectChat(first.id, for: id)
+        #expect(chat.messages(for: id).map(\.text) == ["Why?", "ok"])
+        await chat.send("More", for: id)
+        #expect(await provider.requests.last?.sessionID == "s")
+    }
+
+    @Test func newChatReusesAnEmptyOne() {
+        let chat = AIChatModel(
+            provider: DemoAgentProvider(delay: .zero), settings: { _ in ReviewSettings() },
+            prContext: { _ in "" }, workspace: { _ in nil })
+        chat.newChat(for: id)
+        chat.newChat(for: id)
+        #expect(chat.chatList(for: id).count == 1)
+    }
+
     @Test func chatPassesEffort() throws {
         let request = ChatRequest(
             message: "hi", sessionID: nil, model: "opus", effort: "low", language: "German", workingDirectory: nil)

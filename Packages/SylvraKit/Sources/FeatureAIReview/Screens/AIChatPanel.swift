@@ -24,6 +24,9 @@ public struct AIChatPanel: View {
 
     public var body: some View {
         VStack(alignment: .leading, spacing: 10) {
+            if let id = pullRequestID {
+                ChatSwitcher(model: model, pullRequestID: id)
+            }
             ForEach(model.messages(for: pullRequestID)) { message in
                 ChatMessageView(
                     message: message,
@@ -63,7 +66,7 @@ public struct AIChatPanel: View {
                 return .handled
             }
         )
-        .animation(.snappy, value: model.messages(for: pullRequestID))
+        .animation(.snappy, value: model.chatList(for: pullRequestID))
     }
 
     @ViewBuilder private var contextChips: some View {

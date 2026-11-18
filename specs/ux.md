@@ -284,6 +284,8 @@ stateDiagram-v2
 - Answers in the configured **agent language** (e.g. German), rendered Markdown (headings, nested lists, fenced code, quotes, rules, tables with aligned columns; long code lines wrap), clickable `path:line` references. The reviewer's own messages stay plain.
 - The chat follows new messages: an answer is scrolled to its first line, a sent question to the end, and opening the tab shows the end. Scrolled up, a round ↓ button floats at the bottom centre and jumps to the latest message.
 - Questions are bubbles on the right; answers use the full width with the AI accent border. Round send button (⌘↩).
+- Below the input two small menus choose the **model** and **effort** of the next question (per PR; defaults to the PR's AI review settings).
+- **Several chats per PR**: *New chat* starts a fresh agent conversation; the earlier chats stay in a menu above the chat (titled by their first question) and continue where they left off. *Ask in chat* on a finding opens its own chat unless the current one is about that finding or still empty; *Discuss* on other code does the same.
 - **Ask AI on a review thread** asks about the discussion; an answer with a *Suggested reply:* section can fill the thread's reply field.
 - Quick prompts: *Explain this change*, *Is this tested?*, *What could break?*, *Which patterns does this follow?*, *Summarize discussion*.
 

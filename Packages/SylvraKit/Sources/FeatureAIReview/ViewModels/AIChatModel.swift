@@ -40,6 +40,24 @@ public final class AIChatModel {
         public var code: CodeSnippet?
     }
 
+    /// One conversation with the agent; a PR can have several (one per finding or question, say).
+    public struct Chat: Identifiable, Equatable, Sendable {
+        public let id = UUID()
+        public var messages: [Message] = []
+        /// The finding the chat was started for ("Ask in chat").
+        public var finding: String?
+        var sessionID: String?
+
+        /// The first question, shortened (menus).
+        public var title: String {
+            guard let question = messages.first(where: { $0.role == .user })?.text else {
+                return finding ?? String(localized: "New chat")
+            }
+            let line = question.split(separator: "\n").first.map(String.init) ?? question
+            return line.count > 48 ? line.prefix(47) + "…" : line
+        }
+    }
+
     /// Model and effort for the chat of one PR; changeable between questions.
     public struct Options: Equatable, Sendable {
         public var model: String
@@ -48,14 +66,15 @@ public final class AIChatModel {
 
     public typealias ContextProvider = @MainActor @Sendable (PullRequestID) -> String
 
-    public private(set) var conversations: [PullRequestID: [Message]] = [:]
+    /// All chats per PR, oldest first.
+    public private(set) var chats: [PullRequestID: [Chat]] = [:]
+    private var activeChatIDs: [PullRequestID: Chat.ID] = [:]
     public private(set) var isSending = false
     public var draft = ""
     public var context = Context()
 
     /// Choices made in the chat; without one the PR's review settings apply.
     public private(set) var chosenOptions: [PullRequestID: Options] = [:]
-    private var sessions: [PullRequestID: String] = [:]
     private let provider: any AgentProvider
     private let settings: @MainActor (PullRequestID) -> ReviewSettings
     private let prContext: ContextProvider
@@ -99,14 +118,66 @@ public final class AIChatModel {
     }
 
     public func messages(for id: PullRequestID?) -> [Message] {
-        id.flatMap { conversations[$0] } ?? []
+        id.flatMap(activeChat(for:))?.messages ?? []
+    }
+
+    /// The chat shown and continued by the next question (`nil` before the first one).
+    public func activeChat(for id: PullRequestID) -> Chat? {
+        let list = chats[id] ?? []
+        return list.first { $0.id == activeChatIDs[id] } ?? list.last
+    }
+
+    public func chatList(for id: PullRequestID?) -> [Chat] {
+        id.flatMap { chats[$0] } ?? []
+    }
+
+    /// Starts a fresh conversation (the agent forgets the earlier one); the earlier chats stay selectable.
+    public func newChat(for id: PullRequestID, finding: String? = nil) {
+        context.code = nil
+        if var current = activeChat(for: id), current.messages.isEmpty {
+            current.finding = finding
+            update(current, in: id)
+            return
+        }
+        let chat = Chat(finding: finding)
+        chats[id, default: []].append(chat)
+        activeChatIDs[id] = chat.id
+    }
+
+    public func selectChat(_ chatID: Chat.ID, for id: PullRequestID) {
+        guard chats[id]?.contains(where: { $0.id == chatID }) == true else { return }
+        activeChatIDs[id] = chatID
+    }
+
+    /// "Ask in chat" on a finding: its own chat, unless the current one is about it or still empty.
+    public func ask(aboutFinding title: String, for id: PullRequestID) {
+        context.finding = title
+        if activeChat(for: id)?.finding != title { newChat(for: id, finding: title) }
+    }
+
+    private func update(_ chat: Chat, in id: PullRequestID) {
+        guard let index = chats[id]?.firstIndex(where: { $0.id == chat.id }) else { return }
+        chats[id]?[index] = chat
+    }
+
+    private func append(_ message: Message, to chatID: Chat.ID, in id: PullRequestID, session: String? = nil) {
+        guard let index = chats[id]?.firstIndex(where: { $0.id == chatID }) else { return }
+        chats[id]?[index].messages.append(message)
+        if let session { chats[id]?[index].sessionID = session }
     }
 
     public func send(_ text: String? = nil, for id: PullRequestID) async {
         let question = (text ?? draft).trimmingCharacters(in: .whitespacesAndNewlines)
         guard !question.isEmpty, !isSending else { return }
         if text == nil { draft = "" }
-        conversations[id, default: []].append(Message(role: .user, text: question, location: context.code?.location))
+        if activeChat(for: id) == nil {
+            // The first chat of the PR; keeps the context (code under discussion) unlike "New chat".
+            let first = Chat(finding: context.finding)
+            chats[id] = [first]
+            activeChatIDs[id] = first.id
+        }
+        guard let chat = activeChat(for: id) else { return }
+        append(Message(role: .user, text: question, location: context.code?.location), to: chat.id, in: id)
         isSending = true
         defer { isSending = false }
 
@@ -118,23 +189,29 @@ public final class AIChatModel {
             let side = code.location.side == .left ? "old version" : "new version"
             prompt += "\n\n(About this code, \(code.label), \(side):\n```\n\(code.text)\n```)"
         }
-        if sessions[id] == nil { prompt = prContext(id) + "\n\n---\n\n" + prompt }
+        if chat.sessionID == nil { prompt = prContext(id) + "\n\n---\n\n" + prompt }
         let directory = try? await workspace(id)
         let options = options(for: id)
         do {
             let reply = try await provider.chat(
                 ChatRequest(
-                    message: prompt, sessionID: sessions[id], model: options.model, effort: options.effort,
+                    message: prompt, sessionID: chat.sessionID, model: options.model, effort: options.effort,
                     language: current.agentLanguage, workingDirectory: directory))
-            sessions[id] = reply.sessionID
-            conversations[id, default: []].append(Message(role: .assistant, text: reply.text))
+            // The reply goes to the chat it answers, even if the reviewer switched chats meanwhile.
+            append(Message(role: .assistant, text: reply.text), to: chat.id, in: id, session: reply.sessionID)
         } catch {
-            conversations[id, default: []].append(Message(role: .error, text: String(describing: error)))
+            append(Message(role: .error, text: String(describing: error)), to: chat.id, in: id)
         }
     }
 
     /// Starts a private discussion about selected code; nothing is posted to GitHub.
     public func discuss(_ snippet: CodeSnippet, question: String, for id: PullRequestID) async {
+        // Other code gets its own chat; the same code continues the current one.
+        if let current = activeChat(for: id), !current.messages.isEmpty,
+            !current.messages.contains(where: { $0.location == snippet.location })
+        {
+            newChat(for: id)
+        }
         context.code = snippet
         let trimmed = question.trimmingCharacters(in: .whitespacesAndNewlines)
         await send(trimmed.isEmpty ? String(localized: "Explain this code and what could go wrong.") : trimmed, for: id)
@@ -143,7 +220,8 @@ public final class AIChatModel {
     /// Locations discussed in a PR's chat (for markers in the diff).
     public func discussedLocations(for id: PullRequestID?) -> [CodeLocation] {
         var seen: [CodeLocation] = []
-        for location in messages(for: id).compactMap(\.location) where !seen.contains(location) {
+        let all = chatList(for: id).flatMap(\.messages)
+        for location in all.compactMap(\.location) where !seen.contains(location) {
             seen.append(location)
         }
         return seen
@@ -157,8 +235,8 @@ public final class AIChatModel {
     }
 
     public func reset(_ id: PullRequestID) {
-        conversations[id] = nil
-        sessions[id] = nil
+        chats[id] = nil
+        activeChatIDs[id] = nil
     }
 
     /// A `path:line` reference inside an answer.

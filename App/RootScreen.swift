@@ -190,7 +190,7 @@ struct RootScreen: View {
                     actions: FindingActions(
                         turnIntoComment: { startComment(from: finding, reveal: false) },
                         askInChat: {
-                            environment.chat.context.finding = finding.title
+                            if let id = selection?.id { environment.chat.ask(aboutFinding: finding.title, for: id) }
                             environment.aiReview.tab = .chat
                             isInspectorPresented = true
                         },
