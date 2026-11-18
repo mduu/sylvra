@@ -224,6 +224,29 @@ struct AIChatModelTests {
         #expect(chat.context.code?.label == "InvoiceService.swift:8–9")
     }
 
+    @Test func chatModelAndEffortDefaultToReviewSettingsAndCanChange() async throws {
+        let provider = RecordingChatProvider()
+        let chat = AIChatModel(
+            provider: provider, settings: { _ in ReviewSettings(models: ["sonnet", "opus"], effort: "medium") },
+            prContext: { _ in "PR context" }, workspace: { _ in nil })
+        #expect(chat.options(for: id) == .init(model: "sonnet", effort: "medium"))
+        chat.setModel("fable", for: id)
+        chat.setEffort("max", for: id)
+        await chat.send("Hi", for: id)
+        let request = try #require(await provider.requests.last)
+        #expect(request.model == "fable" && request.effort == "max")
+        let other = PullRequestID(owner: "o", repository: "r", number: 1)
+        #expect(chat.options(for: other) == .init(model: "sonnet", effort: "medium"))
+    }
+
+    @Test func chatPassesEffort() throws {
+        let request = ChatRequest(
+            message: "hi", sessionID: nil, model: "opus", effort: "low", language: "German", workingDirectory: nil)
+        let arguments = ClaudeCodeProvider.chatArguments(for: request)
+        let index = try #require(arguments.firstIndex(of: "--effort"))
+        #expect(arguments[index + 1] == "low")
+    }
+
     @Test func findsCodeReferences() {
         let refs = AIChatModel.codeReferences(in: "See Sources/Billing/InvoiceService.swift:9 and Package.swift:3.")
         #expect(refs.map(\.path) == ["Sources/Billing/InvoiceService.swift", "Package.swift"])
@@ -281,5 +304,22 @@ struct CommentRewriterTests {
             SuggestionGuard.keepsSuggestions(
                 original: original, rewritten: "Bitte einmal runden.\n\n```suggestion\nlet x = 1\n```"))
         #expect(!SuggestionGuard.keepsSuggestions(original: original, rewritten: "Bitte einmal runden."))
+    }
+}
+
+/// Remembers chat requests and answers briefly.
+private actor RecordingChatProvider: AgentProvider {
+    nonisolated let name = "recording"
+    private(set) var requests: [ChatRequest] = []
+
+    func detectVersion() async -> String? { "1" }
+
+    func review(_ request: ReviewRequest) async throws -> AgentReviewOutput {
+        throw AgentError.failed("not used")
+    }
+
+    func chat(_ request: ChatRequest) async throws -> ChatReply {
+        requests.append(request)
+        return ChatReply(text: "ok", sessionID: "s")
     }
 }

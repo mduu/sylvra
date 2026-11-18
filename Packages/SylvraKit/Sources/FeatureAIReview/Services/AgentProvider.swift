@@ -17,11 +17,17 @@ public struct ChatRequest: Sendable {
     public let model: String
     public let language: String
     public let workingDirectory: URL?
+    /// Reasoning effort (`nil`: the agent's default).
+    public let effort: String?
 
-    public init(message: String, sessionID: String?, model: String, language: String, workingDirectory: URL?) {
+    public init(
+        message: String, sessionID: String?, model: String, effort: String? = nil, language: String,
+        workingDirectory: URL?
+    ) {
         self.message = message
         self.sessionID = sessionID
         self.model = model
+        self.effort = effort
         self.language = language
         self.workingDirectory = workingDirectory
     }

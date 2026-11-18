@@ -40,6 +40,12 @@ public final class AIChatModel {
         public var code: CodeSnippet?
     }
 
+    /// Model and effort for the chat of one PR; changeable between questions.
+    public struct Options: Equatable, Sendable {
+        public var model: String
+        public var effort: String
+    }
+
     public typealias ContextProvider = @MainActor @Sendable (PullRequestID) -> String
 
     public private(set) var conversations: [PullRequestID: [Message]] = [:]
@@ -47,6 +53,8 @@ public final class AIChatModel {
     public var draft = ""
     public var context = Context()
 
+    /// Choices made in the chat; without one the PR's review settings apply.
+    public private(set) var chosenOptions: [PullRequestID: Options] = [:]
     private var sessions: [PullRequestID: String] = [:]
     private let provider: any AgentProvider
     private let settings: @MainActor (PullRequestID) -> ReviewSettings
@@ -71,6 +79,25 @@ public final class AIChatModel {
         self.workspace = workspace
     }
 
+    /// The model and effort the next question uses.
+    public func options(for id: PullRequestID) -> Options {
+        if let chosen = chosenOptions[id] { return chosen }
+        let current = settings(id)
+        return Options(model: current.models.first ?? "opus", effort: current.effort)
+    }
+
+    public func setModel(_ model: String, for id: PullRequestID) {
+        var chosen = options(for: id)
+        chosen.model = model
+        chosenOptions[id] = chosen
+    }
+
+    public func setEffort(_ effort: String, for id: PullRequestID) {
+        var chosen = options(for: id)
+        chosen.effort = effort
+        chosenOptions[id] = chosen
+    }
+
     public func messages(for id: PullRequestID?) -> [Message] {
         id.flatMap { conversations[$0] } ?? []
     }
@@ -93,10 +120,11 @@ public final class AIChatModel {
         }
         if sessions[id] == nil { prompt = prContext(id) + "\n\n---\n\n" + prompt }
         let directory = try? await workspace(id)
+        let options = options(for: id)
         do {
             let reply = try await provider.chat(
                 ChatRequest(
-                    message: prompt, sessionID: sessions[id], model: current.models.first ?? "opus",
+                    message: prompt, sessionID: sessions[id], model: options.model, effort: options.effort,
                     language: current.agentLanguage, workingDirectory: directory))
             sessions[id] = reply.sessionID
             conversations[id, default: []].append(Message(role: .assistant, text: reply.text))

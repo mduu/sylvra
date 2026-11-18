@@ -68,6 +68,7 @@ public struct ClaudeCodeProvider: AgentProvider {
             "You are a code review assistant inside Sylvra. Never modify files. Answer concisely in \(request.language). "
                 + "Reference code as path:line so the reviewer can jump there.",
         ]
+        if let effort = request.effort { arguments += ["--effort", effort] }
         arguments += isolationArguments(workspace: request.workingDirectory)
         if let session = request.sessionID { arguments += ["--resume", session] }
         return arguments

@@ -51,6 +51,9 @@ public struct AIChatPanel: View {
             }
             // Clear of the scroll bar, which overlays the inspector's right edge.
             .padding(.trailing, 12)
+            if let id = pullRequestID {
+                ChatOptionsPicker(model: model, pullRequestID: id)
+            }
         }
         .environment(
             \.openURL,
