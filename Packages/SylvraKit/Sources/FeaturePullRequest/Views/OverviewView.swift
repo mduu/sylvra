@@ -13,7 +13,7 @@ struct OverviewView: View {
                 MergeStatusCardView(status: detail.mergeStatus, reasons: detail.mergeReasons)
             }
             if !detail.involvement.isEmpty {
-                InvolvementCardView(involvement: detail.involvement, open: open)
+                InvolvementCardView(involvement: detail.involvement, newActivity: detail.newActivity, open: open)
             }
             section("Description") {
                 if detail.body.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {

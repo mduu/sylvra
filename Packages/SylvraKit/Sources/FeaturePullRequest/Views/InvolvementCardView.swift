@@ -2,9 +2,11 @@ import DesignSystem
 import SwiftUI
 import SylvraCore
 
-/// "Why you're involved": where the user was mentioned and whether they took part (pure).
+/// "Why you're involved": where the user was mentioned, whether they took part and what is new since (pure).
 struct InvolvementCardView: View {
     let involvement: Involvement
+    /// What others did since the user's last comment (`nil`: nothing, or not known).
+    var newActivity: NewActivity?
     var open: (URL) -> Void = { _ in }
 
     var body: some View {
@@ -32,6 +34,9 @@ struct InvolvementCardView: View {
                     Label("Nothing new since — waiting on others", systemImage: "hourglass")
                         .font(.caption.weight(.medium))
                         .foregroundStyle(.secondary)
+                } else if let newActivity {
+                    Divider().padding(.vertical, 2)
+                    NewActivityView(activity: newActivity, open: open)
                 } else if involvement.activity.hasNewActivity {
                     Label("New activity since your last comment", systemImage: "circle.fill")
                         .font(.caption.weight(.medium))

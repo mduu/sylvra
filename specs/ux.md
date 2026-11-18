@@ -146,7 +146,7 @@ Screens follow the container / presentational split described in `architecture.m
 - Sections are collapsible; the state is remembered.
 - **Waiting on others**: a PR where the user acted last (review, comment, reply) is dimmed with an hourglass and grouped below the others until someone else adds a comment, review or commit; then it shows *New activity*. Rows show `#number` in the brand color and a comment count bubble.
 
-**Why you're involved**: the PR overview shows where the user was @-mentioned (description, comments, reviews, code comments with file and line; excerpt with the mention highlighted, link to GitHub) and how often they commented — so *Involved* PRs explain themselves.
+**Why you're involved**: the PR overview shows where the user was @-mentioned (description, comments, reviews, code comments with file and line; excerpt with the mention highlighted, link to GitHub) and how often they commented — so *Involved* PRs explain themselves. With new activity since the user's last comment or review, the card lists what is new: commits (SHA, subject, author) and comments, reviews and replies by others (author, place, excerpt), newest first, each opening on GitHub; bots are left out.
 
 **Filters** (inbox and repository view): chips above the list — *Filters* menu with persistent preferences (hide bots, hide drafts by others — own drafts always stay visible, hidden authors), *Author*, *Needs review*, *CI failing*, *Small*. Right-click a pull request: *Show only PRs by …*, *Hide PRs by …*. A hint counts what the filters hide.
 

@@ -153,7 +153,7 @@ public struct DemoPullRequestDetailLoader: PullRequestDetailLoading {
                         place: .comment, author: lena, date: ago(27),
                         excerpt: "Splitting this into two PRs would help. cc @mduu for the export part.",
                         url: demoURL(id, "#issuecomment-1")),
-                ], ownCommentCount: 1, lastOwnCommentAt: ago(50))
+                ], ownCommentCount: 1, lastOwnCommentAt: ago(30), othersLastActivityAt: ago(3))
         }
         return detail
     }
