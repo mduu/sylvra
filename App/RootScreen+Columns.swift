@@ -125,6 +125,8 @@ extension RootScreen {
                     await environment.inbox.refresh()
                 }
             )
+            .environment(\.diffTrailingCover, floatingInspectorInset)
+            .animation(.snappy, value: floatingInspectorInset)
         }
         .panelHandle(.leading, isVisible: showsInboxHandle(onReviewColumn: true)) { inboxHandle }
         .panelHandle(.trailing, isVisible: hasAIPanel && !isInspectorPresented) { aiHandle }

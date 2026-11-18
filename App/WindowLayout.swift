@@ -101,6 +101,11 @@ enum WindowLayout: String, CaseIterable, Identifiable {
     /// The AI inspector is a sidebar here; elsewhere it floats over the diff.
     var docksInspector: Bool { self != .compact }
 
+    /// Width of the floating AI panel.
+    static let floatingInspectorWidth: CGFloat = 360
+    /// What the floating AI panel covers at the window's trailing edge (panel plus its margin).
+    static let floatingInspectorCover: CGFloat = floatingInspectorWidth + 16
+
     /// The inbox floats in over the content instead of being a column.
     var floatsInbox: Bool { self == .compact || self == .focus }
 }

@@ -3,6 +3,11 @@ import DesignSystem
 import SwiftUI
 
 /// Content placed between diff lines, indented past the gutter; the gutter keeps running (pure).
+extension EnvironmentValues {
+    /// Width a floating panel covers at the diff's trailing edge (set by the app; 0 when nothing floats).
+    @Entry public var diffTrailingCover: CGFloat = 0
+}
+
 struct AccessoryLane<Content: View>: View {
     var minWidth: CGFloat = 0
     /// Width of the gutter the lane continues (inline has two line-number columns).
@@ -11,7 +16,10 @@ struct AccessoryLane<Content: View>: View {
     var continuation: HalfContinuation = .none
     /// Side by side draws the surfaces once behind both lanes (with the continued ribbon and bars).
     var drawsSurface = true
+    /// Whether the lane ends at the diff's trailing edge, where a floating panel may cover it.
+    var reachesTrailingEdge = true
     @ViewBuilder let content: Content
+    @Environment(\.diffTrailingCover) private var trailingCover
 
     var body: some View {
         // The zero-height placeholder keeps an empty lane in the layout (an empty `if` would vanish and let
@@ -21,6 +29,8 @@ struct AccessoryLane<Content: View>: View {
             content
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+        // Keeps cards, composers and their buttons clear of a floating panel; the surface still runs underneath.
+        .padding(.trailing, reachesTrailingEdge ? trailingCover : 0)
         .padding(.leading, gutterWidth)
         .background {
             if drawsSurface { GutterStrip(gutterWidth: gutterWidth, continuation: continuation) }

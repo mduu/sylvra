@@ -15,6 +15,12 @@ extension RootScreen {
             set: { isInspectorPresented = $0 })
     }
 
+    /// Room kept free at the trailing edge of boxes inside the diff (comment composer, threads, findings), so
+    /// the floating AI panel does not cover their text and buttons.
+    var floatingInspectorInset: CGFloat {
+        !layout.docksInspector && isInspectorPresented ? WindowLayout.floatingInspectorCover : 0
+    }
+
     var inspectorContent: some View {
         FindingsInspectorScreen(
             model: environment.aiReview,
@@ -104,7 +110,9 @@ extension WindowLayoutModifier {
         if !layout.docksInspector, root.isInspectorPresented {
             HStack(spacing: -8) {
                 root.aiHandle
-                FloatingPanel(edge: .trailing, width: 360, isPresented: root.inspectorBinding) {
+                FloatingPanel(
+                    edge: .trailing, width: WindowLayout.floatingInspectorWidth, isPresented: root.inspectorBinding
+                ) {
                     root.inspectorContent
                 }
             }

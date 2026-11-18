@@ -301,7 +301,7 @@ struct DiffFileBodyView<Accessory: View>: View {
         Group {
             if diffIsWide {
                 HStack(alignment: .top, spacing: 0) {
-                    AccessoryLane(drawsSurface: false) {
+                    AccessoryLane(drawsSurface: false, reachesTrailingEdge: false) {
                         if let old = row.left?.oldNumber { accessory(CodeLocation(path: path, line: old, side: .left)) }
                     }
                     Spacer(minLength: 44).frame(width: 44)
