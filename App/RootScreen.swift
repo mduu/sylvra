@@ -147,10 +147,10 @@ struct RootScreen: View {
     func startComment(from finding: ReviewFinding, reveal: Bool = true) {
         let location = CodeLocation(
             path: finding.path, line: finding.endLine, side: .right, startLine: finding.startLine)
-        var body = finding.rationale
-        if let suggestion = finding.suggestion { body += "\n\n" + SuggestionBlock.make(code: suggestion) }
-        environment.review.draft = CommentDraft(
-            location: location, lineText: environment.diff.text(at: location), body: body)
+        let lineText = environment.diff.text(at: location)
+        let body = SuggestionBlock.commentBody(
+            rationale: finding.rationale, code: finding.suggestion, replacing: lineText)
+        environment.review.draft = CommentDraft(location: location, lineText: lineText, body: body)
         if reveal { environment.diff.focus(path: finding.path, line: finding.endLine) }
         // Start from a personal draft in the language last used for this repository; the reviewer edits it.
         Task { await environment.review.rewriteDraft() }

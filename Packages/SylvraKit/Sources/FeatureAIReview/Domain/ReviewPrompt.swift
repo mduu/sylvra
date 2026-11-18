@@ -42,7 +42,10 @@ public struct ReviewRequest: Sendable {
             follows, violates or newly introduces, especially rules documented in the repository guidelines below.
 
             Line numbers refer to the NEW version of the file (right side of the diff). Only report findings on lines \
-            that appear in the diff. A `suggestion` replaces exactly startLine…endLine.
+            that appear in the diff. A `suggestion` is applied 1:1 as a GitHub suggestion: it must be the complete \
+            replacement code for exactly startLine…endLine, with the original indentation, and nothing else — no \
+            prose, no placeholders such as "…", no code for other lines. When the fix is not such a replacement, \
+            omit `suggestion` and describe the fix in the rationale.
 
             Also suggest a reading order (`readingOrder`): the changed files of this shard in the order a reviewer \
             should read them — the core change and risky areas first, then what depends on it, tests and mechanical \

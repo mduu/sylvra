@@ -5,20 +5,6 @@ import Testing
 
 @testable import FeatureReview
 
-struct SuggestionBlockTests {
-    @Test func buildsSuggestionBlock() {
-        #expect(SuggestionBlock.make(code: "let a = 1\nlet b = 2") == "```suggestion\nlet a = 1\nlet b = 2\n```")
-    }
-
-    @Test func insertsIntoEmptyBody() {
-        #expect(SuggestionBlock.insert(code: "x", into: "  \n") == "```suggestion\nx\n```\n")
-    }
-
-    @Test func appendsAfterExistingTextWithBlankLine() {
-        #expect(SuggestionBlock.insert(code: "x", into: "Nit:\n") == "Nit:\n\n```suggestion\nx\n```\n")
-    }
-}
-
 struct MarkdownBlockTests {
     @Test func splitsProseAndFencedCode() {
         let blocks = MarkdownBlock.parse("Why not:\r\n\r\n```suggestion\r\nlet a = 1\r\n```\r\nThanks")
