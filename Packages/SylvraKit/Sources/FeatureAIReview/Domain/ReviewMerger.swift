@@ -24,34 +24,48 @@ public enum ReviewMerger {
                     ReadingStep(path: step.path, reason: step.reason ?? "", isRisky: step.risky ?? false))
             }
             for raw in output.findings {
-                let finding = anchor(raw, source: source, file: byPath[raw.path])
-                if let index = findings.firstIndex(where: { isDuplicate($0, finding) }) {
-                    if !findings[index].sources.contains(source) { findings[index].sources.append(source) }
-                    // Agents that agree on a finding may rate it differently: keep the higher rating.
-                    findings[index].impact = higher(findings[index].impact, finding.impact)
-                    findings[index].likelihood = higher(findings[index].likelihood, finding.likelihood)
-                } else {
-                    findings.append(finding)
-                }
+                add(anchor(raw, source: source, file: byPath[raw.path]), to: &findings)
             }
             for raw in output.patterns ?? [] {
-                let pattern = PatternFinding(
-                    name: raw.name, verdict: raw.verdict, rationale: raw.rationale ?? "",
-                    evidence: (raw.evidence ?? []).compactMap { evidence in
-                        guard let path = evidence.path, let start = evidence.startLine else { return nil }
-                        return CodeLocationText(path: path, startLine: start, endLine: evidence.endLine ?? start)
-                    })
-                if !patterns.contains(where: {
-                    $0.name.caseInsensitiveCompare(pattern.name) == .orderedSame && $0.verdict == pattern.verdict
-                }) {
-                    patterns.append(pattern)
-                }
+                add(pattern(raw), to: &patterns)
             }
         }
         findings.sort { ($0.severity, $0.path, $0.startLine) < ($1.severity, $1.path, $1.startLine) }
         return ReviewResult(
             summary: summaries.filter { !$0.isEmpty }.joined(separator: "\n\n"), findings: findings, patterns: patterns,
             history: Array(Set(history)).sorted(), readingOrder: readingOrder, risk: overallRisk(risks))
+    }
+
+    /// A new finding, or another source (and the higher ratings) for one already reported.
+    private static func add(_ finding: ReviewFinding, to findings: inout [ReviewFinding]) {
+        guard let index = findings.firstIndex(where: { isDuplicate($0, finding) }) else {
+            findings.append(finding)
+            return
+        }
+        for source in finding.sources where !findings[index].sources.contains(source) {
+            findings[index].sources.append(source)
+        }
+        // Agents that agree on a finding may rate it differently: keep the higher rating.
+        findings[index].impact = higher(findings[index].impact, finding.impact)
+        findings[index].likelihood = higher(findings[index].likelihood, finding.likelihood)
+    }
+
+    private static func pattern(_ raw: AgentReviewOutput.Pattern) -> PatternFinding {
+        PatternFinding(
+            name: raw.name, verdict: raw.verdict, rationale: raw.rationale ?? "",
+            evidence: (raw.evidence ?? []).compactMap { evidence in
+                guard let path = evidence.path, let start = evidence.startLine else { return nil }
+                return CodeLocationText(path: path, startLine: start, endLine: evidence.endLine ?? start)
+            })
+    }
+
+    private static func add(_ pattern: PatternFinding, to patterns: inout [PatternFinding]) {
+        guard
+            !patterns.contains(where: {
+                $0.name.caseInsensitiveCompare(pattern.name) == .orderedSame && $0.verdict == pattern.verdict
+            })
+        else { return }
+        patterns.append(pattern)
     }
 
     /// The highest rating of all shards and models; its reasons first, at most four, without repeats.
