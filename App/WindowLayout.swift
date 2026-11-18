@@ -68,13 +68,14 @@ enum WindowLayout: String, CaseIterable, Identifiable {
         }
     }
 
+    /// Filled column diagrams, so they don't look like the sidebar or the diff layout buttons.
     var icon: String {
         switch self {
         case .automatic: "rectangle.3.group"
-        case .wide: "rectangle.split.3x1"
-        case .compact: "rectangle.split.2x1"
-        case .focus: "rectangle"
-        case .twoWindows: "rectangle.on.rectangle"
+        case .wide: "inset.filled.leftthird.middlethird.rightthird.rectangle"
+        case .compact: "inset.filled.lefthalf.righthalf.rectangle"
+        case .focus: "inset.filled.center.rectangle"
+        case .twoWindows: "macwindow.on.rectangle"
         }
     }
 
@@ -126,8 +127,9 @@ struct WindowLayoutMenu: View {
         } label: {
             Label("Layout", systemImage: resolved.icon)
         }
-        .menuIndicator(.hidden)
-        .help("Window layout: wide, compact (laptop) or focus on the diff")
+        // A visible chevron, like the other menus in the toolbar.
+        .menuIndicator(.visible)
+        .help("Window layout: wide, compact (laptop), focus on the diff or two windows")
     }
 }
 

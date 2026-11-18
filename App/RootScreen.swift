@@ -57,8 +57,6 @@ struct RootScreen: View {
             .navigationSubtitle(Text(verbatim: selection?.title ?? ""))
             // The title stays set for the Window menu; the toolbar shows clickable chips instead.
             .toolbar(removing: .title)
-            // The inbox is toggled with the handle on its edge (⌘0), in every layout.
-            .toolbar(removing: .sidebarToggle)
             .inspector(isPresented: dockedInspector) {
                 inspectorContent
                     .panelHandle(.leading, isVisible: true) { aiHandle }
