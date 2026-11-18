@@ -55,6 +55,7 @@ public struct FindingDetailView: View {
                     .background(finding.severity.color.opacity(0.15), in: Capsule())
                 Text(finding.title).aiFont(.callout, weight: .semibold)
             }
+            FindingRiskLine(impact: finding.impact, likelihood: finding.likelihood)
             Text(finding.rationale).aiFont(.callout).fixedSize(horizontal: false, vertical: true).textSelection(
                 .enabled)
             if let suggestion = finding.suggestion {

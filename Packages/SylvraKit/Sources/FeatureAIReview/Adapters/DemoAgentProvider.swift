@@ -35,6 +35,8 @@ public struct DemoAgentProvider: AgentProvider {
         let json = """
             {"summary": "Adds CSV export next to JSON and changes how invoice totals are summed. The rounding change \
             affects every existing invoice — that is where the risk is.",
+             "risk": {"level": "medium", "reasons": ["Invoice totals change for existing customers", \
+            "Unescaped CSV can break imports and allow formula injection"]},
              "readingOrder": [
               {"path": "Sources/Billing/InvoiceService.swift", "reason": "Core change: totals are rounded per line", \
             "risky": true},
@@ -48,17 +50,20 @@ public struct DemoAgentProvider: AgentProvider {
                "category": "bug", "title": "Rounding per line item changes invoice totals",
                "rationale": "Each item is rounded before summing. With many small items the total drifts by several \
             cents compared to today and to the PDF export. Round once, after summing.",
-               "suggestion": "            sum + item.price * item.quantity", "confidence": 0.86},
+               "suggestion": "            sum + item.price * item.quantity", "confidence": 0.86,
+               "impact": "high", "likelihood": "high"},
               {"path": "Sources/Export/CSVEncoder.swift", "startLine": 8, "endLine": 8, "severity": "major",
                "category": "security", "title": "CSV values are not escaped",
                "rationale": "Names containing commas, quotes or newlines break the CSV and allow formula injection \
-            when opened in Excel.", "confidence": 0.8},
+            when opened in Excel.", "confidence": 0.8, "impact": "high", "likelihood": "medium"},
               {"path": "Tests/BillingTests/InvoiceServiceTests.swift", "startLine": 16, "endLine": 19, "severity": "minor",
                "category": "tests", "title": "No test for rounding of many small items",
-               "rationale": "The changed rounding behaviour is not covered.", "confidence": 0.7},
+               "rationale": "The changed rounding behaviour is not covered.", "confidence": 0.7,
+               "impact": "medium", "likelihood": "medium"},
               {"path": "Sources/Export/ExportFormat.swift", "startLine": 1, "endLine": 1, "severity": "nit",
                "category": "style", "title": "ExportFormat could be CaseIterable",
-               "rationale": "Allows listing formats in the UI without duplication.", "confidence": 0.5}
+               "rationale": "Allows listing formats in the UI without duplication.", "confidence": 0.5,
+               "impact": "low", "likelihood": "low"}
              ],
              "patterns": [
               {"name": "Service layer", "verdict": "followed", "rationale": "Logic stays in InvoiceService."},

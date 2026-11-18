@@ -10,9 +10,12 @@ public enum ReviewMerger {
         var summaries: [String] = []
         var history: [String] = []
         var readingOrder: [ReadingStep] = []
+        var risks: [AgentReviewOutput.Risk] = []
 
         for (output, source) in outputs {
-            summaries.append(output.summary)
+            // Models that say the same thing don't repeat it.
+            if !summaries.contains(output.summary) { summaries.append(output.summary) }
+            if let risk = output.risk { risks.append(risk) }
             history += output.history ?? []
             // Shards cover different files: keep each agent's order, first mention wins; only files of the PR.
             for step in output.readingOrder ?? [] where byPath[step.path] != nil {
@@ -24,6 +27,9 @@ public enum ReviewMerger {
                 let finding = anchor(raw, source: source, file: byPath[raw.path])
                 if let index = findings.firstIndex(where: { isDuplicate($0, finding) }) {
                     if !findings[index].sources.contains(source) { findings[index].sources.append(source) }
+                    // Agents that agree on a finding may rate it differently: keep the higher rating.
+                    findings[index].impact = higher(findings[index].impact, finding.impact)
+                    findings[index].likelihood = higher(findings[index].likelihood, finding.likelihood)
                 } else {
                     findings.append(finding)
                 }
@@ -45,7 +51,23 @@ public enum ReviewMerger {
         findings.sort { ($0.severity, $0.path, $0.startLine) < ($1.severity, $1.path, $1.startLine) }
         return ReviewResult(
             summary: summaries.filter { !$0.isEmpty }.joined(separator: "\n\n"), findings: findings, patterns: patterns,
-            history: Array(Set(history)).sorted(), readingOrder: readingOrder)
+            history: Array(Set(history)).sorted(), readingOrder: readingOrder, risk: overallRisk(risks))
+    }
+
+    /// The highest rating of all shards and models; its reasons first, at most four, without repeats.
+    static func overallRisk(_ risks: [AgentReviewOutput.Risk]) -> RiskAssessment? {
+        guard let level = risks.map(\.level).max() else { return nil }
+        var reasons: [String] = []
+        for risk in risks.sorted(by: { $0.level > $1.level }) {
+            for reason in risk.reasons ?? [] where !reason.isEmpty && !reasons.contains(reason) {
+                reasons.append(reason)
+            }
+        }
+        return RiskAssessment(level: level, reasons: Array(reasons.prefix(4)))
+    }
+
+    private static func higher(_ lhs: RiskLevel?, _ rhs: RiskLevel?) -> RiskLevel? {
+        [lhs, rhs].compactMap { $0 }.max()
     }
 
     /// Re-anchors findings outside the diff to the nearest visible line, or marks them unanchored.
@@ -68,7 +90,8 @@ public enum ReviewMerger {
         return ReviewFinding(
             path: raw.path, startLine: start, endLine: end, severity: raw.severity, category: raw.category ?? "design",
             title: raw.title, rationale: raw.rationale ?? "", suggestion: raw.suggestion?.nilIfEmpty,
-            confidence: raw.confidence ?? 0.5, sources: [source], isAnchored: anchored)
+            confidence: raw.confidence ?? 0.5, impact: raw.impact, likelihood: raw.likelihood, sources: [source],
+            isAnchored: anchored)
     }
 
     /// Same file, overlapping lines and a similar title.

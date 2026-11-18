@@ -48,7 +48,12 @@ public struct ReviewRequest: Sendable {
             should read them — the core change and risky areas first, then what depends on it, tests and mechanical \
             changes last. Give each a short reason (a few words) and mark risky areas with `risky: true`.
 
-            Write summary, titles, rationales, reading-order reasons and pattern explanations in \(language). Keep code, identifiers and \
+            Rate the risk of merging this change (`risk`): `level` low, medium or high, and one to three short \
+            `reasons` naming what could break and for whom. For every finding, rate `impact` (how bad it is if it \
+            happens) and `likelihood` (how likely it happens in practice), each low, medium or high.
+
+            Write summary, titles, rationales, risk reasons, reading-order reasons and pattern explanations in \
+            \(language). Keep code, identifiers and \
             suggestions unchanged.
             """)
         parts.append("## Pull request\n\nTitle: \(pullRequestTitle)\n\n\(pullRequestBody.prefix(4000))")
@@ -69,15 +74,19 @@ public struct ReviewRequest: Sendable {
 
     /// JSON schema of the structured output.
     public static let outputSchema = """
-        {"type":"object","required":["summary","findings","patterns"],"properties":{\
+        {"type":"object","required":["summary","risk","findings","patterns"],"properties":{\
         "summary":{"type":"string"},\
+        "risk":{"type":"object","required":["level","reasons"],"properties":{\
+        "level":{"type":"string","enum":["low","medium","high"]},"reasons":{"type":"array","items":{"type":"string"}}}},\
         "findings":{"type":"array","items":{"type":"object",\
-        "required":["path","startLine","endLine","severity","category","title","rationale","confidence"],"properties":{\
+        "required":["path","startLine","endLine","severity","category","title","rationale","confidence","impact",\
+        "likelihood"],"properties":{\
         "path":{"type":"string"},"startLine":{"type":"integer"},"endLine":{"type":"integer"},\
         "severity":{"type":"string","enum":["critical","major","minor","nit"]},\
         "category":{"type":"string","enum":["bug","security","performance","concurrency","design","tests","style","pattern"]},\
         "title":{"type":"string"},"rationale":{"type":"string"},"suggestion":{"type":"string"},\
-        "confidence":{"type":"number"}}}},\
+        "confidence":{"type":"number"},"impact":{"type":"string","enum":["low","medium","high"]},\
+        "likelihood":{"type":"string","enum":["low","medium","high"]}}}},\
         "patterns":{"type":"array","items":{"type":"object","required":["name","verdict","rationale"],"properties":{\
         "name":{"type":"string"},"verdict":{"type":"string","enum":["followed","violated","introduced"]},\
         "rationale":{"type":"string"},"evidence":{"type":"array","items":{"type":"object",\
@@ -111,6 +120,13 @@ public struct AgentReviewOutput: Decodable, Sendable {
         let rationale: String?
         let suggestion: String?
         let confidence: Double?
+        let impact: RiskLevel?
+        let likelihood: RiskLevel?
+    }
+
+    public struct Risk: Decodable, Sendable {
+        let level: RiskLevel
+        let reasons: [String]?
     }
 
     public struct Pattern: Decodable, Sendable {
@@ -133,6 +149,7 @@ public struct AgentReviewOutput: Decodable, Sendable {
     }
 
     let summary: String
+    let risk: Risk?
     let readingOrder: [Step]?
     let findings: [Finding]
     let patterns: [Pattern]?

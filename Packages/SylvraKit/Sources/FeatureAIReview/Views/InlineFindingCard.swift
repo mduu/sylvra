@@ -31,6 +31,7 @@ public struct InlineFindingCard: View {
                 Image(systemName: "sparkles").foregroundStyle(AIAccent.border)
             }
             Text(meta).aiFont(.caption).foregroundStyle(.secondary)
+            FindingRiskLine(impact: finding.impact, likelihood: finding.likelihood)
             Text(finding.rationale)
                 .aiFont(.callout)
                 .lineSpacing(2)

@@ -21,6 +21,25 @@ public enum FindingSeverity: String, Codable, Sendable, CaseIterable, Comparable
     public static func < (lhs: Self, rhs: Self) -> Bool { lhs.rank < rhs.rank }
 }
 
+/// A coarse risk rating (merge risk of a pull request, impact or likelihood of a finding).
+public enum RiskLevel: String, Codable, Sendable, CaseIterable, Comparable {
+    case low, medium, high
+
+    var rank: Int { Self.allCases.firstIndex(of: self) ?? 0 }
+    public static func < (lhs: Self, rhs: Self) -> Bool { lhs.rank < rhs.rank }
+}
+
+/// How risky merging the pull request is, with the main reasons.
+public struct RiskAssessment: Hashable, Sendable, Codable {
+    public var level: RiskLevel
+    public var reasons: [String]
+
+    public init(level: RiskLevel, reasons: [String] = []) {
+        self.level = level
+        self.reasons = reasons
+    }
+}
+
 /// One AI finding anchored to code (see specs/architecture.md §8.4).
 public struct ReviewFinding: Identifiable, Hashable, Sendable, Codable {
     public let id: UUID
@@ -33,6 +52,10 @@ public struct ReviewFinding: Identifiable, Hashable, Sendable, Codable {
     public let rationale: String
     public let suggestion: String?
     public let confidence: Double
+    /// How bad it is if the problem occurs (`nil` for reviews from before risk ratings).
+    public var impact: RiskLevel?
+    /// How likely the problem occurs in practice.
+    public var likelihood: RiskLevel?
     public var sources: [AgentSource]
     /// `false` when the location could not be matched to the diff.
     public var isAnchored: Bool
@@ -40,8 +63,10 @@ public struct ReviewFinding: Identifiable, Hashable, Sendable, Codable {
     public init(
         id: UUID = UUID(), path: String, startLine: Int, endLine: Int, severity: FindingSeverity, category: String,
         title: String, rationale: String, suggestion: String? = nil, confidence: Double = 0.5,
-        sources: [AgentSource] = [], isAnchored: Bool = true
+        impact: RiskLevel? = nil, likelihood: RiskLevel? = nil, sources: [AgentSource] = [], isAnchored: Bool = true
     ) {
+        self.impact = impact
+        self.likelihood = likelihood
         self.id = id
         self.path = path
         self.startLine = startLine
@@ -95,11 +120,14 @@ public struct ReviewResult: Hashable, Sendable, Codable {
     public var headSHA: String?
     /// When the review finished.
     public var reviewedAt: Date?
+    /// How risky merging the pull request is (`nil` for reviews from before risk ratings).
+    public var risk: RiskAssessment?
 
     public init(
         summary: String = "", findings: [ReviewFinding] = [], patterns: [PatternFinding] = [], history: [String] = [],
-        readingOrder: [ReadingStep] = []
+        readingOrder: [ReadingStep] = [], risk: RiskAssessment? = nil
     ) {
+        self.risk = risk
         self.summary = summary
         self.findings = findings
         self.patterns = patterns
@@ -108,7 +136,7 @@ public struct ReviewResult: Hashable, Sendable, Codable {
     }
 
     private enum CodingKeys: String, CodingKey {
-        case summary, findings, patterns, history, readingOrder, headSHA, reviewedAt
+        case summary, findings, patterns, history, readingOrder, headSHA, reviewedAt, risk
     }
 
     // Results cached before reading orders (or head commits) were recorded decode without them.
@@ -121,6 +149,7 @@ public struct ReviewResult: Hashable, Sendable, Codable {
         readingOrder = try container.decodeIfPresent([ReadingStep].self, forKey: .readingOrder) ?? []
         headSHA = try container.decodeIfPresent(String.self, forKey: .headSHA)
         reviewedAt = try container.decodeIfPresent(Date.self, forKey: .reviewedAt)
+        risk = try container.decodeIfPresent(RiskAssessment.self, forKey: .risk)
     }
 }
 

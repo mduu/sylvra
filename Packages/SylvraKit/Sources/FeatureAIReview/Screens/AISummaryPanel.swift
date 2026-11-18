@@ -20,7 +20,7 @@ public struct AISummaryPanel: View {
     public var body: some View {
         if let id = pullRequestID, let result = model.results[id], !result.summary.isEmpty {
             AISummaryCardView(
-                summary: result.summary, readingOrder: result.readingOrder, isExpanded: $isExpanded,
+                summary: result.summary, risk: result.risk, readingOrder: result.readingOrder, isExpanded: $isExpanded,
                 showsReadingOrder: $showsReadingOrder, openFile: openFile)
         }
     }
@@ -29,6 +29,7 @@ public struct AISummaryPanel: View {
 /// Summary text (collapsed to a few lines) and the reading order on demand (pure).
 struct AISummaryCardView: View {
     let summary: String
+    var risk: RiskAssessment?
     let readingOrder: [ReadingStep]
     @Binding var isExpanded: Bool
     @Binding var showsReadingOrder: Bool
@@ -43,6 +44,10 @@ struct AISummaryCardView: View {
                 Label("AI summary", systemImage: "sparkles")
                     .aiFont(.caption, weight: .semibold)
                     .foregroundStyle(AIAccent.border)
+                if let risk {
+                    RiskBadge(level: risk.level)
+                        .help(risk.reasons.map { "· \($0)" }.joined(separator: "\n"))
+                }
                 Spacer()
                 Button(isExpanded ? "Less" : "More") { withAnimation(.snappy) { isExpanded.toggle() } }
                     .buttonStyle(.link)
@@ -57,6 +62,16 @@ struct AISummaryCardView: View {
                         .lineLimit(isExpanded ? nil : 3)
                         .textSelection(.enabled)
                         .fixedSize(horizontal: false, vertical: true)
+                    if isExpanded, let risk, !risk.reasons.isEmpty {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Why \(risk.level.title.lowercased()) risk").aiFont(.caption, weight: .semibold)
+                            ForEach(risk.reasons, id: \.self) { reason in
+                                Text(verbatim: "· \(reason)").aiFont(.caption).fixedSize(
+                                    horizontal: false, vertical: true)
+                            }
+                        }
+                        .foregroundStyle(.secondary)
+                    }
                     if !readingOrder.isEmpty {
                         DisclosureGroup(isExpanded: $showsReadingOrder) {
                             ReadingOrderView(steps: readingOrder) { openFile($0.path) }
@@ -89,6 +104,7 @@ struct AISummaryCardView: View {
     AISummaryCardView(
         summary: "Adds CSV export next to JSON and changes how invoice totals are rounded (per line instead of "
             + "once). The rounding change affects every invoice total; the export is additive.",
+        risk: RiskAssessment(level: .medium, reasons: ["Invoice totals change for existing customers"]),
         readingOrder: [ReadingStep(path: "Sources/Billing/InvoiceService.swift", reason: "Core change", isRisky: true)],
         isExpanded: $isExpanded, showsReadingOrder: $showsOrder
     )

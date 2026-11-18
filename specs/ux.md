@@ -223,6 +223,7 @@ The diff must feel like the best diff one has ever used: fast, beautiful and ins
 - **Gradient background**: soft horizontal gradient in the AI accent colors across the affected lines, fading out to the right; opacity scales with severity.
 - **Gradient border**: thin rounded gradient stroke (with a touch of gold) around the *selected* finding.
 - **Copy code**: words and characters within a line can be selected with the mouse (⌘C copies); right-click a diff line for *Copy Line* (side by side: new / old line), *Copy Hunk* (new or old version) and *Copy Hunk as Diff* (with `+`/`-` prefixes).
+- **Risk**: every finding carries *impact* (how bad if it happens) and *likelihood* (how likely in practice), each low / medium / high, shown under its title in the inspector and the inline card. The review also rates the pull request as a whole (*Risk: Low / Medium / High* badge in the AI summary, reasons when expanded and in the tooltip); with several shards or models the highest rating wins.
 - **Marker** ✦ at the end of highlighted lines. **Clicking a highlighted line** (code area or AI edge; the gutter keeps its comment action; dragging still selects text) selects that finding: its inline card opens below the lines and the inspector switches to it.
 - **Inline finding card**: title, severity, category, models that found it, rationale, suggested code as mini-diff; actions *Turn into comment*, *Dismiss*, *Ask in chat*, *Open in IDE*.
 - **Pattern evidence**: a subtle dotted underline in the AI accent; hover shows the pattern name and verdict.
