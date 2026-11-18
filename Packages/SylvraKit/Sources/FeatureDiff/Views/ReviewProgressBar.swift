@@ -51,7 +51,13 @@ struct ReviewProgressBar: View {
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 7)
-        .background(tint.opacity(0.12), in: RoundedRectangle(cornerRadius: 9))
+        // Opaque: the diff scrolls underneath the banner, and code shining through made it hard to read.
+        .background {
+            RoundedRectangle(cornerRadius: 9)
+                .fill(SylvraColor.surfaceElevated)
+                .overlay(RoundedRectangle(cornerRadius: 9).fill(tint.opacity(0.12)))
+                .shadow(color: .black.opacity(0.18), radius: 6, y: 2)
+        }
         .overlay(RoundedRectangle(cornerRadius: 9).strokeBorder(tint.opacity(0.3)))
     }
 }

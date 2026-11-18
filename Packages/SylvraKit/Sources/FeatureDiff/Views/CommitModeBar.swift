@@ -44,7 +44,9 @@ struct CommitModeBar: View {
         .controlSize(.small)
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
+        // Opaque, the diff scrolls underneath.
         .background(SylvraColor.brandTint.opacity(0.5))
+        .background(SylvraColor.surfacePrimary)
         .overlay(alignment: .bottom) { Rectangle().fill(SylvraColor.brandSecondary.opacity(0.4)).frame(height: 1) }
     }
 }
