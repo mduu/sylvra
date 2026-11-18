@@ -53,13 +53,16 @@ extension RootScreen {
             NavigationSplitView(columnVisibility: $columnVisibility) {
                 inboxColumn
             } detail: {
-                pullRequestScreen.stableColumn()
+                pullRequestScreen
+                    .panelHandle(.leading, isVisible: showsInboxHandle(onReviewColumn: false)) { inboxHandle }
+                    .stableColumn()
             }
         } else {
             NavigationSplitView(columnVisibility: $columnVisibility) {
                 inboxColumn
             } content: {
                 pullRequestScreen
+                    .panelHandle(.leading, isVisible: showsInboxHandle(onReviewColumn: false)) { inboxHandle }
                     .rememberedColumn(.pullRequest, ideal: pullRequestWidth)
                     .navigationSplitViewColumnWidth(
                         min: ColumnLayout.Column.pullRequest.range.lowerBound, ideal: pullRequestWidth,
@@ -121,6 +124,8 @@ extension RootScreen {
                 }
             )
         }
+        .panelHandle(.leading, isVisible: showsInboxHandle(onReviewColumn: true)) { inboxHandle }
+        .panelHandle(.trailing, isVisible: hasAIPanel && !isInspectorPresented) { aiHandle }
         .terminalPanel(environment, selection: selection, isEnabled: hostsBottomPanel)
         .stableColumn()
     }

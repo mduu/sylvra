@@ -61,7 +61,7 @@ private struct WindowLayoutModifier: ViewModifier {
             .onChange(of: layout, initial: true) { _, layout in
                 withAnimation(.snappy) {
                     root.columnVisibility = layout.columnVisibility
-                    if layout != .compact { root.isInboxFloating = false }
+                    root.isInboxFloating = false
                 }
                 guard root.role == .main else { return }
                 if layout == .twoWindows {
@@ -74,20 +74,8 @@ private struct WindowLayoutModifier: ViewModifier {
                 // Picking a pull request from the floating inbox closes it.
                 withAnimation(.snappy) { root.isInboxFloating = false }
             }
-            .overlay(alignment: .leading) {
-                if layout == .compact, root.isInboxFloating {
-                    FloatingPanel(edge: .leading, width: 300, isPresented: root.$isInboxFloating) {
-                        InboxScreen(model: root.environment.inbox, selection: root.selectionBinding)
-                    }
-                }
-            }
-            .overlay(alignment: .trailing) {
-                if !layout.docksInspector, root.isInspectorPresented {
-                    FloatingPanel(edge: .trailing, width: 360, isPresented: root.inspectorBinding) {
-                        root.inspectorContent
-                    }
-                }
-            }
+            .overlay(alignment: .leading) { floatingInbox(layout) }
+            .overlay(alignment: .trailing) { floatingInspector(layout) }
             .animation(.snappy, value: root.isInboxFloating)
             .animation(.snappy, value: root.isInspectorPresented)
             .toolbar { layoutToolbar(layout) }
@@ -95,19 +83,41 @@ private struct WindowLayoutModifier: ViewModifier {
 }
 
 extension WindowLayoutModifier {
-    /// Inbox button (compact), files (focus) or review window (two windows); the layout menu is in `mainToolbar`.
+    /// Compact and focus: the inbox floats in from the left, its handle on the panel's edge.
+    @ViewBuilder
+    fileprivate func floatingInbox(_ layout: WindowLayout) -> some View {
+        if layout.floatsInbox, root.isInboxFloating, root.role == .main {
+            // The handle rides on the panel's edge (the panel's padding is the negative spacing).
+            HStack(spacing: -8) {
+                FloatingPanel(edge: .leading, width: 300, isPresented: root.$isInboxFloating) {
+                    InboxScreen(model: root.environment.inbox, selection: root.selectionBinding)
+                }
+                root.inboxHandle
+            }
+            .transition(.move(edge: .leading).combined(with: .opacity))
+        }
+    }
+
+    /// Compact: the AI panel floats in from the right, its handle on the panel's edge.
+    @ViewBuilder
+    fileprivate func floatingInspector(_ layout: WindowLayout) -> some View {
+        if !layout.docksInspector, root.isInspectorPresented {
+            HStack(spacing: -8) {
+                root.aiHandle
+                FloatingPanel(edge: .trailing, width: 360, isPresented: root.inspectorBinding) {
+                    root.inspectorContent
+                }
+            }
+            .transition(.move(edge: .trailing).combined(with: .opacity))
+        }
+    }
+
+    /// Files (focus) or review window (two windows); the layout menu is in `mainToolbar`. The inbox and the
+    /// AI panel are toggled with the handles on their edges (`PanelHandles`).
     @ToolbarContentBuilder
     fileprivate func layoutToolbar(_ layout: WindowLayout) -> some ToolbarContent {
         ToolbarItem(placement: .navigation) {
-            if layout == .compact {
-                Button {
-                    root.isInboxFloating.toggle()
-                } label: {
-                    Label("Inbox", systemImage: "tray")
-                }
-                .help("Show the inbox (⌘0)")
-                .keyboardShortcut("0", modifiers: .command)
-            } else if layout == .focus {
+            if layout == .focus {
                 FocusFilesButton(model: root.environment.diff)
             } else if layout == .twoWindows {
                 Button {

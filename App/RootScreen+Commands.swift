@@ -24,7 +24,8 @@ extension RootScreen {
                 }
             },
             openOnGitHub: { if let url = selection?.url { openURL(url) } },
-            toggleInspector: { isInspectorPresented.toggle() },
+            toggleInspector: { withAnimation(.snappy) { isInspectorPresented.toggle() } },
+            toggleInbox: toggleInbox,
             nextChange: { environment.diff.selectChange(offset: 1) },
             previousChange: { environment.diff.selectChange(offset: -1) },
             showPalette: { overlay = .palette },

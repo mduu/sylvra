@@ -10,6 +10,7 @@ struct ReviewActions {
     var runAIReview: () -> Void
     var openOnGitHub: () -> Void
     var toggleInspector: () -> Void
+    var toggleInbox: () -> Void = {}
     var nextChange: () -> Void = {}
     var previousChange: () -> Void = {}
     var showPalette: () -> Void = {}
@@ -47,6 +48,7 @@ struct ReviewCommands: Commands {
             Button("Toggle Viewed") { actions?.toggleViewed() }.keyboardShortcut("v", modifiers: [.command, .option])
             Button("Run AI Review") { actions?.runAIReview() }.keyboardShortcut("r", modifiers: [.command, .shift])
             Button("Open on GitHub") { actions?.openOnGitHub() }.keyboardShortcut("g", modifiers: [.command, .shift])
+            Button("Toggle Inbox") { actions?.toggleInbox() }.keyboardShortcut("0", modifiers: .command)
             Button("Toggle AI Inspector") { actions?.toggleInspector() }.keyboardShortcut(
                 "i", modifiers: [.command, .option])
             Divider()

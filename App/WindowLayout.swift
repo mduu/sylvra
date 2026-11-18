@@ -99,6 +99,9 @@ enum WindowLayout: String, CaseIterable, Identifiable {
 
     /// The AI inspector is a sidebar here; elsewhere it floats over the diff.
     var docksInspector: Bool { self != .compact }
+
+    /// The inbox floats in over the content instead of being a column.
+    var floatsInbox: Bool { self == .compact || self == .focus }
 }
 
 /// Toolbar menu to choose the layout; shows the active one.
