@@ -30,7 +30,7 @@ git fetch --quiet --tags origin
 [[ "$(git rev-parse HEAD)" == "$(git rev-parse '@{u}')" ]] || { echo "Push main first." >&2; exit 1; }
 if gh release view "$TAG" >/dev/null 2>&1; then echo "Release $TAG exists already." >&2; exit 1; fi
 
-PREVIOUS=$(git describe --tags --abbrev=0 --match 'v*' HEAD 2>/dev/null || true)
+PREVIOUS=$(git describe --tags --abbrev=0 --match 'v[0-9]*' HEAD 2>/dev/null || true)
 RANGE=${PREVIOUS:+$PREVIOUS..}HEAD
 NOTES=$(mktemp)
 trap 'rm -f "$NOTES"' EXIT
