@@ -2,6 +2,7 @@ import AppKit
 import DesignSystem
 import FeatureAIReview
 import FeatureActivity
+import FeatureOpenInIDE
 import FeatureSettings
 import Platform
 import SwiftUI
@@ -43,6 +44,7 @@ struct SylvraApp: App {
             CommandLogCommands(panel: environment.bottomPanel)
             WindowLayoutCommands()
             DiagnosticCommands()
+            WorktreeCommands(worktrees: environment.worktrees)
         }
 
         // The second window of the two-window layout: diff, AI and terminal for the selected pull request.
@@ -64,6 +66,8 @@ struct SylvraApp: App {
                 NotificationSettingsView(center: environment.activity)
             } terminal: {
                 TerminalToolsSettingsPane(customTools: environment.customTools)
+            } worktrees: {
+                WorktreesSettingsPane(model: environment.worktrees)
             }
             .preferredColorScheme(AppearanceSetting(rawValue: appearance)?.colorScheme)
         }

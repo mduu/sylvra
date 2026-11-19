@@ -46,6 +46,8 @@ final class AppEnvironment {
     let pullRequest: PullRequestScreenModel
     let diff: DiffScreenModel
     let openInIDE: OpenInIDEModel
+    /// Sylvra's worktrees: listed in the settings, cleaned up in the background.
+    let worktrees: WorktreesModel
     let aiReview: AIReviewModel
     let chat: AIChatModel
     let activity = ActivityCenter()
@@ -124,6 +126,34 @@ final class AppEnvironment {
         if let tab = Self.value(of: "--tab", in: arguments).flatMap(PullRequestScreenModel.Tab.init(rawValue:)) {
             pullRequest.tab = tab
         }
+        worktrees = Self.makeWorktrees(
+            gitHub: gitHub, isDemo: isDemo, window: window, aiReview: aiReview, terminal: terminal)
+        if !isDemo {
+            let worktrees = worktrees
+            Task { await worktrees.keepCleaning() }
+        }
+    }
+
+    /// Worktrees in use (shown, reviewed, open in a terminal tab) are never removed automatically.
+    /// Demo launches use an empty folder, so screenshots never list or touch real worktrees.
+    private static func makeWorktrees(
+        gitHub: GitHubClient, isDemo: Bool, window: WindowState, aiReview: AIReviewModel, terminal: TerminalModel
+    ) -> WorktreesModel {
+        let cleaner =
+            isDemo
+            ? WorktreeCleaner(storageRoot: FileManager.default.temporaryDirectory.appending(path: "SylvraDemo"))
+            : WorktreeCleaner()
+        return WorktreesModel(
+            cleaner: cleaner,
+            isOpen: { id in isDemo ? nil : try? await gitHub.isPullRequestOpen(id) },
+            usage: {
+                var pullRequests = Set([window.selectedID].compactMap { $0 })
+                if aiReview.runState == .running, let running = aiReview.runningPullRequest {
+                    pullRequests.insert(running)
+                }
+                return WorktreesModel.Usage(
+                    pullRequests: pullRequests, directories: terminal.sessions.map(\.directory))
+            })
     }
 
     private static func makeInbox(

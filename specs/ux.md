@@ -347,7 +347,7 @@ Built single-key shortcuts (active whenever no text is being edited — composer
 - **AI** — agent providers (detected path and version), default provider / models / effort, multi-model reviews, max parallel agents, sharding threshold, cross-cutting pass, history context on/off, highlight style.
 - **Diff** — default layout, scope, context lines, font, whitespace, color-blind palette.
 - **Terminal & Tools** — shell, font size (9–24 pt, applies to open terminals at once), external terminal app, custom tools editor.
-- **Worktrees** — location, stable review worktree per repo, retention, cleanup now.
+- **Worktrees** — every worktree Sylvra created (repository, pull request, AI or IDE/terminal use, last use, changed files, whether it lives in the user's clone), per worktree *Show in Finder* and *Remove* (asks first when files were changed), *Clean Up Now*, *Show in Finder* for the storage folder, outcome of the last cleanup. The app menu has *Show Worktrees in Finder* and *Clean Up Worktrees*. Location and retention are fixed for now.
 - **Notifications** — per job type; new review requests; updates on reviewed PRs.
 
 ## 16. States

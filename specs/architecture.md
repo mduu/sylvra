@@ -362,6 +362,14 @@ flowchart LR
     G --> H["Jump to selected file:line (optional)"]
 ```
 
+#### Worktree lifecycle
+
+- **Two kinds**: one stable worktree per repository for the IDE and the terminal (`worktrees/<owner>/<repo>`, re-pointed to the PR opened last) and one per pull request for AI agents (`agent-worktrees/<owner>/<repo>/pr-<n>`, so a running review never sees another PR's code).
+- **Created / updated** on demand only: *Open in IDE*, terminal tabs and custom tools (IDE worktree), every AI review run and chat question (agent worktree). Each time `pull/<n>/head` is fetched again and the worktree is checked out detached at it; a push alone changes nothing.
+- **Registry**: `worktrees.json` in the storage folder records every worktree Sylvra creates (path, purpose, PR, clone, created, last used). Worktrees found on disk without an entry (older versions) are adopted; entries whose folder is gone are dropped.
+- **Cleanup** (`WorktreeCleaner`), at launch and every 15 minutes, and on demand: a worktree goes away when its PR is merged or closed on GitHub, or when it was unused for 7 days. Never removed automatically: the PR selected or under AI review, worktrees a terminal tab runs in, worktrees with changed files (`git status` not clean; removable manually after a confirmation). Removal is `git worktree remove` in the owning clone, then `git worktree prune`; only paths inside the storage folder are ever deleted.
+- **Owning clone** (disk space is precious): the user's local clone whenever the locator finds one — the worktree shares its objects and appears in Git clients that list worktrees, e.g. Fork. Only without one does Sylvra keep a blobless cache clone in `repos/<owner>/<repo>`. A clean worktree that still belongs to the cache clone moves to the user's clone on its next use (one with changed files stays). The cleanup removes cache clones no worktree belongs to any more; they are cloned again when needed.
+
 ### 9.3 Rider hygiene
 
 Rider keeps every opened folder in its *recent projects*; deleted worktrees remain there as broken entries. Mitigations (in order of preference):

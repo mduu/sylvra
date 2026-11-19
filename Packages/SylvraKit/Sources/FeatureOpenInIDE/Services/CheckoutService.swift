@@ -32,7 +32,7 @@ public struct CheckoutService: Sendable {
     }
 
     /// Who uses a worktree.
-    public enum Purpose: Sendable {
+    public enum Purpose: String, Codable, Sendable {
         /// Opened in the IDE / terminal: one stable path per repository (Rider sees one valid recent project).
         case ide
         /// Read by AI agents: one worktree per PR, so a running review never sees another PR's code.
@@ -47,7 +47,8 @@ public struct CheckoutService: Sendable {
         }
     }
 
-    /// Clone used for worktrees when the user has no local clone (blobless, fetched on demand).
+    /// Clone used for worktrees only when the user has no local clone (blobless, fetched on demand); removed by
+    /// `WorktreeCleaner` once no worktree uses it.
     func cacheClonePath(for id: PullRequestID) -> URL {
         storageRoot.appending(path: "repos/\(id.owner)/\(id.repository)")
     }
@@ -61,11 +62,11 @@ public struct CheckoutService: Sendable {
     }
 
     private func checkOutWorktree(for id: PullRequestID, purpose: Purpose) async throws -> URL {
-        let clone = try await cloneForWorktrees(id)
+        let worktree = worktreePath(for: id, purpose: purpose)
+        let clone = try await attachingToPreferredClone(worktree, preferred: try await cloneForWorktrees(id))
         try await git.run(["fetch", "--quiet", "origin", "pull/\(id.number)/head"], in: clone)
         // FETCH_HEAD is per worktree, so resolve it to a SHA in the clone first.
         let head = try await git.run(["rev-parse", "FETCH_HEAD"], in: clone)
-        let worktree = worktreePath(for: id, purpose: purpose)
         if FileManager.default.fileExists(atPath: worktree.appending(path: ".git").path) {
             try await git.run(["checkout", "--quiet", "--detach", head], in: worktree)
         } else {
@@ -74,6 +75,9 @@ public struct CheckoutService: Sendable {
             try await git.run(["worktree", "prune"], in: clone)
             try await git.run(["worktree", "add", "--quiet", "--detach", worktree.path, head], in: clone)
         }
+        // Remembered so the worktree can be listed and cleaned up later (`WorktreeCleaner`).
+        await WorktreeRegistry(storageRoot: storageRoot).recordUse(
+            path: worktree, purpose: purpose, pullRequest: id, clone: clone)
         return worktree
     }
 
@@ -95,6 +99,30 @@ public struct CheckoutService: Sendable {
         try await git.run(["fetch", "--quiet", "origin", "pull/\(id.number)/head"], in: clone)
         try await git.run(["checkout", "--quiet", "-B", "review/pr-\(id.number)", "FETCH_HEAD"], in: clone)
         return (clone, previous)
+    }
+
+    /// An existing worktree that belongs to another clone (Sylvra's cache clone, before the user cloned the
+    /// repository) is removed so it is recreated in `preferred`, and the cache clone can go away. A worktree with
+    /// changed files stays where it is; its own clone is used.
+    private func attachingToPreferredClone(_ worktree: URL, preferred: URL) async throws -> URL {
+        guard let current = WorktreeCleaner.clone(ofWorktree: worktree),
+            Self.canonical(current) != Self.canonical(preferred.path)
+        else { return preferred }
+        let currentURL = URL(fileURLWithPath: current)
+        guard FileManager.default.fileExists(atPath: current) else {
+            try? FileManager.default.removeItem(at: worktree)
+            return preferred
+        }
+        if try await !git.isClean(worktree) { return currentURL }
+        _ = try? await git.run(["worktree", "remove", "--force", worktree.path], in: currentURL)
+        if FileManager.default.fileExists(atPath: worktree.path) { try FileManager.default.removeItem(at: worktree) }
+        _ = try? await git.run(["worktree", "prune"], in: currentURL)
+        return preferred
+    }
+
+    /// Paths compared without symlinks (`/var` vs `/private/var`).
+    nonisolated static func canonical(_ path: String) -> String {
+        URL(fileURLWithPath: path).resolvingSymlinksInPath().standardizedFileURL.path
     }
 
     private func cloneForWorktrees(_ id: PullRequestID) async throws -> URL {

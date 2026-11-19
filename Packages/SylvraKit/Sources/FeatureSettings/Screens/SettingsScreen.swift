@@ -2,18 +2,20 @@ import DesignSystem
 import SwiftUI
 
 /// The settings window. Feature-specific panes are provided by the app (slices don't import each other).
-public struct SettingsScreen<AIPane: View, NotificationsPane: View, TerminalPane: View>: View {
+public struct SettingsScreen<AIPane: View, NotificationsPane: View, TerminalPane: View, WorktreesPane: View>: View {
     private let aiPane: AIPane
     private let notificationsPane: NotificationsPane
     private let terminalPane: TerminalPane
+    private let worktreesPane: WorktreesPane
 
     public init(
         @ViewBuilder ai: () -> AIPane, @ViewBuilder notifications: () -> NotificationsPane,
-        @ViewBuilder terminal: () -> TerminalPane
+        @ViewBuilder terminal: () -> TerminalPane, @ViewBuilder worktrees: () -> WorktreesPane
     ) {
         aiPane = ai()
         notificationsPane = notifications()
         terminalPane = terminal()
+        worktreesPane = worktrees()
     }
 
     public var body: some View {
@@ -24,15 +26,18 @@ public struct SettingsScreen<AIPane: View, NotificationsPane: View, TerminalPane
             if TerminalPane.self != EmptyView.self {
                 Tab("Terminal & Tools", systemImage: "terminal") { terminalPane }
             }
+            if WorktreesPane.self != EmptyView.self {
+                Tab("Worktrees", systemImage: "folder") { worktreesPane }
+            }
         }
         .frame(width: 520)
         .frame(minHeight: 360)
     }
 }
 
-extension SettingsScreen where TerminalPane == EmptyView {
+extension SettingsScreen where TerminalPane == EmptyView, WorktreesPane == EmptyView {
     public init(@ViewBuilder ai: () -> AIPane, @ViewBuilder notifications: () -> NotificationsPane) {
-        self.init(ai: ai, notifications: notifications) { EmptyView() }
+        self.init(ai: ai, notifications: notifications, terminal: { EmptyView() }, worktrees: { EmptyView() })
     }
 }
 
