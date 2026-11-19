@@ -27,9 +27,12 @@ public enum AIAccent {
             colors: [SylvraColor.accentGold] + colors, startPoint: .topLeading, endPoint: .bottomTrailing)
     }
 
-    /// Vertical gradient for the edge beside highlighted lines, meant to span a finding's whole range.
-    public static var edge: LinearGradient {
-        LinearGradient(colors: [SylvraColor.accentGold] + colors, startPoint: .top, endPoint: .bottom)
+    /// Border of the box around an AI finding's lines in the diff: violet on the left, teal on the right;
+    /// the selected finding starts in gold.
+    public static func boxBorder(isSelected: Bool) -> LinearGradient {
+        LinearGradient(
+            colors: isSelected ? [SylvraColor.accentGold] + colors : colors, startPoint: .leading,
+            endPoint: .trailing)
     }
 
     /// Card background tint.

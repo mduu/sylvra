@@ -222,12 +222,11 @@ The diff must feel like the best diff one has ever used: fast, beautiful and ins
 
 ### 7.3 AI highlights (Xcode-style)
 
-- **Gradient background**: soft horizontal gradient in the AI accent colors across the affected lines, fading out to the right; opacity scales with severity.
-- **Gradient border**: thin rounded gradient stroke (with a touch of gold) around the *selected* finding.
+- **Finding box**: a rounded box around the affected lines with a border in the AI gradient (violet on the left to teal on the right; gold for the *selected* finding) and a soft glow along its edges that fades towards the middle, so added and removed lines keep their green and red. Border and glow strength scale with severity; ✦ in the gutter of the first line and an AI badge on the box's top right edge.
 - **Select code**: dragging over the code selects it across lines, from a column to a column like in an editor (side by side: within one version); held at the top or bottom edge or beyond, the diff scrolls on and the selection grows with it, faster the further out. On the selection's last line sit *Ask AI* (opens the chat with the file, the lines and the selected code as context; the reviewer writes the question, nothing is sent or posted before) and *Copy*; a click into the code clears the selection.
 - **Copy code**: *Copy* next to a selection; right-click a diff line for *Copy Line* (side by side: new / old line), *Copy Hunk* (new or old version) and *Copy Hunk as Diff* (with `+`/`-` prefixes).
 - **Risk**: every finding carries *impact* (how bad if it happens) and *likelihood* (how likely in practice), each low / medium / high, shown under its title in the inspector and the inline card. The review also rates the pull request as a whole (*Risk: Low / Medium / High* badge in the AI summary, reasons when expanded and in the tooltip); with several shards or models the highest rating wins.
-- **Marker** ✦ at the end of highlighted lines. **Clicking a highlighted line** (code area or AI edge; the gutter keeps its comment action; dragging still selects text) selects that finding: its inline card opens below the lines and the inspector switches to it.
+- **Clicking a highlighted line** (code area or the gutter ✦; the line numbers keep their comment action; dragging still selects text) selects that finding: its inline card opens below the lines and the inspector switches to it.
 - **Inline finding card**: title, severity, category, models that found it, rationale, suggested code as mini-diff; actions *Turn into comment*, *Dismiss*, *Ask in chat*, *Open in IDE*.
 - **Pattern evidence**: a subtle dotted underline in the AI accent; hover shows the pattern name and verdict.
 - Setting: *Background*, *Border*, or *Both*.

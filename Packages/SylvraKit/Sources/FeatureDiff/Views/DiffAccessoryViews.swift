@@ -33,7 +33,11 @@ struct AccessoryLane<Content: View>: View {
         .padding(.trailing, reachesTrailingEdge ? trailingCover : 0)
         .padding(.leading, gutterWidth)
         .background {
-            if drawsSurface { GutterStrip(gutterWidth: gutterWidth, continuation: continuation) }
+            // Clipped to the lane: the change bar's minimum height made an empty lane's surface spill 1 pt
+            // into the line above (a white seam between lines).
+            if drawsSurface {
+                Color.clear.overlay { GutterStrip(gutterWidth: gutterWidth, continuation: continuation) }.clipped()
+            }
         }
     }
 }
@@ -61,60 +65,91 @@ struct GutterStrip: View {
     }
 }
 
-/// Xcode-style AI highlight: a soft gradient fading to the right, a gold edge and ✦ for the selected finding (pure).
+/// Subtle diagonal hatching for the empty side of a side-by-side row (pure).
+struct HatchPattern: View {
+    var body: some View {
+        Canvas { context, size in
+            var path = Path()
+            var x: CGFloat = -size.height
+            while x < size.width {
+                path.move(to: CGPoint(x: x, y: size.height))
+                path.addLine(to: CGPoint(x: x + size.height, y: 0))
+                x += 7
+            }
+            context.stroke(path, with: .color(.secondary.opacity(0.10)), lineWidth: 1)
+        }
+    }
+}
+
+/// Xcode-style AI highlight (pure): a rounded box around the finding's lines with a border in the AI gradient,
+/// a soft glow along its edges (the middle keeps the red/green of the change), ✦ in the gutter of the first
+/// line and an AI badge at the box's top right. Each row draws its slice of the box.
 struct AIHighlightOverlay: View {
     let highlight: LineHighlight?
-    /// The new-side line the overlay sits on: the edge gradient spans the finding's whole range.
+    /// The new-side line the overlay sits on: the box spans the finding's whole range.
     var line: Int?
     /// Clicks on the gutter keep starting comments.
     var gutterWidth: CGFloat = halfGutterWidth
     @Environment(\.diffSelectFinding) private var selectFinding
+    @Environment(\.diffTrailingCover) private var trailingCover
     @State private var isHovered = false
 
     var body: some View {
         if let highlight {
-            ZStack(alignment: .leading) {
-                AIAccent.lineGradient(
-                    opacity: highlight.isSelected ? 0.45 : 0.18 + 0.22 * highlight.intensity + (isHovered ? 0.12 : 0))
-                edge(highlight)
-            }
-            .overlay(alignment: .trailing) {
-                Image(systemName: "sparkle")
-                    .font(.system(size: 9, weight: .bold))
-                    .foregroundStyle(
-                        highlight.isSelected ? AnyShapeStyle(SylvraColor.accentGold) : AnyShapeStyle(AIAccent.border)
-                    )
-                    .padding(.trailing, 6)
-                    .opacity(highlight.isSelected || isHovered ? 1 : 0.45)
-            }
-            .allowsHitTesting(false)
-            .overlay {
-                // Clicking the AI edge opens its finding; the line numbers keep their comment action. The code
-                // stays free for text selection — a click on it opens the finding through the row (see
-                // `selectsFinding`).
-                if let id = highlight.findingID, let selectFinding {
-                    HStack(spacing: 0) {
-                        tapArea { selectFinding(id) }.frame(width: 8)
-                        Spacer(minLength: 0).allowsHitTesting(false)
-                    }
+            let span = Self.span(of: line, in: highlight.lines)
+            let isFirst = span.index == 0
+            HStack(spacing: 0) {
+                Color.clear
+                    .frame(width: gutterWidth)
+                    .overlay(alignment: .leading) { gutterMark(highlight, isFirst: isFirst) }
+                AIFindingBoxSlice(
+                    isFirst: isFirst, isLast: span.index == span.count - 1,
+                    strength: isHovered ? 1 : 0.55 + 0.45 * highlight.intensity,
+                    isSelected: highlight.isSelected
+                )
+                .overlay(alignment: .topTrailing) {
+                    if isFirst { badge(highlight) }
                 }
+                // Clear of the change bar on the left and of a floating panel on the right.
+                .padding(.leading, 4)
+                .padding(.trailing, 4 + trailingCover)
+                .allowsHitTesting(false)
             }
             .transition(.opacity)
         }
     }
 
-    /// One gradient stretched over all lines of the finding (each row shows its slice), instead of the
-    /// full gradient repeating on every line.
-    private func edge(_ highlight: LineHighlight) -> some View {
-        GeometryReader { geometry in
-            let span = Self.span(of: line, in: highlight.lines)
-            Rectangle()
-                .fill(highlight.isSelected ? AnyShapeStyle(SylvraColor.accentGold) : AnyShapeStyle(AIAccent.edge))
-                .frame(width: 3, height: geometry.size.height * CGFloat(span.count))
-                .offset(y: -geometry.size.height * CGFloat(span.index))
+    /// ✦ on the finding's first line; clicking it opens the finding (the line numbers keep their comment action).
+    @ViewBuilder private func gutterMark(_ highlight: LineHighlight, isFirst: Bool) -> some View {
+        if isFirst {
+            Image(systemName: "sparkle")
+                .font(.system(size: 11, weight: .bold))
+                .foregroundStyle(
+                    highlight.isSelected ? AnyShapeStyle(SylvraColor.accentGold) : AnyShapeStyle(AIAccent.border)
+                )
+                .frame(width: 20, height: diffRowHeight)
+                .background(SylvraColor.codeGutter)
+                .overlay {
+                    if let id = highlight.findingID, let selectFinding {
+                        tapArea { selectFinding(id) }
+                    }
+                }
         }
-        .frame(width: 3)
-        .clipped()
+    }
+
+    private func badge(_ highlight: LineHighlight) -> some View {
+        Image(systemName: "sparkles")
+            .font(.system(size: 9, weight: .bold))
+            .foregroundStyle(
+                highlight.isSelected ? AnyShapeStyle(SylvraColor.accentGold) : AnyShapeStyle(AIAccent.border)
+            )
+            .padding(.horizontal, 6)
+            .frame(height: 15)
+            .background(SylvraColor.codeSurface, in: Capsule())
+            .overlay(Capsule().strokeBorder(AIAccent.border, lineWidth: 1))
+            // Sits on the box's top edge, clear of the code.
+            .offset(y: -7)
+            .padding(.trailing, 10)
     }
 
     /// Position of `line` in the highlighted range (row index and number of rows).
@@ -134,6 +169,55 @@ struct AIHighlightOverlay: View {
             }
             .help("Show this AI finding")
     }
+}
+
+/// One row's slice of a finding's box (pure): the whole box is taller than the row and clipped to it, so the
+/// first row shows the top with its rounded corners, the last row the bottom and rows between only the sides.
+struct AIFindingBoxSlice: View {
+    let isFirst: Bool
+    let isLast: Bool
+    /// 0…1: border and glow opacity (severity, hover).
+    var strength: Double = 1
+    var isSelected = false
+
+    /// How far the box reaches past a middle row, enough to hide the corners.
+    private static let overhang: CGFloat = 12
+
+    var body: some View {
+        GeometryReader { geometry in
+            let top = isFirst ? 0 : Self.overhang
+            let bottom = isLast ? 0 : Self.overhang
+            let shape = RoundedRectangle(cornerRadius: 6, style: .continuous)
+            ZStack {
+                // Glow along the edges, fading towards the middle.
+                shape.strokeBorder(AIAccent.boxBorder(isSelected: isSelected), lineWidth: 8)
+                    .blur(radius: 5)
+                    .opacity(0.22 * strength)
+                    .mask(shape)
+                shape.strokeBorder(AIAccent.boxBorder(isSelected: isSelected), lineWidth: isSelected ? 2 : 1.5)
+                    .opacity(isSelected ? 1 : strength)
+            }
+            .frame(width: geometry.size.width, height: geometry.size.height + top + bottom)
+            .offset(y: -top)
+        }
+        .padding(.top, isFirst ? 1 : 0)
+        .padding(.bottom, isLast ? 1 : 0)
+        .clipped()
+    }
+}
+
+#Preview("AI finding box") {
+    VStack(spacing: 0) {
+        ForEach(0..<4) { index in
+            Text("    if (!options.Value.Enabled) return;")
+                .font(.system(size: 12.5, design: .monospaced))
+                .frame(maxWidth: .infinity, minHeight: diffRowHeight, alignment: .leading)
+                .background(DiffColors.background(.added))
+                .overlay { AIFindingBoxSlice(isFirst: index == 0, isLast: index == 3) }
+        }
+    }
+    .frame(width: 480)
+    .padding()
 }
 
 extension View {

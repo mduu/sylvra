@@ -258,7 +258,7 @@ struct DiffFileBodyView<Accessory: View>: View {
                                 AIHighlightOverlay(
                                     highlight: row.right?.newNumber.flatMap(highlight), line: row.right?.newNumber
                                 )
-                                .frame(width: geometry.size.width / 2)
+                                .frame(width: max((geometry.size.width - connectorWidth) / 2, 0))
                                 .frame(maxWidth: .infinity, alignment: .trailing)
                             }
                         }
@@ -331,11 +331,15 @@ struct DiffFileBodyView<Accessory: View>: View {
         .background {
             // The change block keeps going underneath: ribbon, change bars and hatching continue, so the
             // inserted card doesn't read as a divider between the code above and below.
-            HStack(spacing: 0) {
-                GutterStrip(continuation: continuation.left)
-                RibbonContinuationView(crossSection: continuation.ribbon).frame(width: 44)
-                GutterStrip(continuation: continuation.right)
+            // Clipped: an empty lane must not spill into the line above (see `AccessoryLane`).
+            Color.clear.overlay {
+                HStack(spacing: 0) {
+                    GutterStrip(continuation: continuation.left)
+                    RibbonContinuationView(crossSection: continuation.ribbon).frame(width: 44)
+                    GutterStrip(continuation: continuation.right)
+                }
             }
+            .clipped()
         }
         .background(SylvraColor.codeSurface)
     }

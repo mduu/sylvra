@@ -11,7 +11,7 @@ let inlineGutterWidth: CGFloat = 104
 private let codeFont = Font.system(size: 12.5, design: .monospaced)
 /// Unchanged code is slightly dimmed, so the change is in the light (focus lens, see specs/ux.md §7.2).
 private let contextOpacity = 0.62
-private let connectorWidth: CGFloat = 44
+let connectorWidth: CGFloat = 44
 
 /// Request to start a comment on a line: side, line number and whether to extend the current range (⇧-click).
 typealias CommentRequest = (_ side: CodeLocation.Side, _ line: Int, _ extendsRange: Bool) -> Void
@@ -32,6 +32,7 @@ struct InlineLineView: View {
                 LineNumber(line.oldNumber, kind: line.kind)
                 LineNumber(line.newNumber, kind: line.kind)
             }
+            .frame(maxHeight: .infinity)
             .background(SylvraColor.codeGutter)
             .commentOnClick(commentAction)
             HStack(spacing: 0) {
@@ -115,6 +116,7 @@ private struct SideBySideHalf: View {
                 CommentGutter(isHovered: isHovered && line != nil, action: commentAction)
                 LineNumber(number, kind: line?.kind ?? .context)
             }
+            .frame(maxHeight: .infinity)
             .background(SylvraColor.codeGutter)
             .commentOnClick(commentAction)
             if let line {
@@ -349,22 +351,6 @@ struct ChangeBar: View {
                 .shadow(color: accent.opacity(0.7), radius: 3)
         } else {
             Color.clear.frame(width: 3)
-        }
-    }
-}
-
-/// Subtle diagonal hatching for the empty side of a side-by-side row (pure).
-struct HatchPattern: View {
-    var body: some View {
-        Canvas { context, size in
-            var path = Path()
-            var x: CGFloat = -size.height
-            while x < size.width {
-                path.move(to: CGPoint(x: x, y: size.height))
-                path.addLine(to: CGPoint(x: x + size.height, y: 0))
-                x += 7
-            }
-            context.stroke(path, with: .color(.secondary.opacity(0.10)), lineWidth: 1)
         }
     }
 }
