@@ -121,3 +121,34 @@ struct FullFileLoadingTests {
         #expect(model.hunks(for: file).first?.lines.first?.text == "import Foundation")
     }
 }
+
+/// A click on a file header in the diff shows the file in the navigator.
+@MainActor
+struct NavigatorRevealTests {
+    private let id = PullRequestID(owner: "acme", repository: "billing", number: 1234)
+    private let path = "Sources/Billing/InvoiceService.swift"
+
+    @Test func keepsTheDiffAndOpensFolders() async {
+        let model = DiffScreenModel(loader: DemoDiffLoader())
+        await model.load(id, headSHA: "head")
+        model.toggleFolder("Sources")
+        model.toggleFolder("Sources/Billing")
+        model.toggleFolder("Docs")
+        let token = model.navigatorRevealToken
+        model.selectInNavigator(path)
+        #expect(model.selectedPath == path)
+        #expect(model.keepsDiffPosition)
+        #expect(model.collapsedFolders == ["Docs"])
+        #expect(model.navigatorRevealToken == token + 1)
+    }
+
+    /// Clicking the header of the already selected file reveals it again but must not swallow a later jump.
+    @Test func reselectingDoesNotSkipTheNextScroll() async {
+        let model = DiffScreenModel(loader: DemoDiffLoader())
+        await model.load(id, headSHA: "head")
+        model.selectedPath = path
+        model.selectInNavigator(path)
+        #expect(!model.keepsDiffPosition)
+        #expect(model.navigatorRevealToken == 1)
+    }
+}

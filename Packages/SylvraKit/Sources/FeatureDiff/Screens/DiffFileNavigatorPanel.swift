@@ -22,6 +22,23 @@ public struct DiffFileNavigatorPanel<ItemMenu: View>: View {
     }
 
     public var body: some View {
+        // The reader lives inside the PR column's scroll view; `scrollTo` scrolls that one.
+        ScrollViewReader { proxy in
+            content
+                .onChange(of: model.navigatorRevealToken, initial: true) {
+                    guard let path = model.selectedPath, model.navigatorRevealToken > 0 else { return }
+                    // After the layout pass: opened folders and a just-shown Files tab need their rows first.
+                    Task { @MainActor in
+                        withAnimation(.snappy) { proxy.scrollTo(Self.rowID(path), anchor: .center) }
+                    }
+                }
+        }
+    }
+
+    /// Row IDs differ from the diff's file IDs (the file path), so only the navigator's row is meant.
+    static func rowID(_ path: String) -> String { "navigator:\(path)" }
+
+    @ViewBuilder private var content: some View {
         if !model.files.isEmpty {
             VStack(alignment: .leading, spacing: 12) {
                 header("Change map")
@@ -81,7 +98,8 @@ public struct DiffFileNavigatorPanel<ItemMenu: View>: View {
                     menu: itemMenu(.file(path: file.path)),
                     readingNumber: model.readingStep(for: file.path)?.number
                 )
-                .padding(.leading, CGFloat(depth) * 14))
+                .padding(.leading, CGFloat(depth) * 14)
+                .id(Self.rowID(file.path)))
         }
         let isCollapsed = model.collapsedFolders.contains(node.path)
         let files = node.files
@@ -128,6 +146,7 @@ public struct DiffFileNavigatorPanel<ItemMenu: View>: View {
                         menu: itemMenu(.file(path: file.path)),
                         readingNumber: model.readingStep(for: file.path)?.number
                     )
+                    .id(Self.rowID(file.path))
                 }
             }
         }

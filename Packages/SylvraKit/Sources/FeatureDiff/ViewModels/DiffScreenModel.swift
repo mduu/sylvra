@@ -173,11 +173,16 @@ public final class DiffScreenModel {
     public nonisolated static func lineAnchor(path: String, line: Int) -> String { "\(path)#L\(line)" }
 
     /// Folders the reviewer collapsed in the file tree.
-    public private(set) var collapsedFolders: Set<String> = []
+    public internal(set) var collapsedFolders: Set<String> = []
 
     public func toggleFolder(_ path: String) {
         if collapsedFolders.contains(path) { collapsedFolders.remove(path) } else { collapsedFolders.insert(path) }
     }
+
+    /// Bumped when the navigator should bring `selectedPath` into view (a click on a file header in the diff).
+    public internal(set) var navigatorRevealToken = 0
+    /// The next `selectedPath` change came from the diff itself: the diff keeps its scroll position.
+    @ObservationIgnored var keepsDiffPosition = false
 
     /// Changed files as a folder tree (noise last).
     public var fileTree: [FileTreeNode] {

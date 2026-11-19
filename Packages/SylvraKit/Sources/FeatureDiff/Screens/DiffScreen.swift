@@ -125,6 +125,7 @@ public struct DiffScreen<LineAccessory: View>: View {
                                     isCollapsed: model.isCollapsed(file),
                                     toggleCollapsed: { withAnimation(.snappy) { model.toggleExpanded(file.path) } },
                                     toggleViewed: { Task { await model.toggleViewed(file.path) } },
+                                    select: { withAnimation(.snappy) { model.selectInNavigator(file.path) } },
                                     readingStep: model.readingStep(for: file.path)
                                 )
                                 .id(file.path)
@@ -162,6 +163,11 @@ public struct DiffScreen<LineAccessory: View>: View {
                     model.currentSearchMatch.map { DiffScreenModel.lineAnchor(path: $0.path, line: $0.line) }
                 )
                 .onChange(of: model.selectedPath) { _, path in
+                    // Selected from its own header: the file is already in view.
+                    if model.keepsDiffPosition {
+                        model.keepsDiffPosition = false
+                        return
+                    }
                     guard let path, model.focusedLine?.path != path else { return }
                     withAnimation(.snappy) { proxy.scrollTo(path, anchor: .top) }
                 }

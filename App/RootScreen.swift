@@ -90,6 +90,14 @@ struct RootScreen: View {
             .onChange(of: environment.diff.selectedPath) { _, path in
                 environment.chat.context.file = path
             }
+            .onChange(of: environment.diff.navigatorRevealToken) {
+                // A click on a file header in the diff shows the file in the Files tab of the PR column.
+                guard role == .main, layout != .focus else { return }
+                withAnimation(.snappy) {
+                    environment.pullRequest.tab = .files
+                    isInboxListed = false
+                }
+            }
             .onChange(of: environment.aiReview.selectedFindingID) { _, id in
                 environment.chat.context.finding =
                     environment.aiReview.findings(for: selection?.id)

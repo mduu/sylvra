@@ -30,3 +30,16 @@ extension DiffScreenModel {
         return shown.min { abs($0 - line) < abs($1 - line) || (abs($0 - line) == abs($1 - line) && $0 < $1) }
     }
 }
+
+extension DiffScreenModel {
+    /// A click on a file's header in the diff: the navigator highlights the file, opens its folders and scrolls
+    /// it into view; the diff stays where it is (the header is already on screen).
+    public func selectInNavigator(_ path: String) {
+        if selectedPath != path {
+            keepsDiffPosition = true
+            selectedPath = path
+        }
+        collapsedFolders = collapsedFolders.filter { !path.hasPrefix($0 + "/") }
+        navigatorRevealToken += 1
+    }
+}

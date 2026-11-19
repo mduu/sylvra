@@ -10,6 +10,8 @@ struct DiffFileHeaderView: View {
     let isCollapsed: Bool
     let toggleCollapsed: () -> Void
     let toggleViewed: () -> Void
+    /// A click on the header outside its buttons: shows the file in the navigator.
+    var select: () -> Void = {}
     /// Position and reason in the AI reading order.
     var readingStep: (number: Int, step: ReadingStep)?
 
@@ -51,6 +53,8 @@ struct DiffFileHeaderView: View {
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
+        .contentShape(Rectangle())
+        .onTapGesture(perform: select)
         .background(.regularMaterial)
         .overlay(alignment: .bottom) { Rectangle().fill(SylvraColor.codeHairline).frame(height: 1) }
         .overlay(alignment: .leading) {
