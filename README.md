@@ -11,7 +11,7 @@ Sylvra is a native macOS app for reviewing **your team's GitHub pull requests**,
 Sylvra is **not a Git client** and not a code generator. It helps you understand a change, find what matters and write clear, factual review comments. You stay the reviewer.
 
 <p align="center">
-  <a href="docs/screenshots/app-30-overview-dark.png"><img src="docs/screenshots/app-30-overview-dark.png#gh-dark-mode-only" alt="Sylvra: inbox with filters and repositories, pull request with AI summary and change map, diff with a review thread and an inline AI finding, AI inspector" width="100%"></a><a href="docs/screenshots/app-30-overview.png"><img src="docs/screenshots/app-30-overview.png#gh-light-mode-only" alt="Sylvra: inbox with filters and repositories, pull request with AI summary and change map, diff with a review thread and an inline AI finding, AI inspector" width="100%"></a>
+  <picture><source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/app-30-overview-dark.png"><img src="docs/screenshots/app-30-overview.png" alt="Sylvra: inbox, pull request with AI summary and change map, diff with a review thread and an AI finding, AI panel" width="100%"></picture>
 </p>
 
 **Why "Sylvra"?** The name is a coined word from Latin *silva* and English *sylvan*: forest, wooded. A forest is a quiet place where you can think — that is the mood Sylvra aims for: a calm space to read a change carefully, without the noise of a busy web page. It also fits the subject: code lives in (work-)trees and branches, and a good review sees the forest, not just the trees.
@@ -28,8 +28,7 @@ Sylvra is **not a Git client** and not a code generator. It helps you understand
 - Works with large organizations: you choose the repositories, searches stay small, GitHub timeouts are retried and SSO restrictions are explained.
 
 <p align="center">
-  <a href="docs/screenshots/app-30-overview-dark.png"><img src="docs/screenshots/app-40-inbox-detail-dark.png#gh-dark-mode-only" alt="Inbox with filters, waiting on others and your repositories next to the pull request" width="25%"></a><a href="docs/screenshots/app-30-overview.png"><img src="docs/screenshots/app-40-inbox-detail.png#gh-light-mode-only" alt="Inbox with filters, waiting on others and your repositories next to the pull request" width="25%"></a>
-  <a href="docs/screenshots/app-26-repository-browser-dark.png"><img src="docs/screenshots/app-26-repository-browser-detail-dark.png#gh-dark-mode-only" alt="All open pull requests of a repository, grouped and filtered" width="25%"></a><a href="docs/screenshots/app-26-repository-browser.png"><img src="docs/screenshots/app-26-repository-browser-detail.png#gh-light-mode-only" alt="All open pull requests of a repository, grouped and filtered" width="25%"></a>
+  <picture><source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/closeup-inbox-dark.png"><img src="docs/screenshots/closeup-inbox.png" alt="The inbox with its sections, and all open pull requests of one repository" width="55%"></picture>
 </p>
 
 ### 2. Understand the change quickly
@@ -42,10 +41,10 @@ Sylvra is **not a Git client** and not a code generator. It helps you understand
 - **Failing checks explained**: click a check to read what it reported (summary, annotations with file and line) without leaving the app.
 
 <p align="center">
-  <a href="docs/screenshots/app-38-new-commits-dark.png"><img src="docs/screenshots/app-38-new-commits-detail-dark.png#gh-dark-mode-only" alt="Banners for new commits and for what changed since your last review" width="49%"></a><a href="docs/screenshots/app-38-new-commits.png"><img src="docs/screenshots/app-38-new-commits-detail.png#gh-light-mode-only" alt="Banners for new commits and for what changed since your last review" width="49%"></a>
-  <a href="docs/screenshots/app-31-commit-by-commit-dark.png"><img src="docs/screenshots/app-31-commit-by-commit-detail-dark.png#gh-dark-mode-only" alt="Reviewing commit 2 of 4 on its own" width="49%"></a><a href="docs/screenshots/app-31-commit-by-commit.png"><img src="docs/screenshots/app-31-commit-by-commit-detail.png#gh-light-mode-only" alt="Reviewing commit 2 of 4 on its own" width="49%"></a>
-  <a href="docs/screenshots/app-32-check-report-dark.png"><img src="docs/screenshots/app-32-check-report-detail-dark.png#gh-dark-mode-only" alt="What a failing check reported, with annotations" width="49%"></a><a href="docs/screenshots/app-32-check-report.png"><img src="docs/screenshots/app-32-check-report-detail.png#gh-light-mode-only" alt="What a failing check reported, with annotations" width="49%"></a>
-  <a href="docs/screenshots/app-35-conversation-dark.png"><img src="docs/screenshots/app-35-conversation-detail-dark.png#gh-dark-mode-only" alt="Pull request conversation with reactions, an approval and the comment field" width="49%"></a><a href="docs/screenshots/app-35-conversation.png"><img src="docs/screenshots/app-35-conversation-detail.png#gh-light-mode-only" alt="Pull request conversation with reactions, an approval and the comment field" width="49%"></a>
+  <picture><source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/closeup-pr-at-a-glance-dark.png"><img src="docs/screenshots/closeup-pr-at-a-glance.png" alt="Pull request at a glance: AI summary with risk and reading order, merge status in plain words" width="45%"></picture><br><br>
+  <picture><source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/closeup-check-report-dark.png"><img src="docs/screenshots/closeup-check-report.png" alt="What a failing check reported, with the annotation" width="75%"></picture><br><br>
+  <picture><source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/closeup-new-commits-dark.png"><img src="docs/screenshots/closeup-new-commits.png" alt="Banners for new commits and for what changed since your last review" width="75%"></picture><br><br>
+  <picture><source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/closeup-commit-by-commit-dark.png"><img src="docs/screenshots/closeup-commit-by-commit.png" alt="Reviewing commit 2 of 4 on its own" width="90%"></picture>
 </p>
 
 ### 3. A diff made for reading
@@ -68,10 +67,10 @@ Sylvra is **not a Git client** and not a code generator. It helps you understand
 - The AI agents run **read-only** and **never post anything**. A finding becomes a comment only when you turn it into one.
 
 <p align="center">
-  <a href="docs/screenshots/app-36-ai-box-dark.png"><img src="docs/screenshots/app-36-ai-box-detail-dark.png#gh-dark-mode-only" alt="AI finding framed in the diff with a gutter mark, next to a review thread and the finding card" width="49%"></a><a href="docs/screenshots/app-36-ai-box.png"><img src="docs/screenshots/app-36-ai-box-detail.png#gh-light-mode-only" alt="AI finding framed in the diff with a gutter mark, next to a review thread and the finding card" width="49%"></a>
-  <a href="docs/screenshots/app-30-overview-dark.png"><img src="docs/screenshots/app-41-ai-inspector-detail-dark.png#gh-dark-mode-only" alt="AI panel next to the diff: models, findings rated by impact and likelihood" width="49%"></a><a href="docs/screenshots/app-30-overview.png"><img src="docs/screenshots/app-41-ai-inspector-detail.png#gh-light-mode-only" alt="AI panel next to the diff: models, findings rated by impact and likelihood" width="49%"></a>
-  <a href="docs/screenshots/app-33-ai-chat-dark.png"><img src="docs/screenshots/app-33-ai-chat-detail-dark.png#gh-dark-mode-only" alt="Ask AI from a review thread: formatted answer with clickable code references" width="49%"></a><a href="docs/screenshots/app-33-ai-chat.png"><img src="docs/screenshots/app-33-ai-chat-detail.png#gh-light-mode-only" alt="Ask AI from a review thread: formatted answer with clickable code references" width="49%"></a>
-  <a href="docs/screenshots/app-37-finding-to-comment-dark.png"><img src="docs/screenshots/app-37-finding-to-comment-detail-dark.png#gh-dark-mode-only" alt="A finding turned into a comment draft, translated to German" width="49%"></a><a href="docs/screenshots/app-37-finding-to-comment.png"><img src="docs/screenshots/app-37-finding-to-comment-detail.png#gh-light-mode-only" alt="A finding turned into a comment draft, translated to German" width="49%"></a>
+  <picture><source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/closeup-ai-finding-dark.png"><img src="docs/screenshots/closeup-ai-finding.png" alt="An AI finding framed in the diff, with ✦ in the gutter, and its card" width="90%"></picture><br><br>
+  <picture><source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/closeup-ai-panel-dark.png"><img src="docs/screenshots/closeup-ai-panel.png" alt="The AI panel: models, findings rated by impact and likelihood" width="45%"></picture><br><br>
+  <picture><source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/closeup-ai-chat-dark.png"><img src="docs/screenshots/closeup-ai-chat.png" alt="Ask AI from a review thread: a formatted answer with clickable code references" width="90%"></picture><br><br>
+  <picture><source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/closeup-finding-to-comment-dark.png"><img src="docs/screenshots/closeup-finding-to-comment.png" alt="A finding turned into a comment draft, translated to German" width="70%"></picture>
 </p>
 
 ### 5. Factual, short review comments
@@ -81,7 +80,8 @@ Sylvra is **not a Git client** and not a code generator. It helps you understand
 - **Tone check** while you type: flags dismissive, absolute or loaded wording ("obviously", "always", "falsch" …) and offers a factual rephrase.
 
 <p align="center">
-  <a href="docs/screenshots/app-21-tone-check-dark.png"><img src="docs/screenshots/app-21-tone-check-detail-dark.png#gh-dark-mode-only" alt="Comment composer with tone check and rephrase" width="49%"></a><a href="docs/screenshots/app-21-tone-check.png"><img src="docs/screenshots/app-21-tone-check-detail.png#gh-light-mode-only" alt="Comment composer with tone check and rephrase" width="49%"></a>
+  <picture><source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/closeup-tone-check-dark.png"><img src="docs/screenshots/closeup-tone-check.png" alt="Tone check while writing a comment, with a factual rephrase" width="70%"></picture><br><br>
+  <picture><source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/closeup-conversation-dark.png"><img src="docs/screenshots/closeup-conversation.png" alt="The pull request conversation with reactions and an approval" width="45%"></picture>
 </p>
 
 ### 6. Into the code when needed
@@ -97,8 +97,7 @@ Sylvra is **not a Git client** and not a code generator. It helps you understand
 - Light, dark or automatic appearance.
 
 <p align="center">
-  <a href="docs/screenshots/app-34-compact-dark.png"><img src="docs/screenshots/app-34-compact-detail-dark.png#gh-dark-mode-only" alt="Compact layout for laptops: pull request and a wide diff" width="49%"></a><a href="docs/screenshots/app-34-compact.png"><img src="docs/screenshots/app-34-compact-detail.png#gh-light-mode-only" alt="Compact layout for laptops: pull request and a wide diff" width="49%"></a>
-  <a href="docs/screenshots/app-39-compact-ai-panel-dark.png"><img src="docs/screenshots/app-39-compact-ai-panel-detail-dark.png#gh-dark-mode-only" alt="Compact layout: the AI panel floats in on demand" width="49%"></a><a href="docs/screenshots/app-39-compact-ai-panel.png"><img src="docs/screenshots/app-39-compact-ai-panel-detail.png#gh-light-mode-only" alt="Compact layout: the AI panel floats in on demand" width="49%"></a>
+  <picture><source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/closeup-compact-dark.png"><img src="docs/screenshots/closeup-compact.png" alt="Compact layout for laptops: pull request and a wide diff" width="90%"></picture>
 </p>
 
 ## Principles
