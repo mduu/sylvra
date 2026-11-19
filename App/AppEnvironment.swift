@@ -28,6 +28,7 @@ import SylvraCore
 /// - `--terminal`: show the terminal panel with one tab; `--commands`: show the Commands list
 /// - `--ask=question`: ask the AI chat this question once a PR is selected (screenshots)
 /// - `--window-layout=wide|compact|focus|…`: window layout for this launch (see `WindowLayout`)
+/// - `--expand-reading-order`: the AI summary's reading order starts expanded
 @MainActor
 final class AppEnvironment {
     let isDemo: Bool

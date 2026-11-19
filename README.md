@@ -42,6 +42,7 @@ Sylvra is **not a Git client** and not a code generator. It helps you understand
 
 <p align="center">
   <picture><source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/closeup-pr-at-a-glance-dark.png"><img src="docs/screenshots/closeup-pr-at-a-glance.png" alt="Pull request at a glance: AI summary with risk and reading order, merge status in plain words" width="45%"></picture><br><br>
+  <picture><source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/closeup-reading-order-dark.png"><img src="docs/screenshots/closeup-reading-order.png" alt="AI summary with the suggested reading order: which file to read first and why" width="45%"></picture><br><br>
   <picture><source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/closeup-check-report-dark.png"><img src="docs/screenshots/closeup-check-report.png" alt="What a failing check reported, with the annotation" width="75%"></picture><br><br>
   <picture><source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/closeup-new-commits-dark.png"><img src="docs/screenshots/closeup-new-commits.png" alt="Banners for new commits and for what changed since your last review" width="75%"></picture><br><br>
   <picture><source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/closeup-commit-by-commit-dark.png"><img src="docs/screenshots/closeup-commit-by-commit.png" alt="Reviewing commit 2 of 4 on its own" width="90%"></picture>

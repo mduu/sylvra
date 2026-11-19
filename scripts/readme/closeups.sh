@@ -24,6 +24,7 @@ closeup pr-at-a-glance v app-30-overview:218,62,288,236 app-30-overview:221,501,
 closeup new-commits v app-38-new-commits:520,52,570,112
 closeup commit-by-commit h app-31-commit-by-commit:218,232,285,350 app-31-commit-by-commit:520,98,575,350
 closeup check-report v app-32-check-report:398,175,608,286
+closeup reading-order v app-42-reading-order:224,182,278,228
 closeup ai-finding v app-36-ai-box:515,234,885,86 app-36-ai-box:622,566,770,220
 closeup ai-panel v app-30-overview:1105,62,290,390
 closeup ai-chat h app-33-ai-chat:585,300,505,248 app-33-ai-chat:1105,160,290,360

@@ -22,6 +22,17 @@ struct SylvraApp: App {
         ProcessSignals.ignoreBrokenPipes()
         ScrollerPreference.apply()
         WindowLayout.applyLaunchArgument()
+        Self.expandReadingOrderIfAsked()
+    }
+
+    /// `--expand-reading-order` (screenshots): the AI summary's reading order starts expanded, for this launch.
+    private static func expandReadingOrderIfAsked(
+        _ arguments: [String] = CommandLine.arguments, defaults: UserDefaults = .standard
+    ) {
+        guard arguments.contains("--expand-reading-order") else { return }
+        var domain = defaults.volatileDomain(forName: UserDefaults.argumentDomain)
+        domain["aiReadingOrderExpanded"] = true
+        defaults.setVolatileDomain(domain, forName: UserDefaults.argumentDomain)
     }
 
     var body: some Scene {
