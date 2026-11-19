@@ -14,6 +14,21 @@ enum WindowLayout: String, CaseIterable, Identifiable {
     case twoWindows
 
     static let storageKey = "layout.mode"
+
+    /// `--window-layout=wide|compact|…` (screenshots) overrides the saved layout for this launch only. A
+    /// `-layout.mode wide` pair would also work as a default, but AppKit may open the bare `wide` as a document
+    /// and then show no main window.
+    static func applyLaunchArgument(
+        _ arguments: [String] = CommandLine.arguments, defaults: UserDefaults = .standard
+    ) {
+        let prefix = "--window-layout="
+        guard let value = arguments.first(where: { $0.hasPrefix(prefix) }).map({ String($0.dropFirst(prefix.count)) }),
+            WindowLayout(rawValue: value) != nil
+        else { return }
+        var domain = defaults.volatileDomain(forName: UserDefaults.argumentDomain)
+        domain[storageKey] = value
+        defaults.setVolatileDomain(domain, forName: UserDefaults.argumentDomain)
+    }
     /// Windows narrower than this use the compact layout in `automatic`. All columns at their default
     /// widths (inbox 290, pull request 380, inspector 320) leave the diff ~700 pt at this width; MacBook
     /// screens (1470–1728 pt) were above the old 1400 and never switched.

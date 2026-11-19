@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Build Sylvra, launch it (optionally with demo data) and capture the main window.
 #   scripts/screenshot.sh <name> [extra app arguments…]
+#   SYLVRA_SKIP_BUILD=1 scripts/screenshot.sh …   # without building first
 # Output: docs/screenshots/<name>.png
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -10,8 +11,11 @@ shift || true
 DERIVED="${SYLVRA_DERIVED_DATA:-$PWD/.build/DerivedData}"
 APP="$DERIVED/Build/Products/Debug/Sylvra.app"
 
-xcodebuild -project Sylvra.xcodeproj -scheme Sylvra -destination 'platform=macOS' \
-  -derivedDataPath "$DERIVED" build CODE_SIGNING_ALLOWED=NO -quiet 2>&1 | grep -v appintents || true
+# SYLVRA_SKIP_BUILD=1: reuse the last build (several captures in a row build once).
+if [ "${SYLVRA_SKIP_BUILD:-0}" != "1" ]; then
+  xcodebuild -project Sylvra.xcodeproj -scheme Sylvra -destination 'platform=macOS' \
+    -derivedDataPath "$DERIVED" build CODE_SIGNING_ALLOWED=NO -quiet 2>&1 | grep -v appintents || true
+fi
 
 # Compile the window lookup once (running `swift script.swift` in a loop is slow and CPU heavy).
 WINDOW_ID_TOOL=".build/window-id"

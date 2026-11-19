@@ -27,6 +27,7 @@ import SylvraCore
 ///   (`--draft=text` prefills it)
 /// - `--terminal`: show the terminal panel with one tab; `--commands`: show the Commands list
 /// - `--ask=question`: ask the AI chat this question once a PR is selected (screenshots)
+/// - `--window-layout=wide|compact|focus|…`: window layout for this launch (see `WindowLayout`)
 @MainActor
 final class AppEnvironment {
     let isDemo: Bool
