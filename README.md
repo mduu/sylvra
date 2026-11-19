@@ -22,13 +22,14 @@ Sylvra is **not a Git client** and not a code generator. It helps you understand
 - **Inbox** of PRs that need you: review requests to you and your teams, PRs you're involved in, your own PRs, recently closed.
 - **Your repositories** below the inbox, with their number of open PRs. Open one to browse *all* its open PRs (waiting for you, yours, the rest), searched on GitHub and loaded while you scroll — usable even for a monolith with hundreds of open PRs.
 - **Filters**: hide bots (Renovate, Dependabot …), specific authors or other people's drafts; quick chips for author, *needs review*, *CI failing* and small PRs. Right-click a PR to hide its author.
-- **Why you're involved**: where you were @-mentioned (description, comments, code comments with file and line).
+- **Why you're involved**: where you were @-mentioned (description, comments, code comments with file and line), and what is new since your last comment or review (commits, comments, reviews).
 - **Waiting on others**: PRs where you acted last are dimmed and grouped, until someone answers. New replies to you show up as *New activity* and as a macOS notification; a click opens the PR.
+- Search field and section counts; the last loaded PRs stay available offline.
 - Works with large organizations: you choose the repositories, searches stay small, GitHub timeouts are retried and SSO restrictions are explained.
 
 ### 2. Understand the change quickly
-- **PR at a glance**: description, reviewers, merge status in plain words, change map, checks, commits.
-- **The PR conversation, like on GitHub** (Comments tab): write comments with preview, tone check and writing help, react with emoji, quote-reply, edit and delete your own; updates every minute. Code threads are listed separately and jump to their line.
+- **PR at a glance**: description (Markdown), reviewers, merge status in plain words, which approvals are still missing, change map, checks, commits.
+- **The PR conversation, like on GitHub** (Comments tab): write comments with preview, tone check and writing help, react with emoji, quote-reply, edit and delete your own; updates every minute. Comments render as full Markdown, including what bots post. Code threads are listed separately and jump to their line.
 - **Repository and `#number` in the title** open the repository and the pull request on GitHub.
 - **AI summary and reading order** pinned above the tabs, visible during the whole review. The diff sorts itself by the reading order.
 - **Since my last review**: only what changed since you last reviewed, plus a banner when someone pushes.
@@ -37,16 +38,20 @@ Sylvra is **not a Git client** and not a code generator. It helps you understand
 
 ### 3. A diff made for reading
 - Side by side with a ribbon between old and new, or inline; changed hunks or full files.
-- Syntax highlighting, intra-line changes, reveal hidden context step by step (+20 / all).
+- **Files as a folder tree** with viewed state synced with GitHub. Marking a file *Viewed* collapses it and scrolls straight to the next file still to review.
+- Syntax highlighting, intra-line changes, reveal hidden context step by step (+20 / all), long lines scroll sideways.
+- Select and copy code across lines, or ask the AI about the selection.
 - Review threads and AI findings inline under the lines they belong to, with emoji reactions; the change ribbon keeps running through them.
 - Keyboard first: `j`/`k` files, `n`/`p` changes, `v` viewed, `⌘F` find, `⌘K` command palette, `?` for all shortcuts.
 
 ### 4. AI as a reviewer's assistant, never as the reviewer
 - **One-click AI review** with your locally installed Claude Code, using your repo's `AGENTS.md`, `CLAUDE.md` and specs as context.
 - **Several models in parallel** (e.g. Opus + Fable); findings are merged and show who found them. Large PRs are split across agents.
-- **Findings in the diff**: highlighted lines — click one to open its card with rationale and the suggestion as a mini diff.
+- **Findings in the diff**: a framed box in the AI colors with a ✦ in the gutter, so additions and deletions stay green and red — click it to open the card with rationale and the suggestion as a mini diff.
+- **New commits pushed?** Sylvra offers to run the review again on the new code; the old findings are replaced.
+- **Risk**: the review rates the PR as a whole (low / medium / high, with reasons) and every finding by impact and likelihood.
 - **Patterns**: which conventions the change follows, violates or introduces.
-- **Discuss code privately**: ask Claude about selected lines or a review thread (*Ask AI*) in a private chat. Answers are formatted (headings, lists, code, tables), code references are clickable, and a suggested reply can go straight into the thread.
+- **Discuss code privately**: ask Claude about selected lines, a finding or a review thread (*Ask AI*) in a private chat. Each topic gets its own chat, earlier chats stay selectable, and you choose model and effort per question. Answers are formatted (headings, lists, code, tables), code references are clickable, and a suggested reply can go straight into the thread.
 - **Adjustable AI text size** for chat, findings and summary.
 - The AI agents run **read-only** and **never post anything**. A finding becomes a comment only when you turn it into one.
 
@@ -58,12 +63,15 @@ Sylvra is **not a Git client** and not a code generator. It helps you understand
 
 ### 6. Into the code when needed
 - **Open in IDE** (Rider, VS Code, Xcode or the default app) in a Sylvra-managed worktree, so your working copy stays untouched.
-- **Terminal panel** (adjustable font size) and your own **custom tools** on files and folders.
+- **Worktrees that clean up after themselves**: attached to your existing clone when Sylvra finds one (no extra clone, little disk space), removed once the PR is merged or closed or after a week unused; never while in use or with changed files. *Settings → Worktrees* lists them all, with *Clean Up Now* and *Show in Finder* (also in the app menu).
+- **Terminal panel** in tabs (adjustable font size), *Open in Terminal* with your terminal app, and your own **custom tools** on files, folders and PRs with placeholders like `{file}` or `{headSHA}`.
 - **Commands** (`⌥⌘K`): every GitHub request and command Sylvra ran, without tokens or code.
 - **Log window** (Help → Show Log, `⌥⌘L`) with the errors of the current run, ready to copy.
 
 ### 7. Fits the screen you're on
 - **Window layouts** (`⌃⌘0`–`⌃⌘4`): *Automatic*, *Wide* (all columns), *Compact* for laptops (inbox and AI float in on demand), *Focus* (only the diff), *Two windows* for two screens.
+- Collapse the inbox and the AI panel with their edge handles; column widths are remembered.
+- Light, dark or automatic appearance.
 
 <p align="center">
   <a href="docs/screenshots/app-26-repository-browser-dark.png"><img src="docs/screenshots/app-26-repository-browser-detail-dark.png#gh-dark-mode-only" alt="All open pull requests of a repository, grouped and filtered" width="49%"></a><a href="docs/screenshots/app-26-repository-browser.png"><img src="docs/screenshots/app-26-repository-browser-detail.png#gh-light-mode-only" alt="All open pull requests of a repository, grouped and filtered" width="49%"></a>
