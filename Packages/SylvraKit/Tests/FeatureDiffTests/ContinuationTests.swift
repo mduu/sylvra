@@ -42,3 +42,14 @@ struct ContinuationTests {
         #expect(HalfContinuation.between(line(.removed), and: nil, hasNext: true) == .none)
     }
 }
+
+/// Regression: with the floating AI panel open in the compact layout, a thread in the narrow right half of a
+/// side-by-side diff kept clear of the whole panel and was squeezed to a few letters per line.
+struct TrailingClearanceTests {
+    @Test func keepsClearOfThePanelOnlyWhileTheBoxStaysWide() {
+        #expect(trailingClearance(cover: 376, width: 1000, minimum: 420) == 376)
+        #expect(trailingClearance(cover: 376, width: 600, minimum: 420) == 180)
+        #expect(trailingClearance(cover: 376, width: 380, minimum: 420) == 0)
+        #expect(trailingClearance(cover: 0, width: 1000, minimum: 420) == 0)
+    }
+}

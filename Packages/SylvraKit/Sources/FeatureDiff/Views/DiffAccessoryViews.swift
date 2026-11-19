@@ -8,6 +8,14 @@ extension EnvironmentValues {
     @Entry public var diffTrailingCover: CGFloat = 0
 }
 
+/// How much of a floating panel's cover a box in the diff keeps clear of: all of it while the box stays at
+/// least `minimum` wide, otherwise only what leaves it that wide (in a narrow side-by-side half, avoiding the
+/// panel completely would squeeze a thread to a few letters per line).
+func trailingClearance(cover: CGFloat, width: CGFloat, minimum: CGFloat) -> CGFloat {
+    guard cover > 0 else { return 0 }
+    return min(cover, max(width - minimum, 0))
+}
+
 struct AccessoryLane<Content: View>: View {
     var minWidth: CGFloat = 0
     /// Width of the gutter the lane continues (inline has two line-number columns).
@@ -20,6 +28,10 @@ struct AccessoryLane<Content: View>: View {
     var reachesTrailingEdge = true
     @ViewBuilder let content: Content
     @Environment(\.diffTrailingCover) private var trailingCover
+    @State private var width: CGFloat = 0
+
+    /// Threads, composers and finding cards stay readable from this width on.
+    static var minimumContentWidth: CGFloat { 420 }
 
     var body: some View {
         // The zero-height placeholder keeps an empty lane in the layout (an empty `if` would vanish and let
@@ -30,8 +42,14 @@ struct AccessoryLane<Content: View>: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         // Keeps cards, composers and their buttons clear of a floating panel; the surface still runs underneath.
-        .padding(.trailing, reachesTrailingEdge ? trailingCover : 0)
+        .padding(
+            .trailing,
+            reachesTrailingEdge
+                ? trailingClearance(
+                    cover: trailingCover, width: width - gutterWidth, minimum: Self.minimumContentWidth) : 0
+        )
         .padding(.leading, gutterWidth)
+        .onGeometryChange(for: CGFloat.self, of: \.size.width) { width = $0 }
         .background {
             // Clipped to the lane: the change bar's minimum height made an empty lane's surface spill 1 pt
             // into the line above (a white seam between lines).
@@ -93,6 +111,7 @@ struct AIHighlightOverlay: View {
     @Environment(\.diffSelectFinding) private var selectFinding
     @Environment(\.diffTrailingCover) private var trailingCover
     @State private var isHovered = false
+    @State private var width: CGFloat = 0
 
     var body: some View {
         if let highlight {
@@ -112,9 +131,12 @@ struct AIHighlightOverlay: View {
                 }
                 // Clear of the change bar on the left and of a floating panel on the right.
                 .padding(.leading, 4)
-                .padding(.trailing, 4 + trailingCover)
+                .padding(
+                    .trailing, 4 + trailingClearance(cover: trailingCover, width: width - gutterWidth, minimum: 240)
+                )
                 .allowsHitTesting(false)
             }
+            .onGeometryChange(for: CGFloat.self, of: \.size.width) { width = $0 }
             .transition(.opacity)
         }
     }
