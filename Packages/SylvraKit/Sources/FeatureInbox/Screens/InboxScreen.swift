@@ -24,15 +24,18 @@ public struct InboxScreen: View {
         .listStyle(.sidebar)
         .scrollContentBackground(.hidden)
         .background(SylvraColor.surfaceSidebar)
-        .searchable(text: $model.searchText, placement: .sidebar, prompt: searchPrompt)
         .safeAreaInset(edge: .top, spacing: 0) {
-            if !model.snapshot.isEmpty || model.browser != nil {
-                InboxFilterBar(
-                    filter: model.filter, authors: model.authors,
-                    hiddenCount: model.browser == nil ? model.hiddenCount : model.browserHiddenCount,
-                    toggle: model.toggle, showOnlyAuthor: model.showOnly(author:), clear: model.clearTemporaryFilters,
-                    updatePreferences: model.updatePreferences)
+            VStack(spacing: 0) {
+                InboxSearchField(text: $model.searchText, prompt: searchPrompt)
+                if !model.snapshot.isEmpty || model.browser != nil {
+                    InboxFilterBar(
+                        filter: model.filter, authors: model.authors,
+                        hiddenCount: model.browser == nil ? model.hiddenCount : model.browserHiddenCount,
+                        toggle: model.toggle, showOnlyAuthor: model.showOnly(author:),
+                        clear: model.clearTemporaryFilters, updatePreferences: model.updatePreferences)
+                }
             }
+            .background(SylvraColor.surfaceSidebar)
         }
         .overlay { overlay }
         .safeAreaInset(edge: .bottom) {
@@ -95,11 +98,11 @@ public struct InboxScreen: View {
         .background(SylvraColor.accentGold.opacity(0.08))
     }
 
-    private var searchPrompt: Text {
+    private var searchPrompt: String {
         if let browser = model.browser {
-            return Text("Search in \(browser.repository.name)")
+            return String(localized: "Search in \(browser.repository.name)")
         }
-        return Text("Search PRs")
+        return String(localized: "Search PRs")
     }
 
     /// Open work first, then the repositories, then what was closed recently (history at the bottom).
