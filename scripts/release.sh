@@ -45,11 +45,7 @@ codesign --verify --deep --strict "$APP"
 echo "▸ Signed: $(codesign -dvv "$APP" 2>&1 | grep '^Authority=' | head -1)"
 
 echo "▸ Creating DMG…"
-STAGING="$OUT/dmg"
-mkdir -p "$STAGING"
-cp -R "$APP" "$STAGING/"
-ln -s /Applications "$STAGING/Applications"
-hdiutil create -volname "Sylvra $VERSION" -srcfolder "$STAGING" -ov -format UDZO "$DMG" -quiet
+scripts/dmg/make-dmg.sh "$APP" "$DMG" "Sylvra $VERSION"
 codesign --sign "Developer ID Application" --timestamp "$DMG"
 
 if [[ "${SKIP_NOTARIZE:-0}" == "1" ]]; then

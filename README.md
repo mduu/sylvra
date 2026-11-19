@@ -98,7 +98,9 @@ Sylvra is **not a Git client** and not a code generator. It helps you understand
 
 ## Status
 
-A personal project, used and developed for my own daily reviews (version 0.5). There are no published releases: build it from source, or build your own signed DMG (see below). Expect rough edges.
+A personal project, used and developed for my own daily reviews (version 0.5). Expect rough edges — feedback is welcome as an [issue](https://github.com/mduu/sylvra/issues).
+
+**Download**: the signed and notarized DMG of the [latest release](https://github.com/mduu/sylvra/releases/latest). Open it and drag Sylvra into Applications. Or build it from source (see below).
 
 ## Requirements
 
@@ -121,7 +123,8 @@ To build an installable, signed and notarized `Sylvra-<version>.dmg` for another
 
 ```bash
 xcrun notarytool store-credentials sylvra-notary --apple-id <apple-id> --team-id <team-id>   # once
-scripts/release.sh         # → .build/release/Sylvra-<version>.dmg
+scripts/release.sh         # → .build/release/Sylvra-<version>.dmg (styled installer window)
+scripts/publish.sh         # tag v<version> and publish the DMG as a GitHub Release (--draft to review first)
 ```
 
 For development:
