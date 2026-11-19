@@ -7,6 +7,8 @@ enum DiffColors {
     static var added: Color { SylvraColor.diffAdded }
     static var removed: Color { SylvraColor.diffRemoved }
     static let emptyBackground = Color.secondary.opacity(0.04)
+    /// Code selected with the mouse: the system's text selection color, like in an editor.
+    static let textSelection = Color(nsColor: .selectedTextBackgroundColor)
 
     static func accent(_ kind: DiffLine.Kind) -> Color? {
         switch kind {
@@ -103,6 +105,8 @@ extension EnvironmentValues {
     @Entry var diffSelectFinding: ((String) -> Void)?
     /// How far the code is scrolled horizontally (gutters stay in place), see `DiffScreenModel.horizontalOffset`.
     @Entry var diffHorizontalOffset: CGFloat = 0
+    /// Mouse selection across lines (`nil`: code can't be selected, e.g. previews).
+    @Entry var diffTextSelection: DiffTextSelectionController?
 }
 
 /// Remembers rendered lines so scrolling and re-renders don't re-tokenise (bounded LRU-ish cache).

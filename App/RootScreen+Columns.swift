@@ -146,6 +146,7 @@ extension RootScreen {
                 },
                 lineAccessory: { lineAccessory(at: $0) },
                 onStartComment: { environment.review.startComment(at: $0, lineText: $1) },
+                onAskAI: { location, code in askAI(about: location, code: code) },
                 onRefresh: {
                     guard let id = selection?.id else { return }
                     await environment.pullRequest.load(id)

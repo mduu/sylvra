@@ -6,18 +6,24 @@ import SylvraCore
 /// Slots provided by the app (slices don't import each other):
 /// - `lineAccessory` renders content below a line (e.g. review threads and the comment composer),
 /// - `onStartComment` is called with the location and its text when the reviewer starts a comment
-///   (gutter `+` or click on a line number; ⇧-click extends the range on the same side).
+///   (gutter `+` or click on a line number; ⇧-click extends the range on the same side),
+/// - `onAskAI` opens a chat about code selected with the mouse (location and selected text).
 public struct DiffScreen<LineAccessory: View>: View {
     @Bindable private var model: DiffScreenModel
     private let pullRequestID: PullRequestID?
     private let headSHA: String?
     private let lineAccessory: (CodeLocation) -> LineAccessory
     private let onStartComment: ((CodeLocation, String) -> Void)?
+    private let onAskAI: ((CodeLocation, String) -> Void)?
     /// Reloads the PR after a push (details, head SHA → diff); `nil` reloads only the diff.
     private let onRefresh: (() async -> Void)?
     @State private var diffIsWide = true
     @State private var diffWidth: CGFloat = 800
     @State private var commentAnchor: CodeLocation?
+    @State private var textSelection = DiffTextSelectionController()
+    /// Only used to scroll while a selection is dragged past an edge (offsets, no IDs: see below).
+    @State private var scrollPosition = ScrollPosition()
+    @State private var scrollGeometry: ScrollGeometry?
 
     public init(
         model: DiffScreenModel,
@@ -25,6 +31,7 @@ public struct DiffScreen<LineAccessory: View>: View {
         headSHA: String?,
         @ViewBuilder lineAccessory: @escaping (CodeLocation) -> LineAccessory,
         onStartComment: ((CodeLocation, String) -> Void)? = nil,
+        onAskAI: ((CodeLocation, String) -> Void)? = nil,
         onRefresh: (() async -> Void)? = nil
     ) {
         self.model = model
@@ -32,6 +39,7 @@ public struct DiffScreen<LineAccessory: View>: View {
         self.headSHA = headSHA
         self.lineAccessory = lineAccessory
         self.onStartComment = onStartComment
+        self.onAskAI = onAskAI
         self.onRefresh = onRefresh
     }
 
@@ -138,8 +146,30 @@ public struct DiffScreen<LineAccessory: View>: View {
                     // the previous mode (and animations between modes) left files rendered in a mix of modes.
                     .id(renderMode)
                     .animation(.snappy, value: model.revealedContext)
+                    .coordinateSpace(.named(DiffTextSelectionController.coordinateSpace))
+                    // On the whole diff, not on a row: the lazy stack drops rows scrolled out while dragging.
+                    .simultaneousGesture(
+                        DragGesture(
+                            minimumDistance: 3, coordinateSpace: .named(DiffTextSelectionController.coordinateSpace)
+                        )
+                        .onChanged { value in
+                            textSelection.drag(
+                                from: value.startLocation, to: value.location,
+                                horizontalOffset: min(
+                                    model.horizontalOffset, model.maxHorizontalOffset(diffWidth: diffWidth)))
+                        }
+                        .onEnded { _ in textSelection.endDrag() }
+                    )
+                }
+                .scrollPosition($scrollPosition)
+                .onScrollGeometryChange(for: ScrollGeometry.self) {
+                    $0
+                } action: { _, geometry in
+                    scrollGeometry = geometry
+                    textSelection.visibleRect = geometry.visibleRect
                 }
                 .onChange(of: renderMode) {
+                    textSelection.clear()
                     guard let path = model.selectedPath else { return }
                     Task { @MainActor in proxy.scrollTo(path, anchor: .top) }
                 }
@@ -156,6 +186,9 @@ public struct DiffScreen<LineAccessory: View>: View {
                     \.diffHorizontalOffset, min(model.horizontalOffset, model.maxHorizontalOffset(diffWidth: diffWidth))
                 )
                 .environment(\.diffIsWide, diffIsWide)
+                .environment(\.diffTextSelection, textSelection)
+                .onAppear(perform: connectTextSelection)
+                .onChange(of: pullRequestID) { textSelection.clear() }
                 .environment(\.diffSelectFinding, isCommitMode ? nil : model.selectFinding)
                 .environment(\.diffSearchQuery, model.isSearchPresented ? model.searchQuery : "")
                 .environment(
@@ -185,6 +218,29 @@ public struct DiffScreen<LineAccessory: View>: View {
             }
         } else {
             placeholder
+        }
+    }
+
+    /// *Copy* and *Ask AI* on a mouse selection resolve it against the file's current hunks.
+    private func connectTextSelection() {
+        let hunks: (String) -> [Hunk] = { path in
+            model.orderedFiles.first { $0.path == path }.map(model.hunks(for:)) ?? []
+        }
+        textSelection.scrollBy = { delta in
+            guard let geometry = scrollGeometry else { return }
+            let top = -geometry.contentInsets.top
+            let bottom = geometry.contentSize.height - geometry.containerSize.height + geometry.contentInsets.bottom
+            let target = min(max(geometry.contentOffset.y + delta, top), max(bottom, top))
+            guard target != geometry.contentOffset.y else { return }
+            scrollPosition.scrollTo(y: target)
+        }
+        textSelection.copy = { selection in DiffCopy.toClipboard(selection.text(in: hunks(selection.path))) }
+        textSelection.askAI = onAskAI.map { onAskAI in
+            { selection in
+                let fileHunks = hunks(selection.path)
+                guard let location = selection.location(in: fileHunks) else { return }
+                onAskAI(location, selection.text(in: fileHunks))
+            }
         }
     }
 

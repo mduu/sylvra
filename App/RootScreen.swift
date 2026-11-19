@@ -250,6 +250,13 @@ extension RootScreen {
         }
     }
 
+    /// *Ask AI* on code selected in the diff: a chat with the file and the code as context; the reviewer asks.
+    func askAI(about location: CodeLocation, code: String) {
+        guard let id = selection?.id else { return }
+        environment.chat.prepareDiscussion(AIChatModel.CodeSnippet(location: location, text: code), for: id)
+        openChat()
+    }
+
     private func openChat() {
         environment.aiReview.tab = .chat
         isInspectorPresented = true

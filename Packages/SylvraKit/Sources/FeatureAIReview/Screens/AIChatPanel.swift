@@ -8,6 +8,7 @@ public struct AIChatPanel: View {
     private let pullRequestID: PullRequestID?
     private let jump: (String, Int) -> Void
     private let useAsComment: ((String, CodeLocation) -> Void)?
+    @FocusState private var isInputFocused: Bool
 
     /// - Parameters:
     ///   - jump: shows `path:line` in the diff (wired by the app).
@@ -49,7 +50,12 @@ public struct AIChatPanel: View {
                 TextField("Ask about this pull request…", text: $model.draft, axis: .vertical)
                     .textFieldStyle(.roundedBorder)
                     .lineLimit(1...5)
+                    .focused($isInputFocused)
                     .onSubmit(send)
+                    .onChange(of: model.inputFocusRequest, initial: true) { old, new in
+                        // Also when the panel appears for the request (the inspector was closed).
+                        if new > 0, old != new || !isInputFocused { isInputFocused = true }
+                    }
                 SendButton(isEnabled: !model.draft.isEmpty && !model.isSending && pullRequestID != nil, send: send)
             }
             // Clear of the scroll bar, which overlays the inspector's right edge.

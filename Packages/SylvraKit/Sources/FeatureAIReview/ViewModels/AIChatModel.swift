@@ -217,6 +217,21 @@ public final class AIChatModel {
         await send(trimmed.isEmpty ? String(localized: "Explain this code and what could go wrong.") : trimmed, for: id)
     }
 
+    /// Bumped to put the cursor into the chat's input (e.g. after *Ask AI* on selected code).
+    public private(set) var inputFocusRequest = 0
+
+    /// *Ask AI* on code selected in the diff: the code becomes the chat's context and the reviewer writes the
+    /// question; nothing is sent yet. Other code than the current chat's gets a new chat.
+    public func prepareDiscussion(_ snippet: CodeSnippet, for id: PullRequestID) {
+        if let current = activeChat(for: id), !current.messages.isEmpty,
+            !current.messages.contains(where: { $0.location == snippet.location })
+        {
+            newChat(for: id)
+        }
+        context.code = snippet
+        inputFocusRequest += 1
+    }
+
     /// Locations discussed in a PR's chat (for markers in the diff).
     public func discussedLocations(for id: PullRequestID?) -> [CodeLocation] {
         var seen: [CodeLocation] = []

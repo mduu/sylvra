@@ -215,47 +215,53 @@ struct DiffFileBodyView<Accessory: View>: View {
                         hunk: hunk,
                         hiddenLines: hiddenAbove.indices.contains(index) ? hiddenAbove[index] : 0,
                         expand: expand.map { expand in { count in expand(index, count) } })
-                case .inline(let hunkIndex, _, let line, let continuation):
+                case .inline(let hunkIndex, let rowIndex, let line, let continuation):
                     VStack(spacing: 0) {
-                        InlineLineView(line: line, onComment: onComment)
-                            .selectsFinding(
-                                line.kind == .removed ? nil : line.newNumber.flatMap(highlight)?.findingID,
-                                using: selectFinding
-                            )
-                            .contextMenu {
-                                DiffCopyMenu(
-                                    newLine: line.kind == .removed ? nil : line,
-                                    oldLine: line.kind == .removed ? line : nil, hunk: hunks[hunkIndex], copy: copy)
-                            }
-                            .overlay {
-                                AIHighlightOverlay(
-                                    highlight: line.kind == .removed ? nil : line.newNumber.flatMap(highlight),
-                                    line: line.newNumber, gutterWidth: inlineGutterWidth)
-                            }
-                            .overlay { searchOverlay(texts: [line.text], newLine: line.newNumber) }
+                        InlineLineView(
+                            line: line, onComment: onComment,
+                            selectionKey: .init(path: path, lane: .inline, hunk: hunkIndex, row: rowIndex)
+                        )
+                        .selectsFinding(
+                            line.kind == .removed ? nil : line.newNumber.flatMap(highlight)?.findingID,
+                            using: selectFinding
+                        )
+                        .contextMenu {
+                            DiffCopyMenu(
+                                newLine: line.kind == .removed ? nil : line,
+                                oldLine: line.kind == .removed ? line : nil, hunk: hunks[hunkIndex], copy: copy)
+                        }
+                        .overlay {
+                            AIHighlightOverlay(
+                                highlight: line.kind == .removed ? nil : line.newNumber.flatMap(highlight),
+                                line: line.newNumber, gutterWidth: inlineGutterWidth)
+                        }
+                        .overlay { searchOverlay(texts: [line.text], newLine: line.newNumber) }
                         inlineAccessories(line, continuation: continuation)
                     }
-                case .sideBySide(let hunkIndex, _, let row, let connector, let continuation):
+                case .sideBySide(let hunkIndex, let rowIndex, let row, let connector, let continuation):
                     VStack(spacing: 0) {
-                        SideBySideRowView(row: row, connector: connector, onComment: onComment)
-                            .selectsFinding(row.right?.newNumber.flatMap(highlight)?.findingID, using: selectFinding)
-                            .contextMenu {
-                                DiffCopyMenu(newLine: row.right, oldLine: row.left, hunk: hunks[hunkIndex], copy: copy)
+                        SideBySideRowView(
+                            row: row, connector: connector, onComment: onComment,
+                            selectionPlace: .init(path: path, hunk: hunkIndex, row: rowIndex)
+                        )
+                        .selectsFinding(row.right?.newNumber.flatMap(highlight)?.findingID, using: selectFinding)
+                        .contextMenu {
+                            DiffCopyMenu(newLine: row.right, oldLine: row.left, hunk: hunks[hunkIndex], copy: copy)
+                        }
+                        .overlay {
+                            searchOverlay(
+                                texts: [row.left?.text, row.right?.text].compactMap { $0 },
+                                newLine: row.right?.newNumber)
+                        }
+                        .overlay(alignment: .trailing) {
+                            GeometryReader { geometry in
+                                AIHighlightOverlay(
+                                    highlight: row.right?.newNumber.flatMap(highlight), line: row.right?.newNumber
+                                )
+                                .frame(width: geometry.size.width / 2)
+                                .frame(maxWidth: .infinity, alignment: .trailing)
                             }
-                            .overlay {
-                                searchOverlay(
-                                    texts: [row.left?.text, row.right?.text].compactMap { $0 },
-                                    newLine: row.right?.newNumber)
-                            }
-                            .overlay(alignment: .trailing) {
-                                GeometryReader { geometry in
-                                    AIHighlightOverlay(
-                                        highlight: row.right?.newNumber.flatMap(highlight), line: row.right?.newNumber
-                                    )
-                                    .frame(width: geometry.size.width / 2)
-                                    .frame(maxWidth: .infinity, alignment: .trailing)
-                                }
-                            }
+                        }
                         sideBySideAccessories(row, continuation: continuation)
                     }
                 }

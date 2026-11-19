@@ -21,6 +21,8 @@ struct InlineLineView: View {
     @Environment(\.syntaxLanguage) private var language
     let line: DiffLine
     var onComment: CommentRequest?
+    /// The row's place for mouse selection (`nil`: not selectable).
+    var selectionKey: DiffTextSelectionController.RowKey?
     @State private var isHovered = false
 
     var body: some View {
@@ -38,8 +40,11 @@ struct InlineLineView: View {
                     .frame(width: 18)
                     .foregroundStyle(DiffColors.accent(line.kind) ?? .secondary)
                     .fontWeight(.semibold)
-                ScrollingCodeText(text: line.attributedText(language: language))
-                    .opacity(line.kind == .context ? contextOpacity : 1)
+                ScrollingCodeText(
+                    text: line.attributedText(language: language), length: line.text.count,
+                    selectionKey: selectionKey
+                )
+                .opacity(line.kind == .context ? contextOpacity : 1)
             }
             .frame(maxHeight: .infinity)
             .background(DiffColors.background(line.kind))
@@ -73,15 +78,25 @@ struct SideBySideRowView: View {
     let row: SideBySideRow
     var connector: ConnectorSegment?
     var onComment: CommentRequest?
+    /// File, hunk and row for mouse selection (`nil`: not selectable); each half is its own lane.
+    var selectionPlace: DiffTextSelectionController.RowPlace?
 
     var body: some View {
         HStack(spacing: 0) {
-            SideBySideHalf(line: row.left, number: row.left?.oldNumber, side: .left, onComment: onComment)
+            SideBySideHalf(
+                line: row.left, number: row.left?.oldNumber, side: .left, onComment: onComment,
+                selectionKey: key(.left))
             ConnectorRibbonView(segment: connector, rowHeight: diffRowHeight).frame(width: connectorWidth)
-            SideBySideHalf(line: row.right, number: row.right?.newNumber, side: .right, onComment: onComment)
+            SideBySideHalf(
+                line: row.right, number: row.right?.newNumber, side: .right, onComment: onComment,
+                selectionKey: key(.right))
         }
         .font(codeFont)
         .frame(height: diffRowHeight)
+    }
+
+    private func key(_ lane: DiffSelectionLane) -> DiffTextSelectionController.RowKey? {
+        selectionPlace?.key(lane)
     }
 }
 
@@ -91,6 +106,7 @@ private struct SideBySideHalf: View {
     let number: Int?
     let side: CodeLocation.Side
     let onComment: CommentRequest?
+    let selectionKey: DiffTextSelectionController.RowKey?
     @State private var isHovered = false
 
     var body: some View {
@@ -104,9 +120,12 @@ private struct SideBySideHalf: View {
             if let line {
                 HStack(spacing: 0) {
                     ChangeBar(kind: line.kind)
-                    ScrollingCodeText(text: line.attributedText(language: language))
-                        .opacity(line.kind == .context ? contextOpacity : 1)
-                        .padding(.leading, 8)
+                    ScrollingCodeText(
+                        text: line.attributedText(language: language), length: line.text.count,
+                        selectionKey: selectionKey
+                    )
+                    .opacity(line.kind == .context ? contextOpacity : 1)
+                    .padding(.leading, 8)
                 }
                 .frame(maxHeight: .infinity)
                 .background(DiffColors.background(line.kind))
@@ -122,24 +141,6 @@ private struct SideBySideHalf: View {
     private var commentAction: ((Bool) -> Void)? {
         guard let onComment, let number, line != nil else { return nil }
         return { onComment(side, number, $0) }
-    }
-}
-
-/// A line's code at full length, shifted by the diff's horizontal scroll offset and clipped (pure).
-/// Long lines used to be cut off at the right edge.
-private struct ScrollingCodeText: View {
-    let text: AttributedString
-    @Environment(\.diffHorizontalOffset) private var offset
-
-    var body: some View {
-        Text(text)
-            .lineLimit(1)
-            .fixedSize(horizontal: true, vertical: false)
-            // Words and characters can be selected with the mouse and copied (⌘C).
-            .textSelection(.enabled)
-            .offset(x: -offset)
-            .frame(minWidth: 0, maxWidth: .infinity, alignment: .leading)
-            .clipped()
     }
 }
 
