@@ -27,6 +27,11 @@ Sylvra is **not a Git client** and not a code generator. It helps you understand
 - Search field and section counts; the last loaded PRs stay available offline.
 - Works with large organizations: you choose the repositories, searches stay small, GitHub timeouts are retried and SSO restrictions are explained.
 
+<p align="center">
+  <a href="docs/screenshots/app-30-overview-dark.png"><img src="docs/screenshots/app-40-inbox-detail-dark.png#gh-dark-mode-only" alt="Inbox with filters, waiting on others and your repositories next to the pull request" width="49%"></a><a href="docs/screenshots/app-30-overview.png"><img src="docs/screenshots/app-40-inbox-detail.png#gh-light-mode-only" alt="Inbox with filters, waiting on others and your repositories next to the pull request" width="49%"></a>
+  <a href="docs/screenshots/app-26-repository-browser-dark.png"><img src="docs/screenshots/app-26-repository-browser-detail-dark.png#gh-dark-mode-only" alt="All open pull requests of a repository, grouped and filtered" width="49%"></a><a href="docs/screenshots/app-26-repository-browser.png"><img src="docs/screenshots/app-26-repository-browser-detail.png#gh-light-mode-only" alt="All open pull requests of a repository, grouped and filtered" width="49%"></a>
+</p>
+
 ### 2. Understand the change quickly
 - **PR at a glance**: description (Markdown), reviewers, merge status in plain words, which approvals are still missing, change map, checks, commits.
 - **The PR conversation, like on GitHub** (Comments tab): write comments with preview, tone check and writing help, react with emoji, quote-reply, edit and delete your own; updates every minute. Comments render as full Markdown, including what bots post. Code threads are listed separately and jump to their line.
@@ -35,6 +40,15 @@ Sylvra is **not a Git client** and not a code generator. It helps you understand
 - **Since my last review**: only what changed since you last reviewed, plus a banner when someone pushes.
 - **Commit by commit**: select a commit and review only its changes; step through with `⌥]` / `⌥[`.
 - **Failing checks explained**: click a check to read what it reported (summary, annotations with file and line) without leaving the app.
+
+<p align="center">
+  <a href="docs/screenshots/app-38-new-commits-dark.png"><img src="docs/screenshots/app-38-new-commits-detail-dark.png#gh-dark-mode-only" alt="Banners for new commits and for what changed since your last review" width="49%"></a><a href="docs/screenshots/app-38-new-commits.png"><img src="docs/screenshots/app-38-new-commits-detail.png#gh-light-mode-only" alt="Banners for new commits and for what changed since your last review" width="49%"></a>
+  <a href="docs/screenshots/app-31-commit-by-commit-dark.png"><img src="docs/screenshots/app-31-commit-by-commit-detail-dark.png#gh-dark-mode-only" alt="Reviewing commit 2 of 4 on its own" width="49%"></a><a href="docs/screenshots/app-31-commit-by-commit.png"><img src="docs/screenshots/app-31-commit-by-commit-detail.png#gh-light-mode-only" alt="Reviewing commit 2 of 4 on its own" width="49%"></a>
+</p>
+<p align="center">
+  <a href="docs/screenshots/app-32-check-report-dark.png"><img src="docs/screenshots/app-32-check-report-detail-dark.png#gh-dark-mode-only" alt="What a failing check reported, with annotations" width="49%"></a><a href="docs/screenshots/app-32-check-report.png"><img src="docs/screenshots/app-32-check-report-detail.png#gh-light-mode-only" alt="What a failing check reported, with annotations" width="49%"></a>
+  <a href="docs/screenshots/app-35-conversation-dark.png"><img src="docs/screenshots/app-35-conversation-detail-dark.png#gh-dark-mode-only" alt="Pull request conversation with reactions, an approval and the comment field" width="49%"></a><a href="docs/screenshots/app-35-conversation.png"><img src="docs/screenshots/app-35-conversation-detail.png#gh-light-mode-only" alt="Pull request conversation with reactions, an approval and the comment field" width="49%"></a>
+</p>
 
 ### 3. A diff made for reading
 - Side by side with a ribbon between old and new, or inline; changed hunks or full files.
@@ -55,11 +69,24 @@ Sylvra is **not a Git client** and not a code generator. It helps you understand
 - **Adjustable AI text size** for chat, findings and summary.
 - The AI agents run **read-only** and **never post anything**. A finding becomes a comment only when you turn it into one.
 
+<p align="center">
+  <a href="docs/screenshots/app-36-ai-box-dark.png"><img src="docs/screenshots/app-36-ai-box-detail-dark.png#gh-dark-mode-only" alt="AI finding framed in the diff with a gutter mark, next to a review thread and the finding card" width="49%"></a><a href="docs/screenshots/app-36-ai-box.png"><img src="docs/screenshots/app-36-ai-box-detail.png#gh-light-mode-only" alt="AI finding framed in the diff with a gutter mark, next to a review thread and the finding card" width="49%"></a>
+  <a href="docs/screenshots/app-30-overview-dark.png"><img src="docs/screenshots/app-41-ai-inspector-detail-dark.png#gh-dark-mode-only" alt="AI panel next to the diff: models, findings rated by impact and likelihood" width="49%"></a><a href="docs/screenshots/app-30-overview.png"><img src="docs/screenshots/app-41-ai-inspector-detail.png#gh-light-mode-only" alt="AI panel next to the diff: models, findings rated by impact and likelihood" width="49%"></a>
+</p>
+<p align="center">
+  <a href="docs/screenshots/app-33-ai-chat-dark.png"><img src="docs/screenshots/app-33-ai-chat-detail-dark.png#gh-dark-mode-only" alt="Ask AI from a review thread: formatted answer with clickable code references" width="49%"></a><a href="docs/screenshots/app-33-ai-chat.png"><img src="docs/screenshots/app-33-ai-chat-detail.png#gh-light-mode-only" alt="Ask AI from a review thread: formatted answer with clickable code references" width="49%"></a>
+  <a href="docs/screenshots/app-37-finding-to-comment-dark.png"><img src="docs/screenshots/app-37-finding-to-comment-detail-dark.png#gh-dark-mode-only" alt="A finding turned into a comment draft, translated to German" width="49%"></a><a href="docs/screenshots/app-37-finding-to-comment.png"><img src="docs/screenshots/app-37-finding-to-comment-detail.png#gh-light-mode-only" alt="A finding turned into a comment draft, translated to German" width="49%"></a>
+</p>
+
 ### 5. Factual, short review comments
 - Comments with code suggestions, replies, resolve, pending reviews and submit.
 - **Writing help**: rephrase factually (observation → effect → suggestion), make it shorter, undo.
 - **English or German per comment**: switching translates the draft.
 - **Tone check** while you type: flags dismissive, absolute or loaded wording ("obviously", "always", "falsch" …) and offers a factual rephrase.
+
+<p align="center">
+  <a href="docs/screenshots/app-21-tone-check-dark.png"><img src="docs/screenshots/app-21-tone-check-detail-dark.png#gh-dark-mode-only" alt="Comment composer with tone check and rephrase" width="49%"></a><a href="docs/screenshots/app-21-tone-check.png"><img src="docs/screenshots/app-21-tone-check-detail.png#gh-light-mode-only" alt="Comment composer with tone check and rephrase" width="49%"></a>
+</p>
 
 ### 6. Into the code when needed
 - **Open in IDE** (Rider, VS Code, Xcode or the default app) in a Sylvra-managed worktree, so your working copy stays untouched.
@@ -74,19 +101,8 @@ Sylvra is **not a Git client** and not a code generator. It helps you understand
 - Light, dark or automatic appearance.
 
 <p align="center">
-  <a href="docs/screenshots/app-26-repository-browser-dark.png"><img src="docs/screenshots/app-26-repository-browser-detail-dark.png#gh-dark-mode-only" alt="All open pull requests of a repository, grouped and filtered" width="49%"></a><a href="docs/screenshots/app-26-repository-browser.png"><img src="docs/screenshots/app-26-repository-browser-detail.png#gh-light-mode-only" alt="All open pull requests of a repository, grouped and filtered" width="49%"></a>
-  <a href="docs/screenshots/app-31-commit-by-commit-dark.png"><img src="docs/screenshots/app-31-commit-by-commit-detail-dark.png#gh-dark-mode-only" alt="Reviewing commit 2 of 4 on its own" width="49%"></a><a href="docs/screenshots/app-31-commit-by-commit.png"><img src="docs/screenshots/app-31-commit-by-commit-detail.png#gh-light-mode-only" alt="Reviewing commit 2 of 4 on its own" width="49%"></a>
-</p>
-<p align="center">
-  <a href="docs/screenshots/app-35-conversation-dark.png"><img src="docs/screenshots/app-35-conversation-detail-dark.png#gh-dark-mode-only" alt="Pull request conversation with reactions, an approval and the comment field with writing help" width="49%"></a><a href="docs/screenshots/app-35-conversation.png"><img src="docs/screenshots/app-35-conversation-detail.png#gh-light-mode-only" alt="Pull request conversation with reactions, an approval and the comment field with writing help" width="49%"></a>
-  <a href="docs/screenshots/app-33-ai-chat-dark.png"><img src="docs/screenshots/app-33-ai-chat-detail-dark.png#gh-dark-mode-only" alt="AI chat with a formatted answer and clickable code references" width="49%"></a><a href="docs/screenshots/app-33-ai-chat.png"><img src="docs/screenshots/app-33-ai-chat-detail.png#gh-light-mode-only" alt="AI chat with a formatted answer and clickable code references" width="49%"></a>
-</p>
-<p align="center">
   <a href="docs/screenshots/app-34-compact-dark.png"><img src="docs/screenshots/app-34-compact-detail-dark.png#gh-dark-mode-only" alt="Compact layout for laptops: pull request and a wide diff" width="49%"></a><a href="docs/screenshots/app-34-compact.png"><img src="docs/screenshots/app-34-compact-detail.png#gh-light-mode-only" alt="Compact layout for laptops: pull request and a wide diff" width="49%"></a>
-  <a href="docs/screenshots/app-32-check-report-dark.png"><img src="docs/screenshots/app-32-check-report-detail-dark.png#gh-dark-mode-only" alt="What a failing check reported, with annotations" width="49%"></a><a href="docs/screenshots/app-32-check-report.png"><img src="docs/screenshots/app-32-check-report-detail.png#gh-light-mode-only" alt="What a failing check reported, with annotations" width="49%"></a>
-</p>
-<p align="center">
-  <a href="docs/screenshots/app-21-tone-check-dark.png"><img src="docs/screenshots/app-21-tone-check-detail-dark.png#gh-dark-mode-only" alt="Comment composer with tone check" width="49%"></a><a href="docs/screenshots/app-21-tone-check.png"><img src="docs/screenshots/app-21-tone-check-detail.png#gh-light-mode-only" alt="Comment composer with tone check" width="49%"></a>
+  <a href="docs/screenshots/app-39-compact-ai-panel-dark.png"><img src="docs/screenshots/app-39-compact-ai-panel-detail-dark.png#gh-dark-mode-only" alt="Compact layout: the AI panel floats in on demand" width="49%"></a><a href="docs/screenshots/app-39-compact-ai-panel.png"><img src="docs/screenshots/app-39-compact-ai-panel-detail.png#gh-light-mode-only" alt="Compact layout: the AI panel floats in on demand" width="49%"></a>
 </p>
 
 ## Principles
