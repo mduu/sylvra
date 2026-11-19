@@ -36,6 +36,12 @@ public final class WorktreesModel {
 
     public static let interval: Duration = .seconds(15 * 60)
 
+    /// Where the user's clones are looked for; saved per Mac on every change.
+    public var repositorySearch: RepositorySearchSettings {
+        didSet { repositorySearch.save(to: defaults) }
+    }
+    private let defaults: UserDefaults
+
     private let cleaner: WorktreeCleaner
     private let isOpen: @Sendable (PullRequestID) async -> Bool?
     private let usage: @MainActor () -> Usage
@@ -47,14 +53,31 @@ public final class WorktreesModel {
     public init(
         cleaner: WorktreeCleaner = WorktreeCleaner(),
         isOpen: @escaping @Sendable (PullRequestID) async -> Bool?,
-        usage: @escaping @MainActor () -> Usage
+        usage: @escaping @MainActor () -> Usage,
+        defaults: UserDefaults = .standard
     ) {
+        self.defaults = defaults
+        repositorySearch = RepositorySearchSettings.load(from: defaults)
         self.cleaner = cleaner
         self.isOpen = isOpen
         self.usage = usage
     }
 
     public var storageRoot: URL { cleaner.storageRoot }
+
+    public func addRepositoryFolder(_ url: URL) {
+        guard !repositorySearch.folders.contains(url.path) else { return }
+        repositorySearch.folders.append(url.path)
+    }
+
+    public func removeRepositoryFolder(_ path: String) {
+        repositorySearch.folders.removeAll { $0 == path }
+    }
+
+    /// Puts back the folders found with typical names (`~/Dev`, `~/dev`, `~/Projects` …).
+    public func suggestRepositoryFolders() {
+        for url in RepositorySearchSettings.suggestedFolders() { addRepositoryFolder(url) }
+    }
 
     public func refresh() async {
         let cleaner = cleaner

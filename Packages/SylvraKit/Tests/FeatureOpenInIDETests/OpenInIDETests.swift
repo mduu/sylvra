@@ -69,7 +69,7 @@ struct CheckoutServiceTests {
         // Make the clone look like a GitHub clone for the locator, but keep fetching from the local origin.
         try await git.run(["remote", "set-url", "origin", "git@github.com:acme/billing.git"], in: clone)
         try await git.run(["config", "url.\(origin.path).insteadOf", "git@github.com:acme/billing.git"], in: clone)
-        let locator = RepositoryLocator(git: git, roots: [root.appending(path: "Dev")])
+        let locator = RepositoryLocator(git: git, roots: [root.appending(path: "Dev")], search: nil)
         let service = CheckoutService(git: git, locator: locator, storageRoot: root.appending(path: "Support"))
         return (root, clone, service)
     }

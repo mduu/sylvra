@@ -59,7 +59,7 @@ struct WorktreeCleanerTests {
         try await git.run(["remote", "set-url", "origin", "git@github.com:acme/billing.git"], in: clone)
         try await git.run(["config", "url.\(origin.path).insteadOf", "git@github.com:acme/billing.git"], in: clone)
         let storage = root.appending(path: "Support")
-        let locator = RepositoryLocator(git: git, roots: [root.appending(path: "Dev")])
+        let locator = RepositoryLocator(git: git, roots: [root.appending(path: "Dev")], search: nil)
         return Fixture(
             root: root, clone: clone, service: CheckoutService(git: git, locator: locator, storageRoot: storage),
             cleaner: WorktreeCleaner(git: git, storageRoot: storage))
@@ -152,5 +152,53 @@ struct WorktreeCleanerTests {
         await #expect(throws: WorktreeError.outsideStorage(record.path)) {
             try await cleaner.remove(record, force: true)
         }
+    }
+}
+
+/// The user's clone is found outside the well-known folders (Spotlight), so nothing is cloned twice.
+struct RepositoryLocatorSearchTests {
+    let git = GitRunner()
+
+    @Test func findsClonesOutsideTheWellKnownFoldersButNotWorktrees() async throws {
+        let root = FileManager.default.temporaryDirectory.appending(path: "sylvra-locator-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: root) }
+        let clone = root.appending(path: "Somewhere/deep/inside/billing")
+        try FileManager.default.createDirectory(at: clone, withIntermediateDirectories: true)
+        try await git.run(["init", "--quiet", "-b", "main"], in: clone)
+        try await git.run(["remote", "add", "origin", "https://github.com/acme/billing.git"], in: clone)
+        try await git.run(
+            ["-c", "user.name=T", "-c", "user.email=t@e", "commit", "--quiet", "--allow-empty", "-m", "base"],
+            in: clone)
+        let worktree = root.appending(path: "worktrees/billing")
+        try await git.run(["worktree", "add", "--quiet", "--detach", worktree.path, "HEAD"], in: clone)
+
+        let locator = RepositoryLocator(
+            git: git, roots: [root.appending(path: "Dev")], search: { _ in [worktree, clone] })
+        let found = try #require(await locator.localClone(owner: "acme", name: "billing"))
+        #expect(found.path == clone.path)
+        #expect(await locator.localClone(owner: "other", name: "billing") == nil)
+    }
+}
+
+struct RepositorySearchSettingsTests {
+    @Test func suggestsTypicalFoldersInAnySpelling() throws {
+        let home = FileManager.default.temporaryDirectory.appending(path: "sylvra-home-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: home) }
+        for folder in ["dev", "Projects", "Documents/GitHub", "Music"] {
+            try FileManager.default.createDirectory(at: home.appending(path: folder), withIntermediateDirectories: true)
+        }
+        try Data().write(to: home.appending(path: "code"))  // a file, not a folder
+
+        let names = RepositorySearchSettings.suggestedFolders(in: home).map {
+            $0.path.replacingOccurrences(of: home.path + "/", with: "")
+        }
+        #expect(names == ["dev", "Projects", "Documents/GitHub"])
+    }
+
+    @Test func savesPerDefaults() throws {
+        let defaults = try #require(UserDefaults(suiteName: "sylvra-tests-\(UUID().uuidString)"))
+        let settings = RepositorySearchSettings(folders: ["/Users/me/dev"], usesSpotlight: false)
+        settings.save(to: defaults)
+        #expect(RepositorySearchSettings.load(from: defaults) == settings)
     }
 }

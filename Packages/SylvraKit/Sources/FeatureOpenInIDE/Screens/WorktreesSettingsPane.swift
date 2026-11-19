@@ -1,9 +1,10 @@
+import AppKit
 import DesignSystem
 import SwiftUI
 
 /// Settings → Worktrees: what Sylvra checked out, with cleanup and Finder actions.
 public struct WorktreesSettingsPane: View {
-    private let model: WorktreesModel
+    @Bindable private var model: WorktreesModel
     @State private var pendingRemoval: WorktreesModel.Entry?
 
     public init(model: WorktreesModel) {
@@ -12,6 +13,9 @@ public struct WorktreesSettingsPane: View {
 
     public var body: some View {
         Form {
+            RepositoryFoldersView(
+                folders: model.repositorySearch.folders, usesSpotlight: $model.repositorySearch.usesSpotlight,
+                add: chooseFolder, suggest: model.suggestRepositoryFolders, remove: model.removeRepositoryFolder)
             Section {
                 if model.entries.isEmpty {
                     Text("No worktrees right now.").foregroundStyle(.secondary)
@@ -66,6 +70,17 @@ public struct WorktreesSettingsPane: View {
         } message: { entry in
             Text("Files in the worktree of \(entry.record.repository) were changed. Removing it discards them.")
         }
+    }
+
+    private func chooseFolder() {
+        let panel = NSOpenPanel()
+        panel.canChooseDirectories = true
+        panel.canChooseFiles = false
+        panel.allowsMultipleSelection = true
+        panel.prompt = String(localized: "Add")
+        panel.directoryURL = FileManager.default.homeDirectoryForCurrentUser
+        guard panel.runModal() == .OK else { return }
+        for url in panel.urls { model.addRepositoryFolder(url) }
     }
 
     private var removalBinding: Binding<Bool> {
