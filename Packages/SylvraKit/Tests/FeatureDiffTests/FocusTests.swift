@@ -152,3 +152,35 @@ struct NavigatorRevealTests {
         #expect(model.navigatorRevealToken == 1)
     }
 }
+
+@MainActor
+struct ViewedContinueTests {
+    private let id = PullRequestID(owner: "acme", repository: "billing", number: 1234)
+
+    /// *Viewed* in a header moves on to the next file still to review, skipping viewed ones.
+    @Test func continuesAtTheNextUnviewedFile() async throws {
+        let model = DiffScreenModel(loader: DemoDiffLoader())
+        await model.load(id, headSHA: "head")
+        let paths = model.orderedFiles.map(\.path)
+        try #require(paths.count >= 3)
+        for path in paths where model.isViewed(path) { await model.toggleViewed(path) }
+        await model.toggleViewed(paths[1])
+        await model.markViewedAndContinue(paths[0])
+        #expect(model.isViewed(paths[0]))
+        #expect(model.headerRequest?.path == paths[2])
+        #expect(model.selectedPath == paths[2])
+    }
+
+    /// Unmarking stays put; the last file keeps its own header in view.
+    @Test func unmarkingAndTheLastFile() async throws {
+        let model = DiffScreenModel(loader: DemoDiffLoader())
+        await model.load(id, headSHA: "head")
+        let paths = model.orderedFiles.map(\.path)
+        let last = try #require(paths.last)
+        #expect(model.fileToReview(after: last) == last)
+        if !model.isViewed(paths[0]) { await model.toggleViewed(paths[0]) }
+        await model.markViewedAndContinue(paths[0])
+        #expect(!model.isViewed(paths[0]))
+        #expect(model.headerRequest == nil)
+    }
+}

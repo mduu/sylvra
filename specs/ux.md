@@ -194,6 +194,7 @@ All tabs stay visible side by side (⌘1–⌘5) with their counts as small badg
 
 - Checkbox on every file row in the file list and in every sticky file header in the diff; shortcut `V`.
 - Context menu: *Mark as viewed* / *Mark as not viewed*; on folders: *Mark all as viewed / not viewed*.
+- Marking a file as viewed in its diff header collapses it and scrolls the diff to the header of the next file still to review (the next file below that isn't viewed yet), which also becomes the selected file.
 - Synced with GitHub's "Viewed" state in both directions.
 - When a viewed file changes in a new push, it automatically flips back to *not viewed* and shows a "changed since viewed" marker (like GitHub).
 - Viewed state is per file for the whole PR (GitHub has no per-commit viewed state); commit-by-commit mode shows the same toggles.

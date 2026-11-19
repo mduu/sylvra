@@ -42,4 +42,25 @@ extension DiffScreenModel {
         collapsedFolders = collapsedFolders.filter { !path.hasPrefix($0 + "/") }
         navigatorRevealToken += 1
     }
+
+    /// *Viewed* on a file's header: the file collapses and the diff continues at the header of the next file
+    /// still to review, instead of somewhere in the middle of whatever moved up.
+    public func markViewedAndContinue(_ path: String) async {
+        if !isViewed(path), let next = fileToReview(after: path) {
+            if selectedPath != next {
+                keepsDiffPosition = true
+                selectedPath = next
+            }
+            headerRequest = (next, UUID())
+        }
+        await toggleViewed(path)
+    }
+
+    /// The next file below `path` that isn't viewed yet; else the file right below it; for the last file, itself.
+    func fileToReview(after path: String) -> String? {
+        let paths = orderedFiles.map(\.path)
+        guard let index = paths.firstIndex(of: path) else { return nil }
+        let below = paths[(index + 1)...]
+        return below.first { !isViewed($0) } ?? below.first ?? path
+    }
 }

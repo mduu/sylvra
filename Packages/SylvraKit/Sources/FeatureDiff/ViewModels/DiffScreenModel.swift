@@ -183,6 +183,9 @@ public final class DiffScreenModel {
     public internal(set) var navigatorRevealToken = 0
     /// The next `selectedPath` change came from the diff itself: the diff keeps its scroll position.
     @ObservationIgnored var keepsDiffPosition = false
+    /// Brings a file's header to the top of the diff, also when the file is already selected (`id` makes each
+    /// request a change).
+    public internal(set) var headerRequest: (path: String, id: UUID)?
 
     /// Changed files as a folder tree (noise last).
     public var fileTree: [FileTreeNode] {
