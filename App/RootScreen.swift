@@ -32,8 +32,10 @@ struct RootScreen: View {
     @State var isNarrowWindow = false
     /// Width of the pull request box in the toolbar, in steps by window width.
     @State var titleBoxWidth = PullRequestTitleView.narrowWidth
-    /// Compact layout: the inbox floats over the pull request column while open.
+    /// Focus layout: the inbox floats over the diff while open.
     @State var isInboxFloating = false
+    /// Compact layout: the pull request column lists the inbox instead of the pull request.
+    @State var isInboxListed = false
 
     /// The layout in effect (automatic resolves by window width).
     var layout: WindowLayout {

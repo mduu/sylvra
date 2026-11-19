@@ -3,18 +3,27 @@ import SwiftUI
 
 // MARK: - Collapse / expand handles for the inbox and the AI panel
 
-/// One handle per side panel on its edge, in every layout: the inbox handle collapses the inbox column or
-/// floats the inbox in (compact, focus); the AI handle shows or hides the inspector, docked or floating.
+/// One handle per side panel on its edge: the inbox handle collapses the inbox column or floats the inbox in
+/// (focus); the AI handle shows or hides the inspector, docked or floating. In the compact layout the inbox has
+/// no handle: it shares the pull request column (`‹ Inbox` goes back, ⌘0 switches).
 extension RootScreen {
     /// The inbox is visible in this window.
     var isInboxShown: Bool {
-        layout.floatsInbox ? isInboxFloating : columnVisibility == .all
+        if layout.stacksInbox { return listsInboxInColumn }
+        return layout.floatsInbox ? isInboxFloating : columnVisibility == .all
+    }
+
+    /// Compact: the pull request column shows the inbox (also while no pull request is selected).
+    var listsInboxInColumn: Bool {
+        layout.stacksInbox && (isInboxListed || selection == nil)
     }
 
     func toggleInbox() {
         guard role == .main else { return }
         withAnimation(.snappy) {
-            if layout.floatsInbox {
+            if layout.stacksInbox {
+                isInboxListed = !listsInboxInColumn
+            } else if layout.floatsInbox {
                 isInboxFloating.toggle()
             } else if isInboxShown {
                 columnVisibility = layout == .twoWindows ? .detailOnly : .doubleColumn
@@ -31,7 +40,9 @@ extension RootScreen {
     var inboxHandle: some View {
         PanelEdgeHandle(
             attachedTo: .leading, pointsTo: isInboxShown ? .leading : .trailing,
-            help: isInboxShown ? "Hide the inbox (⌘0)" : "Show the inbox (⌘0)", action: toggleInbox)
+            help: isInboxShown ? "Hide the inbox (⌘0)" : "Show the inbox (⌘0)",
+            // A closed inbox is easy to lose; the brand color makes its way back stand out.
+            isProminent: !isInboxShown, action: toggleInbox)
     }
 
     /// Closed: on the diff's trailing edge. Open: on the AI panel's leading edge.
@@ -47,7 +58,7 @@ extension RootScreen {
 
     /// Where the closed inbox handle sits: the pull request column, or the diff in the focus layout.
     func showsInboxHandle(onReviewColumn: Bool) -> Bool {
-        guard role == .main, !(layout.floatsInbox && isInboxFloating) else { return false }
+        guard role == .main, !layout.stacksInbox, !(layout.floatsInbox && isInboxFloating) else { return false }
         return onReviewColumn == (layout == .focus)
     }
 }

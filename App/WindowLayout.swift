@@ -6,7 +6,7 @@ enum WindowLayout: String, CaseIterable, Identifiable {
     case automatic
     /// Inbox · pull request · diff · inspector side by side (wide screens).
     case wide
-    /// Pull request · diff; the inbox and the inspector float on demand (laptops).
+    /// Pull request · diff; the inbox replaces the pull request in its column, the inspector floats (laptops).
     case compact
     /// Only the diff, with the inspector as a sidebar; files in a popover.
     case focus
@@ -62,7 +62,7 @@ enum WindowLayout: String, CaseIterable, Identifiable {
         switch self {
         case .automatic: "Compact on narrow windows, wide otherwise"
         case .wide: "Inbox, pull request, diff and AI side by side"
-        case .compact: "Pull request and diff; inbox and AI float on demand"
+        case .compact: "Inbox or pull request next to the diff; AI floats on demand"
         case .focus: "Only the diff and the AI sidebar"
         case .twoWindows: "Inbox and pull request here, diff and AI in a second window"
         }
@@ -107,7 +107,11 @@ enum WindowLayout: String, CaseIterable, Identifiable {
     static let floatingInspectorCover: CGFloat = floatingInspectorWidth + 16
 
     /// The inbox floats in over the content instead of being a column.
-    var floatsInbox: Bool { self == .compact || self == .focus }
+    var floatsInbox: Bool { self == .focus }
+
+    /// The inbox and the pull request share one column: the inbox is the top level, a picked pull request
+    /// opens in its place and `‹ Inbox` goes back.
+    var stacksInbox: Bool { self == .compact }
 }
 
 /// Toolbar menu to choose the layout; shows the active one.

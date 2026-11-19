@@ -3,24 +3,27 @@ import SwiftUI
 /// A small tab on the edge between two columns that collapses or expands a side panel (pure).
 ///
 /// It hugs the divider: flat on the side touching it, rounded on the side facing the content. At rest it is a
-/// quiet sliver with a chevron; on hover it pulls out a little and takes the brand tint.
+/// quiet sliver with a chevron; on hover it pulls out a little and takes the brand tint. A prominent handle is
+/// filled with the brand color at rest too, for a panel the user has to find again (the inbox).
 public struct PanelEdgeHandle: View {
     /// The side of the handle that touches the divider.
     let attachedEdge: HorizontalEdge
     /// Where the chevron points: the direction the panel will move.
     let pointsTo: HorizontalEdge
     let help: LocalizedStringKey
+    let isProminent: Bool
     let action: () -> Void
     @State private var isHovering = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     public init(
         attachedTo attachedEdge: HorizontalEdge, pointsTo: HorizontalEdge, help: LocalizedStringKey,
-        action: @escaping () -> Void
+        isProminent: Bool = false, action: @escaping () -> Void
     ) {
         self.attachedEdge = attachedEdge
         self.pointsTo = pointsTo
         self.help = help
+        self.isProminent = isProminent
         self.action = action
     }
 
@@ -41,8 +44,10 @@ public struct PanelEdgeHandle: View {
     }
 
     private var tab: some View {
-        let fill: Color = isHovering ? SylvraColor.brandTint : SylvraColor.surfaceElevated
-        let border: Color = isHovering ? SylvraColor.brandPrimary.opacity(0.45) : SylvraColor.codeHairline
+        let fill: Color =
+            isProminent ? SylvraColor.brandPrimary : (isHovering ? SylvraColor.brandTint : SylvraColor.surfaceElevated)
+        let border: Color =
+            isProminent || isHovering ? SylvraColor.brandPrimary.opacity(0.45) : SylvraColor.codeHairline
         return
             shape
             .fill(fill)
@@ -53,7 +58,11 @@ public struct PanelEdgeHandle: View {
 
     private var chevron: some View {
         let symbol = pointsTo == .leading ? "chevron.compact.left" : "chevron.compact.right"
-        let style: AnyShapeStyle = isHovering ? AnyShapeStyle(SylvraColor.brandPrimary) : AnyShapeStyle(.tertiary)
+        // On the brand fill the window surface color contrasts in both appearances (light violet in dark mode).
+        let style: AnyShapeStyle =
+            isProminent
+            ? AnyShapeStyle(SylvraColor.surfacePrimary)
+            : (isHovering ? AnyShapeStyle(SylvraColor.brandPrimary) : AnyShapeStyle(.tertiary))
         return Image(systemName: symbol)
             .font(.system(size: 11, weight: .bold))
             .foregroundStyle(style)
@@ -73,7 +82,7 @@ public struct PanelEdgeHandle: View {
         Divider()
         ZStack(alignment: .leading) {
             SylvraColor.surfacePrimary
-            PanelEdgeHandle(attachedTo: .leading, pointsTo: .leading, help: "Hide the inbox") {}
+            PanelEdgeHandle(attachedTo: .leading, pointsTo: .trailing, help: "Show the inbox", isProminent: true) {}
         }
         ZStack(alignment: .trailing) {
             SylvraColor.surfacePrimary

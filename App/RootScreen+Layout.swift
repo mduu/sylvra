@@ -68,6 +68,7 @@ private struct WindowLayoutModifier: ViewModifier {
                 withAnimation(.snappy) {
                     root.columnVisibility = layout.columnVisibility
                     root.isInboxFloating = false
+                    root.isInboxListed = false
                 }
                 guard root.role == .main else { return }
                 if layout == .twoWindows {
@@ -77,8 +78,11 @@ private struct WindowLayoutModifier: ViewModifier {
                 }
             }
             .onChange(of: root.selectedID) {
-                // Picking a pull request from the floating inbox closes it.
-                withAnimation(.snappy) { root.isInboxFloating = false }
+                // Picking a pull request (inbox, notification) closes the floating inbox and shows the pull request.
+                withAnimation(.snappy) {
+                    root.isInboxFloating = false
+                    root.isInboxListed = false
+                }
             }
             .overlay(alignment: .leading) { floatingInbox(layout) }
             .overlay(alignment: .trailing) { floatingInspector(layout) }
@@ -89,7 +93,7 @@ private struct WindowLayoutModifier: ViewModifier {
 }
 
 extension WindowLayoutModifier {
-    /// Compact and focus: the inbox floats in from the left, its handle on the panel's edge.
+    /// Focus: the inbox floats in from the left, its handle on the panel's edge.
     @ViewBuilder
     fileprivate func floatingInbox(_ layout: WindowLayout) -> some View {
         if layout.floatsInbox, root.isInboxFloating, root.role == .main {

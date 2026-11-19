@@ -61,7 +61,7 @@ extension RootScreen {
             NavigationSplitView(columnVisibility: $columnVisibility) {
                 inboxColumn
             } content: {
-                pullRequestScreen
+                pullRequestColumn
                     .panelHandle(.leading, isVisible: showsInboxHandle(onReviewColumn: false)) { inboxHandle }
                     .rememberedColumn(.pullRequest, ideal: pullRequestWidth)
                     .navigationSplitViewColumnWidth(
@@ -81,6 +81,33 @@ extension RootScreen {
             .navigationSplitViewColumnWidth(
                 min: ColumnLayout.Column.inbox.range.lowerBound, ideal: inboxWidth,
                 max: ColumnLayout.Column.inbox.range.upperBound)
+    }
+
+    /// The pull request, or in the compact layout the inbox in its place (`StackedInboxColumn`).
+    @ViewBuilder var pullRequestColumn: some View {
+        if layout.stacksInbox {
+            StackedInboxColumn(
+                listsInbox: listsInboxInColumn, canGoBack: selection != nil,
+                showInbox: { withAnimation(.snappy) { isInboxListed = true } },
+                inbox: { InboxScreen(model: environment.inbox, selection: stackedSelection) },
+                pullRequest: { pullRequestScreen })
+        } else {
+            pullRequestScreen
+        }
+    }
+
+    /// Picking a pull request in the stacked inbox opens it, also the one that is already open. The list
+    /// shows no selection for that reason: clicking an already selected row reports nothing.
+    private var stackedSelection: Binding<PullRequestID?> {
+        Binding(
+            get: { nil },
+            set: { id in
+                guard let id else { return }
+                withAnimation(.snappy) {
+                    selectedID = id
+                    isInboxListed = false
+                }
+            })
     }
 
     var pullRequestScreen: some View {
