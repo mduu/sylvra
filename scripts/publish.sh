@@ -17,6 +17,13 @@ DMG=$(ls .build/release/Sylvra-*.dmg 2>/dev/null | head -1 || true)
 VERSION=$(basename "$DMG" .dmg | sed 's/^Sylvra-//')
 TAG="v$VERSION"
 
+# The DMG must be the build of the checked-out version (not one left over from an earlier build).
+HEAD_VERSION=$(git show HEAD:Sylvra.xcodeproj/project.pbxproj | grep -m1 'MARKETING_VERSION = ' | sed -E 's/.*= ([^;]+);/\1/')
+[[ "$VERSION" == "$HEAD_VERSION" ]] || {
+  echo "$DMG is version $VERSION, but HEAD is $HEAD_VERSION — run scripts/release.sh first." >&2
+  exit 1
+}
+
 xcrun stapler validate "$DMG" >/dev/null || { echo "$DMG is not notarized." >&2; exit 1; }
 [[ -z "$(git status --porcelain --untracked-files=no)" ]] || { echo "Commit your changes first." >&2; exit 1; }
 git fetch --quiet --tags origin
