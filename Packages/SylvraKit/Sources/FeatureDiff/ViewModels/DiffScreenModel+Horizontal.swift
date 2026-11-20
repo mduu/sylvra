@@ -11,7 +11,7 @@ extension DiffScreenModel {
     /// Characters of the longest line currently shown (tabs count as four).
     var longestShownLine: Int {
         var hasher = Hasher()
-        hasher.combine(files.map(\.path))
+        hasher.combine(shownFiles.map(\.path))
         hasher.combine(scope.rawValue)
         hasher.combine(selectedCommit?.sha)
         hasher.combine(expandedPaths)
@@ -20,7 +20,7 @@ extension DiffScreenModel {
         let key = hasher.finalize()
         if let cache = longestLineCache, cache.key == key { return cache.length }
         let length =
-            orderedFiles.filter { !isCollapsed($0) }.lazy
+            shownFiles.filter { !isCollapsed($0) }.lazy
             .flatMap { self.hunks(for: $0) }
             .flatMap(\.lines)
             .map { Self.displayLength(of: $0.text) }

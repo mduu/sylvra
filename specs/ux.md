@@ -209,7 +209,7 @@ The diff must feel like the best diff one has ever used: fast, beautiful and ins
 ### 7.1 Modes
 
 - **Layout**: `Side by side` | `Inline` (⌘⌥1 / ⌘⌥2); remembered per pull request across AI reviews and launches (a pull request without a choice starts with the last one made); a pull request's choice is forgotten once it is merged or closed (checked at launch) or after a week without opening it
-- **Scope**: `Focused` (changed hunks + N context lines, N ∈ {3, 5, 10, custom}) | `Full file`
+- **Scope**: `Focused` (changed hunks + N context lines, N ∈ {3, 5, 10, custom}) | `Full file` (only the selected file, every line of its head version; choosing another file in the navigator, `[`/`]` or a jump shows that one; each file loads when first shown, with a *Loading…* badge over the diff)
 - **Range**: `All changes` | `Since my last review` | `Commit…` (commit-by-commit, with ◀ ▶ to step through commits; toolbar menu and Commits tab) | custom range (later)
 - Toggles: hide whitespace, wrap lines, show moved code.
 

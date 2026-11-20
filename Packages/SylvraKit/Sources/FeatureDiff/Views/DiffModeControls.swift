@@ -82,7 +82,7 @@ extension DiffScreenModel.Scope {
     var detail: String {
         switch self {
         case .focused: String(localized: "Changed lines with a little context")
-        case .fullFile: String(localized: "Every line of the changed files")
+        case .fullFile: String(localized: "Every line of the selected file")
         case .sinceLastReview: String(localized: "Only what changed since your last review")
         }
     }

@@ -38,7 +38,10 @@ public final class DiffScreenModel {
     public var selectedPath: String?
     /// Files the reviewer expanded although they are collapsed by default (viewed / noise).
     public private(set) var expandedPaths: Set<String> = []
-    public private(set) var fullFileHunks: [String: Hunk] = [:]
+    /// Head versions of files shown in full (scope `.fullFile`), loaded when a file is shown.
+    public internal(set) var fullFileHunks: [String: Hunk] = [:]
+    /// Files whose head version is loading for `.fullFile`.
+    var loadingFullFiles: Set<String> = []
     /// AI highlights, set by the app from findings.
     public var lineHighlights: [LineHighlight] = [] {
         didSet { highlightIndex = Dictionary(grouping: lineHighlights, by: \.path) }
@@ -124,7 +127,9 @@ public final class DiffScreenModel {
 
     /// Viewed files and noise are collapsed unless the reviewer opens them.
     public func isCollapsed(_ file: FileDiff) -> Bool {
-        (isViewed(file.path) || file.kind.isNoise || file.isBinary) && !expandedPaths.contains(file.path)
+        // A file shown in full is shown on its own: the reviewer chose it.
+        if isShowingSingleFile { return false }
+        return (isViewed(file.path) || file.kind.isNoise || file.isBinary) && !expandedPaths.contains(file.path)
     }
 
     /// Moves the selection to the next / previous file in review order (`]` / `[`).
@@ -253,6 +258,8 @@ public final class DiffScreenModel {
         }
         if pullRequestID != id { resetForNewPullRequest(id) }
         pullRequestID = id
+        // Files shown in full belong to a head; after a push they load again.
+        if self.headSHA != headSHA { fullFileHunks = [:] }
         self.headSHA = headSHA
         do {
             let loaded = try await loader.loadDiff(for: id)
@@ -261,7 +268,7 @@ public final class DiffScreenModel {
             if diff != loaded { diff = loaded }
             if loadState != .loaded { loadState = .loaded }
             await loadProgress(id)
-            if scope == .fullFile { await loadFullFiles() }
+            if scope == .fullFile { await loadFullFile() }
             if scope == .sinceLastReview { await loadSinceReview() }
         } catch {
             guard !Task.isCancelled else { return }
@@ -298,53 +305,9 @@ public final class DiffScreenModel {
 
     public func setScope(_ scope: Scope) async {
         self.scope = scope
-        if scope == .fullFile { await loadFullFiles() }
+        if scope == .fullFile { await loadFullFile() }
         if scope == .sinceLastReview, sinceReviewFiles == nil { await loadSinceReview() }
     }
-
-    /// Loads the head version of every changed file, a few at a time.
-    ///
-    /// Plain child tasks instead of a task group: the app crashed in `TaskGroup.offer` when the scope was
-    /// switched while files were loading (a group finishing children after its parent moved on).
-    private func loadFullFiles() async {
-        guard let pullRequestID, let headSHA else { return }
-        let id = pullRequestID
-        let loader = loader
-        let pending = files.filter { fullFileHunks[$0.path] == nil && $0.status != .deleted && !$0.isBinary }
-        for start in stride(from: 0, to: pending.count, by: Self.fullFileBatchSize) {
-            let batch = Array(pending[start..<min(start + Self.fullFileBatchSize, pending.count)])
-            let tasks = batch.map { file in
-                Task.detached { () -> Result<String, any Error> in
-                    do {
-                        return .success(try await loader.loadFileContent(for: id, path: file.path, ref: headSHA))
-                    } catch {
-                        return .failure(error)
-                    }
-                }
-            }
-            var results: [Result<String, any Error>] = []
-            await withTaskCancellationHandler {
-                for task in tasks { results.append(await task.value) }
-            } onCancel: {
-                for task in tasks { task.cancel() }
-            }
-            // Drop results of a PR the reviewer already left.
-            guard !Task.isCancelled, self.pullRequestID == id else { return }
-            for (file, result) in zip(batch, results) where fullFileHunks[file.path] == nil {
-                switch result {
-                case .success(let content) where !content.isEmpty:
-                    fullFileHunks[file.path] = FullFileBuilder.hunk(newContent: content, diff: file)
-                case .failure(let error) where !(error is CancellationError):
-                    lastError = String(localized: "Couldn't load \(file.fileName): \(error.localizedDescription)")
-                default:
-                    break
-                }
-            }
-        }
-    }
-
-    /// Files loaded in parallel for full-file view (large PRs would otherwise fire hundreds of requests).
-    static let fullFileBatchSize = 8
 }
 
 extension DiffScreenModel {

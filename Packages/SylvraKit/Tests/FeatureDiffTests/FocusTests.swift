@@ -109,6 +109,7 @@ struct FullFileLoadingTests {
     @Test func survivesRapidScopeSwitches() async throws {
         let model = DiffScreenModel(loader: DemoDiffLoader())
         await model.load(id, headSHA: "head")
+        model.selectedPath = "Sources/Billing/InvoiceService.swift"
         let switches = [DiffScreenModel.Scope.fullFile, .focused, .fullFile, .focused, .fullFile].map { scope in
             Task { await model.setScope(scope) }
         }

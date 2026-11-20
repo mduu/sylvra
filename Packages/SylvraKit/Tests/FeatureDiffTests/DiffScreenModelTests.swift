@@ -44,13 +44,43 @@ struct DiffScreenModelTests {
         #expect(model.viewedCount == 2)
     }
 
-    @Test func fullFileScopeUsesFileContent() async throws {
+    @Test func fullFileScopeShowsOnlyTheSelectedFileInFull() async throws {
+        let model = DiffScreenModel(loader: DemoDiffLoader())
+        await model.load(id, headSHA: "head")
+        let selected = "Sources/Billing/InvoiceService.swift"
+        model.selectedPath = selected
+        await model.setScope(.fullFile)
+        #expect(model.shownFiles.map(\.path) == [selected])
+        let file = try #require(model.shownFiles.first)
+        #expect(model.hunks(for: file).count == 1)
+        #expect(model.hunks(for: file).first?.lines.first?.text == "import Foundation")
+        // Only the shown file was loaded.
+        #expect(Array(model.fullFileHunks.keys) == [selected])
+
+        let other = try #require(model.orderedFiles.first { $0.path != selected && !$0.isBinary })
+        model.selectedPath = other.path
+        #expect(model.shownFiles.map(\.path) == [other.path])
+
+        await model.setScope(.focused)
+        #expect(model.shownFiles.count == model.orderedFiles.count)
+    }
+
+    @Test func fullFileScopeLoadsOnlyTheShownFile() async {
+        let loader = RecordingContentLoader()
+        let model = DiffScreenModel(loader: loader)
+        await model.load(id, headSHA: "head")
+        await model.setScope(.fullFile)
+        #expect(await loader.requested == [model.fullFilePath].compactMap { $0 })
+        await model.loadFullFile()
+        #expect(await loader.requested.count == 1)
+    }
+
+    @Test func fullFileScopeWithoutSelectionShowsTheFirstFile() async {
         let model = DiffScreenModel(loader: DemoDiffLoader())
         await model.load(id, headSHA: "head")
         await model.setScope(.fullFile)
-        let file = try #require(model.files.first)
-        #expect(model.hunks(for: file).count == 1)
-        #expect(model.hunks(for: file).first?.lines.first?.text == "import Foundation")
+        #expect(model.shownFiles.map(\.path) == [model.orderedFiles.first?.path].compactMap { $0 })
+        #expect(!model.isLoadingScope)
     }
 
     @Test func returnsTextOfLinesOnEachSide() async {
@@ -208,5 +238,24 @@ struct ContextExpansionModelTests {
         await model.expandContext(file, hunk: 0, by: nil)
         #expect(model.hiddenAbove(file) == [0])
         #expect(model.hunks(for: file).first?.lines.first?.text == "import Foundation")
+    }
+}
+
+/// The demo diff, recording which files' contents were asked for.
+private actor RecordingContentLoader: DiffLoading {
+    private let demo = DemoDiffLoader()
+    private(set) var requested: [String] = []
+
+    func loadDiff(for id: PullRequestID) async throws -> PullRequestDiff { try await demo.loadDiff(for: id) }
+    func loadFileContent(for id: PullRequestID, path: String, ref: String) async throws -> String {
+        requested.append(path)
+        return "line"
+    }
+    func setViewed(_ viewed: Bool, path: String, pullRequestNodeID: String) async throws {}
+    func loadReviewProgress(for id: PullRequestID) async throws -> ReviewProgress {
+        try await demo.loadReviewProgress(for: id)
+    }
+    func loadDiff(for id: PullRequestID, from base: String, to head: String) async throws -> [FileDiff] {
+        try await demo.loadDiff(for: id, from: base, to: head)
     }
 }

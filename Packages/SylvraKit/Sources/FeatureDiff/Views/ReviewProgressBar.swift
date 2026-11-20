@@ -75,3 +75,21 @@ struct ReviewProgressBar: View {
     }
     .frame(width: 640)
 }
+
+/// Over the diff while lines of the chosen scope load (a full file, the changes since the last review).
+struct DiffLoadingBadge: View {
+    var body: some View {
+        HStack(spacing: 6) {
+            ProgressView().controlSize(.small)
+            Text("Loading…").font(.caption).foregroundStyle(.secondary)
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 5)
+        .background(.regularMaterial, in: Capsule())
+        .transition(.opacity)
+    }
+}
+
+#Preview("Loading badge") {
+    DiffLoadingBadge().padding()
+}

@@ -49,7 +49,7 @@ Sylvra is **not a Git client** and not a code generator. It helps you understand
 </p>
 
 ### 3. A diff made for reading
-- Side by side with a ribbon between old and new, or inline; changed hunks or full files.
+- Side by side with a ribbon between old and new, or inline; changed hunks or the selected file in full.
 - **Files as a folder tree** with viewed state synced with GitHub. Marking a file *Viewed* collapses it and scrolls straight to the next file still to review.
 - Syntax highlighting, intra-line changes, reveal hidden context step by step (+20 / all), long lines scroll sideways.
 - Select and copy code across lines, or ask the AI about the selection.

@@ -119,6 +119,8 @@ public struct DiffScreen<LineAccessory: View>: View {
             .task(id: "\(pullRequestID?.description ?? "")@\(headSHA ?? "")") {
                 await model.load(pullRequestID, headSHA: headSHA)
             }
+            // Full file: the selected file loads when it is shown.
+            .task(id: model.fullFilePath) { await model.loadFullFile() }
     }
 
     @ViewBuilder private var content: some View {
@@ -126,7 +128,7 @@ public struct DiffScreen<LineAccessory: View>: View {
             ScrollViewReader { proxy in
                 ScrollView {
                     LazyVStack(spacing: 0, pinnedViews: .sectionHeaders) {
-                        ForEach(model.orderedFiles) { file in
+                        ForEach(model.shownFiles) { file in
                             Section {
                                 if !model.isCollapsed(file) {
                                     fileBody(file)
@@ -185,6 +187,9 @@ public struct DiffScreen<LineAccessory: View>: View {
                     if diffWidth.value != width { diffWidth.value = width }
                     let isWide = width >= 760  // room for two thread lanes of ~320 pt
                     if diffIsWide != isWide { diffIsWide = isWide }
+                }
+                .overlay(alignment: .topTrailing) {
+                    if model.isLoadingScope { DiffLoadingBadge().padding(10) }
                 }
                 .horizontalWheelScrolling { model.scrollHorizontally(by: $0, diffWidth: diffWidth.value) }
                 .overlay(alignment: .bottom) { DiffHorizontalIndicator(model: model, width: diffWidth) }
