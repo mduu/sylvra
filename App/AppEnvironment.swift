@@ -87,7 +87,8 @@ final class AppEnvironment {
         let diffLoader: any DiffLoading =
             isDemo
             ? DemoDiffLoader(simulatesPush: arguments.contains("--new-commits")) : GitHubDiffLoader(client: gitHub)
-        diff = DiffScreenModel(loader: diffLoader, pollInterval: isDemo ? .seconds(2) : .seconds(60))
+        diff = DiffScreenModel(
+            loader: diffLoader, pollInterval: isDemo ? .seconds(2) : .seconds(60), defaults: isDemo ? nil : .standard)
         // AI agents read a per-PR worktree (never the shared IDE worktree, which may switch PRs meanwhile).
         let checkout: CheckoutService? = isDemo ? nil : CheckoutService()
         let agent: any AgentProvider = isDemo ? DemoAgentProvider() : ClaudeCodeProvider()

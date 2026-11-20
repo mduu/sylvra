@@ -6,11 +6,6 @@ import SylvraCore
 @MainActor
 @Observable
 public final class DiffScreenModel {
-    public enum Layout: String, CaseIterable, Identifiable {
-        case sideBySide, inline
-        public var id: String { rawValue }
-    }
-
     public enum Scope: String, CaseIterable, Identifiable {
         case focused, fullFile
         /// Only what changed since the reviewer's last review (last reviewed commit → head).
@@ -24,7 +19,12 @@ public final class DiffScreenModel {
 
     public private(set) var diff: PullRequestDiff?
     public private(set) var loadState: LoadState = .idle
-    public var layout: Layout = .sideBySide
+    /// Side by side or inline; the reviewer's choice is kept across pull requests, reviews and launches.
+    public var layout: Layout = .sideBySide {
+        didSet { if layout != oldValue { defaults?.set(layout.rawValue, forKey: Self.layoutKey) } }
+    }
+    /// Where the layout is remembered (`nil`: not remembered, e.g. demo launches and tests).
+    @ObservationIgnored private let defaults: UserDefaults?
     public var scope: Scope = .focused
     /// File the reviewer jumped to (from the navigator).
     public var selectedPath: String?
@@ -51,9 +51,11 @@ public final class DiffScreenModel {
     var pullRequestID: PullRequestID?
     var headSHA: String?
 
-    public init(loader: any DiffLoading, pollInterval: Duration = .seconds(60)) {
+    public init(loader: any DiffLoading, pollInterval: Duration = .seconds(60), defaults: UserDefaults? = nil) {
         self.loader = loader
         self.pollInterval = pollInterval
+        self.defaults = defaults
+        layout = defaults?.string(forKey: Self.layoutKey).flatMap(Layout.init(rawValue:)) ?? .sideBySide
     }
 
     public var files: [FileDiff] {
@@ -349,4 +351,13 @@ public final class DiffScreenModel {
 
     /// Files loaded in parallel for full-file view (large PRs would otherwise fire hundreds of requests).
     static let fullFileBatchSize = 8
+}
+
+extension DiffScreenModel {
+    public enum Layout: String, CaseIterable, Identifiable {
+        case sideBySide, inline
+        public var id: String { rawValue }
+    }
+
+    static let layoutKey = "diff.layout"
 }
