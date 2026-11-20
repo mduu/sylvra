@@ -2,19 +2,24 @@ import DesignSystem
 import SwiftUI
 
 /// The settings window. Feature-specific panes are provided by the app (slices don't import each other).
-public struct SettingsScreen<AIPane: View, NotificationsPane: View, TerminalPane: View, WorktreesPane: View>: View {
+public struct SettingsScreen<
+    AIPane: View, NotificationsPane: View, TerminalPane: View, RepositoriesPane: View, WorktreesPane: View
+>: View {
     private let aiPane: AIPane
     private let notificationsPane: NotificationsPane
     private let terminalPane: TerminalPane
+    private let repositoriesPane: RepositoriesPane
     private let worktreesPane: WorktreesPane
 
     public init(
         @ViewBuilder ai: () -> AIPane, @ViewBuilder notifications: () -> NotificationsPane,
-        @ViewBuilder terminal: () -> TerminalPane, @ViewBuilder worktrees: () -> WorktreesPane
+        @ViewBuilder terminal: () -> TerminalPane,
+        @ViewBuilder repositories: () -> RepositoriesPane, @ViewBuilder worktrees: () -> WorktreesPane
     ) {
         aiPane = ai()
         notificationsPane = notifications()
         terminalPane = terminal()
+        repositoriesPane = repositories()
         worktreesPane = worktrees()
     }
 
@@ -26,18 +31,23 @@ public struct SettingsScreen<AIPane: View, NotificationsPane: View, TerminalPane
             if TerminalPane.self != EmptyView.self {
                 Tab("Terminal & Tools", systemImage: "terminal") { terminalPane }
             }
+            if RepositoriesPane.self != EmptyView.self {
+                Tab("Repositories", systemImage: "folder") { repositoriesPane }
+            }
             if WorktreesPane.self != EmptyView.self {
-                Tab("Worktrees", systemImage: "folder") { worktreesPane }
+                Tab("Worktrees", systemImage: "arrow.triangle.branch") { worktreesPane }
             }
         }
         .frame(width: 520)
-        .frame(minHeight: 360)
+        .frame(minHeight: 520)
     }
 }
 
-extension SettingsScreen where TerminalPane == EmptyView, WorktreesPane == EmptyView {
+extension SettingsScreen where TerminalPane == EmptyView, RepositoriesPane == EmptyView, WorktreesPane == EmptyView {
     public init(@ViewBuilder ai: () -> AIPane, @ViewBuilder notifications: () -> NotificationsPane) {
-        self.init(ai: ai, notifications: notifications, terminal: { EmptyView() }, worktrees: { EmptyView() })
+        self.init(
+            ai: ai, notifications: notifications, terminal: { EmptyView() }, repositories: { EmptyView() },
+            worktrees: { EmptyView() })
     }
 }
 

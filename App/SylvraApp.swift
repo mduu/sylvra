@@ -78,6 +78,8 @@ struct SylvraApp: App {
                 NotificationSettingsView(center: environment.activity)
             } terminal: {
                 TerminalToolsSettingsPane(customTools: environment.customTools)
+            } repositories: {
+                RepositoriesSettingsPane(model: environment.worktrees)
             } worktrees: {
                 WorktreesSettingsPane(model: environment.worktrees)
             }

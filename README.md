@@ -87,7 +87,7 @@ Sylvra is **not a Git client** and not a code generator. It helps you understand
 
 ### 6. Into the code when needed
 - **Open in IDE** (Rider, VS Code, Xcode or the default app) in a Sylvra-managed worktree, so your working copy stays untouched.
-- **Worktrees that clean up after themselves**: attached to your existing clone when Sylvra finds one (no extra clone, little disk space), removed once the PR is merged or closed or after a week unused; never while in use or with changed files. *Settings → Worktrees* lists them all, with *Clean Up Now* and *Show in Finder* (also in the app menu).
+- **Worktrees that clean up after themselves**: attached to your existing clone when Sylvra finds one (no extra clone, little disk space; *Settings → Repositories* sets where it looks, e.g. `~/dev`), removed once the PR is merged or closed or after a week unused; never while in use or with changed files. *Settings → Worktrees* lists them all, with *Clean Up Now* and *Show in Finder* (also in the app menu).
 - **Terminal panel** in tabs (adjustable font size), *Open in Terminal* with your terminal app, and your own **custom tools** on files, folders and PRs with placeholders like `{file}` or `{headSHA}`.
 - **Commands** (`⌥⌘K`): every GitHub request and command Sylvra ran, without tokens or code.
 - **Log window** (Help → Show Log, `⌥⌘L`) with the errors of the current run, ready to copy.
