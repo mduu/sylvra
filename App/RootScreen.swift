@@ -132,7 +132,8 @@ struct RootScreen: View {
 
     func jump(to finding: ReviewFinding?) {
         guard let finding else { return }
-        isInspectorPresented = true
+        // A floating AI panel (compact) would cover the finding's card in the diff: it closes instead.
+        withAnimation(.snappy) { isInspectorPresented = layout.docksInspector }
         Task { await environment.diff.revealFinding(path: finding.path, line: finding.startLine) }
     }
 
@@ -311,7 +312,8 @@ extension RootScreen {
                 return
             }
             guard let id = UUID(uuidString: id) else { return }
-            isInspectorPresented = true
+            // The finding's card shows in the diff; a floating panel (compact) would only cover it.
+            if layout.docksInspector { isInspectorPresented = true }
             withAnimation(.snappy) { environment.aiReview.showFinding(id) }
         }
         environment.openInIDE.headBranch = { environment.inbox.summary(for: $0)?.headRefName }
