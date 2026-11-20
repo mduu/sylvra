@@ -19,6 +19,8 @@ public struct GitHubInboxLoader: InboxLoading {
         let client = client
         let pageSize = pageSize
         let now = Date.now
+        // In parallel with the sections (asked after them, it added a round trip to every refresh).
+        async let viewer = try? client.viewer()
         let sections = try await withThrowingTaskGroup(of: (InboxSection, [PullRequestSummary]).self) { group in
             for section in InboxSection.allCases {
                 let searches = scope.searchQueries(for: section, now: now)
@@ -35,9 +37,8 @@ public struct GitHubInboxLoader: InboxLoading {
             return sections
         }
         let isRestricted = await !client.ssoRestrictedOrganizations.isEmpty
-        let viewer = try? await client.viewer()
-        return InboxSnapshot(
-            sections: sections, isRestrictedBySSO: isRestricted ? true : nil, viewerLogin: viewer?.login)
+        let login = await viewer?.login
+        return InboxSnapshot(sections: sections, isRestrictedBySSO: isRestricted ? true : nil, viewerLogin: login)
     }
 
     /// One aliased search per query (`s0`, `s1` …); search texts are passed as variables.

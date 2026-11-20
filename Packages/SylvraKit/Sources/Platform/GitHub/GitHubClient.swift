@@ -107,12 +107,7 @@ public actor GitHubClient {
             title: "GraphQL " + CommandLogText.graphQLOperation(query),
             request: Self.describe(variables), showsResponse: true)
         let data = try await perform(request, retryTransient: !isMutation, log: log)
-        let envelope: GraphQLEnvelope<Response>
-        do {
-            envelope = try GitHubJSON.decoder.decode(GraphQLEnvelope<Response>.self, from: data)
-        } catch {
-            throw GitHubError.decoding(String(describing: error))
-        }
+        let envelope = try await Self.decodeEnvelope(GraphQLEnvelope<Response>.self, from: data)
         if let errors = envelope.errors, !errors.isEmpty {
             logger.error("GraphQL errors: \(errors.map(\.message).joined(separator: " | "), privacy: .public)")
             throw GitHubError.graphQL(errors.map(\.message))
@@ -121,6 +116,17 @@ public actor GitHubClient {
             throw GitHubError.decoding("GraphQL response without data")
         }
         return payload
+    }
+
+    /// Decodes off the actor: parallel requests (the inbox sections) otherwise decode one after the other.
+    private nonisolated static func decodeEnvelope<Envelope: Decodable>(_ type: Envelope.Type, from data: Data)
+        async throws -> Envelope
+    {
+        do {
+            return try GitHubJSON.decoder.decode(type, from: data)
+        } catch {
+            throw GitHubError.decoding(String(describing: error))
+        }
     }
 
     /// GET request against the REST API returning the raw body (e.g. diffs with a custom `Accept` header).
@@ -137,7 +143,7 @@ public actor GitHubClient {
     }
 
     /// How a request appears in the Commands panel.
-    private struct LogContext {
+    private struct LogContext: Sendable {
         let title: String
         let request: String?
         let showsResponse: Bool
@@ -154,11 +160,19 @@ public actor GitHubClient {
         let entry: CommandLogEntry
         switch result {
         case .success(let data):
-            entry = CommandLogEntry(
-                kind: .github, title: log.title, startedAt: started, duration: Date.now.timeIntervalSince(started),
-                status: "200", isFailure: false, request: log.request,
-                response: log.showsResponse
-                    ? CommandLogText.jsonPreview(data) : CommandLogText.sizeOnly(data.count, reason: "code, not shown"))
+            let duration = Date.now.timeIntervalSince(started)
+            // Pretty-printing a large answer for the panel took longer than decoding it: done in the
+            // background instead of on the actor that the next requests wait for.
+            Task.detached(priority: .utility) {
+                CommandLog.record(
+                    CommandLogEntry(
+                        kind: .github, title: log.title, startedAt: started, duration: duration,
+                        status: "200", isFailure: false, request: log.request,
+                        response: log.showsResponse
+                            ? CommandLogText.jsonPreview(data)
+                            : CommandLogText.sizeOnly(data.count, reason: "code, not shown")))
+            }
+            return
         case .failure(let error):
             if error is CancellationError { return }
             let status: String =
