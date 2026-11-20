@@ -52,6 +52,7 @@ struct ChatThinkingView: View {
             .animation(reduceMotion ? nil : .snappy, value: index)
             .animation(reduceMotion ? nil : .default, value: Int(elapsed))
         }
+        .padding(.vertical, 1)
         .clipped()
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(Text("Thinking"))
@@ -65,19 +66,22 @@ private struct ThinkingOrb: View {
 
     var body: some View {
         ZStack {
+            // Inset by half the line width: the stroke stays inside the frame (it was clipped at the edges).
             Circle()
+                .inset(by: 1)
                 .trim(from: 0.08, to: 0.78)
                 .stroke(
                     AngularGradient(colors: AIAccent.colors + [AIAccent.colors[0]], center: .center),
                     style: StrokeStyle(lineWidth: 1.6, lineCap: .round)
                 )
                 .rotationEffect(.degrees(isTurning ? 360 : 0))
-            Image(systemName: "sparkle")
-                .font(.system(size: 8, weight: .bold))
+            // The AI symbol used across the app (a single sparkle read as a plus at this size).
+            Image(systemName: "sparkles")
+                .font(.system(size: 8, weight: .semibold))
                 .foregroundStyle(AIAccent.border)
                 .symbolEffect(.pulse, isActive: isAnimated)
         }
-        .frame(width: 16, height: 16)
+        .frame(width: 18, height: 18)
         .onAppear {
             guard isAnimated else { return }
             withAnimation(.linear(duration: 1.4).repeatForever(autoreverses: false)) { isTurning = true }
