@@ -291,6 +291,18 @@ struct AIChatModelTests {
         #expect(arguments[index + 1] == "low")
     }
 
+    @Test func chatAsksForShortAnswersInTheLanguage() throws {
+        let request = ChatRequest(
+            message: "hi", sessionID: nil, model: "opus", language: "German", workingDirectory: nil)
+        let arguments = ClaudeCodeProvider.chatArguments(for: request)
+        let index = try #require(arguments.firstIndex(of: "--append-system-prompt"))
+        let prompt = arguments[index + 1]
+        #expect(prompt.contains("Answer in German"))
+        #expect(prompt.contains("lead with the answer"))
+        #expect(prompt.contains("1–4 sentences"))
+        #expect(prompt.contains("path:line"))
+    }
+
     @Test func findsCodeReferences() {
         let refs = AIChatModel.codeReferences(in: "See Sources/Billing/InvoiceService.swift:9 and Package.swift:3.")
         #expect(refs.map(\.path) == ["Sources/Billing/InvoiceService.swift", "Package.swift"])

@@ -316,6 +316,7 @@ Small PRs automatically use a single agent (threshold configurable).
 
 - One chat session per PR, run in the PR worktree, resumable via the provider's session mechanism.
 - Answers containing `path:line` references become clickable links into the diff.
+- Answers are short by instruction: the answer first, no preamble or closing summary, usually 1–4 sentences or a few bullets; longer only when asked or truly needed.
 - **Agent language** (setting, default: system language): all agent-to-user communication (summaries, rationales, chat) is requested in this language.
 - **Comment language** (separate setting, default: English): used when a finding is turned into a GitHub comment, since repositories are usually English.
 

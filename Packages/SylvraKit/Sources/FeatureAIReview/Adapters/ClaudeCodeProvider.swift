@@ -61,12 +61,21 @@ public struct ClaudeCodeProvider: AgentProvider {
         return directory
     }
 
+    /// The chat answers a reviewer between two lines of code: the point first, as short as the question allows.
+    static func chatSystemPrompt(language: String) -> String {
+        """
+        You are a code review assistant inside Sylvra. Never modify files. Answer in \(language).
+        Be brief: lead with the answer in the first sentence, no preamble, no restating the question, no summary \
+        at the end. Usually 1–4 sentences or a few short bullets; go longer only when the reviewer asks for detail \
+        or the answer truly needs it. Show code only when it is the answer, and only the lines that matter.
+        Reference code as path:line so the reviewer can jump there.
+        """
+    }
+
     static func chatArguments(for request: ChatRequest) -> [String] {
         var arguments = [
             "--print", "--output-format", "json", "--model", request.model,
-            "--append-system-prompt",
-            "You are a code review assistant inside Sylvra. Never modify files. Answer concisely in \(request.language). "
-                + "Reference code as path:line so the reviewer can jump there.",
+            "--append-system-prompt", chatSystemPrompt(language: request.language),
         ]
         if let effort = request.effort { arguments += ["--effort", effort] }
         arguments += isolationArguments(workspace: request.workingDirectory)
