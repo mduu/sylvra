@@ -109,8 +109,9 @@ public struct DiffScreen<LineAccessory: View>: View {
                     .background(.bar)
                 }
             }
-            .task(id: "\(pullRequestID?.description ?? "")@\(headSHA ?? "")") {
-                await model.load(pullRequestID, headSHA: headSHA)
+            .task(id: pullRequestID) { await model.load(pullRequestID, headSHA: headSHA) }
+            .onChange(of: headSHA) { _, head in
+                Task { await model.headChanged(to: head, for: pullRequestID) }
             }
             // Full file: the selected file loads when it is shown.
             .task(id: model.fullFilePath) { await model.loadFullFile() }

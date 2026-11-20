@@ -147,3 +147,19 @@ extension DiffScreenModel {
         focus(path: target.path, line: target.line)
     }
 }
+
+// MARK: - Head changes
+
+extension DiffScreenModel {
+    /// The pull request's head became known or moved. Learning it (the details load next to the diff) needs no
+    /// new diff: restarting the load for it fetched the diff twice per selection. A new head after a push does.
+    public func headChanged(to newHead: String?, for id: PullRequestID?) async {
+        guard let id, id == pullRequestID, let newHead, newHead != headSHA else { return }
+        if headSHA == nil {
+            headSHA = newHead
+            if scope == .fullFile { await loadFullFile() }
+        } else {
+            await load(id, headSHA: newHead)
+        }
+    }
+}

@@ -75,6 +75,21 @@ struct DiffScreenModelTests {
         #expect(await loader.requested.count == 1)
     }
 
+    /// Regression: the head SHA arriving with the PR details restarted the diff load (fetched twice).
+    @Test func learningTheHeadDoesNotLoadTheDiffAgain() async {
+        let loader = RecordingContentLoader()
+        let model = DiffScreenModel(loader: loader)
+        await model.load(id, headSHA: nil)
+        await model.headChanged(to: "head", for: id)
+        #expect(await loader.diffLoads == 1)
+        // A push moves the head: that loads the diff again.
+        await model.headChanged(to: "pushed", for: id)
+        #expect(await loader.diffLoads == 2)
+        // Another pull request's head is ignored (its own load follows the selection).
+        await model.headChanged(to: "other", for: PullRequestID(owner: "o", repository: "r", number: 1))
+        #expect(await loader.diffLoads == 2)
+    }
+
     @Test func fullFileScopeWithoutSelectionShowsTheFirstFile() async {
         let model = DiffScreenModel(loader: DemoDiffLoader())
         await model.load(id, headSHA: "head")
@@ -245,8 +260,12 @@ struct ContextExpansionModelTests {
 private actor RecordingContentLoader: DiffLoading {
     private let demo = DemoDiffLoader()
     private(set) var requested: [String] = []
+    private(set) var diffLoads = 0
 
-    func loadDiff(for id: PullRequestID) async throws -> PullRequestDiff { try await demo.loadDiff(for: id) }
+    func loadDiff(for id: PullRequestID) async throws -> PullRequestDiff {
+        diffLoads += 1
+        return try await demo.loadDiff(for: id)
+    }
     func loadFileContent(for id: PullRequestID, path: String, ref: String) async throws -> String {
         requested.append(path)
         return "line"
