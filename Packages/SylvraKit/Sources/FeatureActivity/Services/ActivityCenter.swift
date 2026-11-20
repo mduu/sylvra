@@ -22,11 +22,17 @@ public struct ActivityJob: Identifiable, Hashable, Sendable {
     public let id: String
     public let kind: Kind
     public let title: String
+    /// How far it got, e.g. "2 of 3 agents".
+    public var detail: String?
+    /// The pull request it works on: the activity list opens it.
+    public var pullRequest: PullRequestID?
 
-    public init(id: String, kind: Kind, title: String) {
+    public init(id: String, kind: Kind, title: String, detail: String? = nil, pullRequest: PullRequestID? = nil) {
         self.id = id
         self.kind = kind
         self.title = title
+        self.detail = detail
+        self.pullRequest = pullRequest
     }
 }
 
@@ -43,9 +49,13 @@ public final class ActivityCenter {
 
     public var isBusy: Bool { !running.isEmpty }
 
+    /// Starts a job, or updates the running job with the same ID (title, progress).
     public func start(_ job: ActivityJob) {
-        guard !running.contains(job) else { return }
-        running.append(job)
+        if let index = running.firstIndex(where: { $0.id == job.id }) {
+            if running[index] != job { running[index] = job }
+        } else {
+            running.append(job)
+        }
     }
 
     /// Ends a job; notifies when the app is not active and notifications are enabled for the job kind.

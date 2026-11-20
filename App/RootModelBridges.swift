@@ -52,12 +52,15 @@ struct RootModelBridges: View {
             .onChange(of: aiHighlights) { _, highlights in
                 withAnimation(.snappy) { environment.diff.lineHighlights = highlights }
             }
+            .onChange(of: environment.aiReview.progress) {
+                // The overview shows how far the review got; the inspector has the agents in detail.
+                if environment.aiReview.runState == .running { environment.activity.start(aiReviewJob) }
+            }
             .onChange(of: environment.aiReview.runState) { _, state in
                 let id = "ai-review"
                 switch state {
                 case .running:
-                    environment.activity.start(
-                        ActivityJob(id: id, kind: .aiReview, title: String(localized: "AI review")))
+                    environment.activity.start(aiReviewJob)
                 case .done:
                     let count = environment.aiReview.visibleFindings(for: environment.aiReview.runningPullRequest).count
                     environment.activity.finish(id, message: String(localized: "Review finished — \(count) findings"))
@@ -79,6 +82,21 @@ struct RootModelBridges: View {
                 selectedID =
                     environment.inbox.snapshot.sections.values.joined().first { $0.id.description == wanted }?.id
             }
+    }
+}
+
+extension RootModelBridges {
+    /// "AI review · billing #881" with the agents done so far; opens that pull request.
+    fileprivate var aiReviewJob: ActivityJob {
+        let review = environment.aiReview
+        let pullRequest = review.runningPullRequest
+        let title =
+            pullRequest.map { String(localized: "AI review · \($0.repository) #\($0.number)") }
+            ?? String(localized: "AI review")
+        let detail =
+            review.progress.isEmpty
+            ? nil : String(localized: "\(review.finishedAgentCount) of \(review.progress.count) agents")
+        return ActivityJob(id: "ai-review", kind: .aiReview, title: title, detail: detail, pullRequest: pullRequest)
     }
 }
 

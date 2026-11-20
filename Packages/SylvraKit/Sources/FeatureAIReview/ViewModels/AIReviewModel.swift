@@ -127,13 +127,27 @@ public final class AIReviewModel {
         let task = Task { await perform(id, title: title, body: body) }
         runTask = task
         await task.value
-        runTask = nil
+        // A replacing run may have started meanwhile (see `replaceRunningReview`).
+        if runTask == task { runTask = nil }
         if results[id] == nil, let previous, runState != .done { results[id] = previous }
     }
 
     /// Stops a running review; agent processes are terminated.
     public func cancel() {
         runTask?.cancel()
+    }
+
+    /// Stops the review running for another pull request and reviews `id` instead (one review at a time).
+    public func replaceRunningReview(with id: PullRequestID, title: String, body: String) async {
+        let running = runTask
+        cancel()
+        await running?.value
+        await run(id, title: title, body: body)
+    }
+
+    /// Agents of the running review that finished (done or failed), for the activity overview.
+    public var finishedAgentCount: Int {
+        progress.count { $0.state != .queued && $0.state != .running }
     }
 
     private func perform(_ id: PullRequestID, title: String, body: String) async {

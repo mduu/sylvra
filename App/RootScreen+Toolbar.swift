@@ -49,7 +49,7 @@ extension RootScreen {
         }
         ToolbarSpacer(.fixed, placement: .primaryAction)
         ToolbarItem(placement: .primaryAction) {
-            ActivityToolbarPanel(center: environment.activity)
+            ActivityToolbarPanel(center: environment.activity, open: showPullRequest)
         }
     }
 }

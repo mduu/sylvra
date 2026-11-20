@@ -12,6 +12,8 @@ public struct FindingsInspectorScreen: View {
     let chat: AIChatModel?
     private let jumpToLocation: (String, Int) -> Void
     private let useAsComment: ((String, CodeLocation) -> Void)?
+    /// Selects another pull request (the one whose review is running; wired by the app).
+    private let showPullRequest: ((PullRequestID) -> Void)?
     /// The scroll view shows its end (chat: the "scroll to bottom" button hides).
     @State var isScrolledToBottom = true
 
@@ -22,9 +24,11 @@ public struct FindingsInspectorScreen: View {
         model: AIReviewModel, pullRequest: PullRequestSummary?, pullRequestBody: String,
         jump: @escaping (ReviewFinding) -> Void, turnIntoComment: ((ReviewFinding) -> Void)? = nil,
         chat: AIChatModel? = nil, jumpToLocation: @escaping (String, Int) -> Void = { _, _ in },
-        useAsComment: ((String, CodeLocation) -> Void)? = nil
+        useAsComment: ((String, CodeLocation) -> Void)? = nil,
+        showPullRequest: ((PullRequestID) -> Void)? = nil
     ) {
         self.useAsComment = useAsComment
+        self.showPullRequest = showPullRequest
         self.chat = chat
         self.jumpToLocation = jumpToLocation
         self.model = model
@@ -38,7 +42,9 @@ public struct FindingsInspectorScreen: View {
         VStack(alignment: .leading, spacing: 12) {
             // Header and tabs stay put; only the tab content scrolls (long chats, many findings).
             header
-            if let id = pullRequest?.id, hasContent(id) {
+            // The tabs are always there for a pull request: the chat works without a review, and the
+            // findings and patterns tabs say how to get some.
+            if let id = pullRequest?.id {
                 SectionTabBar(items: tabItems(for: id), selection: $model.tab)
                 scrollingContent(for: id)
             } else {
@@ -50,11 +56,6 @@ public struct FindingsInspectorScreen: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .background(SylvraColor.surfaceSidebar)
         .task { await model.detectAgent() }
-    }
-
-    private func hasContent(_ id: PullRequestID) -> Bool {
-        model.results[id] != nil || !model.progress.isEmpty || !(chat?.messages(for: id).isEmpty ?? true)
-            || model.tab == .chat
     }
 
     private var header: some View {
@@ -74,6 +75,9 @@ public struct FindingsInspectorScreen: View {
                     chip(settings.effort.capitalized)
                     chip(String(localized: "\(settings.maxParallelAgents) agents"))
                 }
+            }
+            if let pullRequest {
+                runControl(for: pullRequest)
             }
             if model.runningPullRequest == pullRequest?.id {
                 ForEach(model.progress, id: \.id) { AgentProgressRowView(progress: $0) }
@@ -102,41 +106,11 @@ public struct FindingsInspectorScreen: View {
     func content(for id: PullRequestID) -> some View {
         switch model.tab {
         case .findings:
-            if let overall = model.results[id]?.overall, !overall.isEmpty {
-                OverallFindingsView(points: overall)
-            }
-            ForEach(model.visibleFindings(for: id)) { finding in
-                if model.selectedFindingID == finding.id {
-                    FindingDetailView(
-                        finding: finding,
-                        actions: FindingActions(
-                            // Unanchored findings have no diff line a GitHub comment could attach to.
-                            turnIntoComment: finding.isAnchored
-                                ? turnIntoComment.map { action in { action(finding) } } : nil,
-                            dismiss: { model.dismiss(finding) })
-                    )
-                    .onTapGesture { model.selectedFindingID = nil }
-                    .id(finding.id)
-                } else {
-                    FindingRowView(finding: finding, isSelected: false)
-                        .contentShape(Rectangle())
-                        .onTapGesture {
-                            model.selectedFindingID = finding.id
-                            jump(finding)
-                        }
-                        .id(finding.id)
-                }
-            }
-            if let history = model.results[id]?.history, !history.isEmpty {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("History").aiFont(.caption, weight: .semibold).foregroundStyle(.secondary)
-                    ForEach(history, id: \.self) { Text($0).aiFont(.caption) }
-                }
-                .padding(10)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .overlay { RoundedRectangle(cornerRadius: 10).strokeBorder(.quaternary, style: .init(dash: [4])) }
-            }
+            findingsContent(for: id)
         case .patterns:
+            if model.results[id] == nil {
+                noReviewYet(id, String(localized: "Patterns the AI review checks appear here after a review."))
+            }
             ForEach(model.results[id]?.patterns ?? []) { pattern in
                 PatternRowView(pattern: pattern, isSelected: model.selectedPatternID == pattern.id) { location in
                     model.selectedPatternID = pattern.id
@@ -152,12 +126,54 @@ public struct FindingsInspectorScreen: View {
         }
     }
 
+    @ViewBuilder private func findingsContent(for id: PullRequestID) -> some View {
+        if model.results[id] == nil {
+            noReviewYet(id, String(localized: "Findings appear here after an AI review."))
+        }
+        if let overall = model.results[id]?.overall, !overall.isEmpty {
+            OverallFindingsView(points: overall)
+        }
+        ForEach(model.visibleFindings(for: id)) { finding in
+            if model.selectedFindingID == finding.id {
+                FindingDetailView(
+                    finding: finding,
+                    actions: FindingActions(
+                        // Unanchored findings have no diff line a GitHub comment could attach to.
+                        turnIntoComment: finding.isAnchored
+                            ? turnIntoComment.map { action in { action(finding) } } : nil,
+                        dismiss: { model.dismiss(finding) })
+                )
+                .onTapGesture { model.selectedFindingID = nil }
+                .id(finding.id)
+            } else {
+                FindingRowView(finding: finding, isSelected: false)
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        model.selectedFindingID = finding.id
+                        jump(finding)
+                    }
+                    .id(finding.id)
+            }
+        }
+        if let history = model.results[id]?.history, !history.isEmpty {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("History").aiFont(.caption, weight: .semibold).foregroundStyle(.secondary)
+                ForEach(history, id: \.self) { Text($0).aiFont(.caption) }
+            }
+            .padding(10)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .overlay { RoundedRectangle(cornerRadius: 10).strokeBorder(.quaternary, style: .init(dash: [4])) }
+        }
+    }
+
     /// Same look as the pull request column's tabs: symbols, counts, narrowing to symbols.
     private func tabItems(for id: PullRequestID) -> [SectionTabItem<AIReviewModel.Tab>] {
         var items = [
             SectionTabItem(
                 tab: AIReviewModel.Tab.findings, title: String(localized: "Findings"),
-                symbol: "exclamationmark.bubble", count: model.visibleFindings(for: id).count),
+                symbol: "exclamationmark.bubble",
+                // No badge before the first review (0 would read as "nothing found").
+                count: model.results[id] == nil ? nil : model.visibleFindings(for: id).count),
             SectionTabItem(
                 tab: AIReviewModel.Tab.patterns, title: String(localized: "Patterns"), symbol: "square.grid.3x3",
                 count: model.results[id]?.patterns.count),
@@ -176,23 +192,44 @@ public struct FindingsInspectorScreen: View {
     private var emptyState: some View {
         VStack(spacing: 10) {
             Image(systemName: "sparkles").aiFont(.largeTitle).foregroundStyle(AIAccent.border)
-            Text(pullRequest == nil ? "Select a pull request" : "No AI review yet")
-                .aiFont(.headline)
-            if let pullRequest {
-                Button {
-                    run(pullRequest)
-                } label: {
-                    Label("Run AI Review", systemImage: "sparkles")
-                }
-                .buttonStyle(.borderedProminent)
-                .disabled(model.runState == .running)
-                if chat != nil {
-                    Button("Ask a question") { model.tab = .chat }.buttonStyle(.borderless)
-                }
-            }
+            Text("Select a pull request").aiFont(.headline)
         }
         .frame(maxWidth: .infinity)
         .padding(.top, 40)
+    }
+
+    /// Findings and patterns before the first review (the run control is in the header).
+    @ViewBuilder private func noReviewYet(_ id: PullRequestID, _ text: String) -> some View {
+        if model.runningPullRequest != id || model.runState != .running {
+            VStack(spacing: 8) {
+                Image(systemName: "sparkles").aiFont(.title2).foregroundStyle(AIAccent.border)
+                Text("No AI review yet").aiFont(.headline)
+                Text(text).aiFont(.caption).foregroundStyle(.secondary).multilineTextAlignment(.center)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.top, 24)
+        }
+    }
+
+    /// Start, or what is in the way: one review runs at a time, possibly for another pull request.
+    @ViewBuilder private func runControl(for pullRequest: PullRequestSummary) -> some View {
+        let id = pullRequest.id
+        if model.runState == .running, let other = model.runningPullRequest, other != id {
+            OtherReviewRunningView(
+                pullRequest: other, finished: model.finishedAgentCount, total: model.progress.count,
+                show: showPullRequest.map { show in { show(other) } },
+                reviewHere: {
+                    Task { await model.replaceRunningReview(with: id, title: pullRequest.title, body: prBody) }
+                })
+        } else if model.results[id] == nil, model.runState != .running || model.runningPullRequest != id {
+            Button {
+                run(pullRequest)
+            } label: {
+                Label("Run AI Review", systemImage: "sparkles").frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.borderedProminent)
+            .tint(SylvraColor.brandPrimary)
+        }
     }
 
     private func isRunning(_ id: PullRequestID) -> Bool {

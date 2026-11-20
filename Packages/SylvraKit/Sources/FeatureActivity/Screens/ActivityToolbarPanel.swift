@@ -1,13 +1,17 @@
 import DesignSystem
 import SwiftUI
+import SylvraCore
 
 /// Toolbar activity indicator with a popover listing running jobs (container).
 public struct ActivityToolbarPanel: View {
     private let center: ActivityCenter
+    private let open: ((PullRequestID) -> Void)?
     @State private var isShowingPopover = false
 
-    public init(center: ActivityCenter) {
+    /// - Parameter open: shows a job's pull request (its details, e.g. the AI review's agents, are there).
+    public init(center: ActivityCenter, open: ((PullRequestID) -> Void)? = nil) {
         self.center = center
+        self.open = open
     }
 
     public var body: some View {
@@ -16,7 +20,10 @@ public struct ActivityToolbarPanel: View {
         } label: {
             ActivityIndicatorView(isBusy: center.isBusy)
         }
-        .help(center.isBusy ? "Working in the background" : "No background work")
+        .help(
+            center.isBusy
+                ? center.running.map(\.title).joined(separator: ", ") : String(localized: "No background work")
+        )
         .popover(isPresented: $isShowingPopover, arrowEdge: .bottom) {
             VStack(alignment: .leading, spacing: 8) {
                 Text("Background activity").font(.headline)
@@ -24,9 +31,9 @@ public struct ActivityToolbarPanel: View {
                     Text("Nothing running.").foregroundStyle(.secondary)
                 }
                 ForEach(center.running) { job in
-                    HStack {
-                        ProgressView().controlSize(.small)
-                        Text(job.title)
+                    ActivityJobRow(job: job, open: job.pullRequest.flatMap { id in open.map { open in { open(id) } } })
+                    {
+                        isShowingPopover = false
                     }
                 }
             }
@@ -34,6 +41,44 @@ public struct ActivityToolbarPanel: View {
             .frame(minWidth: 240, alignment: .leading)
         }
     }
+}
+
+/// One running job; a job on a pull request opens it (pure).
+struct ActivityJobRow: View {
+    let job: ActivityJob
+    var open: (() -> Void)?
+    var didOpen: () -> Void = {}
+
+    var body: some View {
+        HStack(spacing: 8) {
+            ProgressView().controlSize(.small)
+            VStack(alignment: .leading, spacing: 1) {
+                Text(job.title).lineLimit(1)
+                if let detail = job.detail { Text(detail).font(.caption).foregroundStyle(.secondary) }
+            }
+            Spacer(minLength: 8)
+            if let open {
+                Button("Show", systemImage: "arrow.forward.circle") {
+                    open()
+                    didOpen()
+                }
+                .labelStyle(.iconOnly)
+                .buttonStyle(.borderless)
+                .help("Show this pull request")
+            }
+        }
+    }
+}
+
+#Preview("Job row") {
+    ActivityJobRow(
+        job: ActivityJob(
+            id: "ai-review", kind: .aiReview, title: "AI review · billing #881", detail: "2 of 3 agents",
+            pullRequest: PullRequestID(owner: "acme", repository: "billing", number: 881)),
+        open: {}
+    )
+    .padding()
+    .frame(width: 280)
 }
 
 /// A calm ring that turns into a rotating gold arc while work is running (pure).

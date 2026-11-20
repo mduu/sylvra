@@ -3,6 +3,7 @@ import FeatureDiff
 import FeatureInbox
 import FeaturePullRequest
 import SwiftUI
+import SylvraCore
 
 // MARK: - Window layouts (wide, compact, focus)
 
@@ -30,7 +31,8 @@ extension RootScreen {
             turnIntoComment: { finding in startComment(from: finding) },
             chat: environment.chat,
             jumpToLocation: { path, line in Task { await environment.diff.reveal(path, line: line) } },
-            useAsComment: { answer, location in useAsComment(answer, at: location) }
+            useAsComment: { answer, location in useAsComment(answer, at: location) },
+            showPullRequest: showPullRequest
         )
     }
 }
@@ -173,5 +175,16 @@ private struct FocusFilesButton: View {
             .frame(width: 340, height: 460)
         }
         .onChange(of: model.selectedPath) { isPresented = false }
+    }
+}
+
+extension RootScreen {
+    /// Opens a pull request with its AI inspector (from the activity list or a review running elsewhere).
+    func showPullRequest(_ id: PullRequestID) {
+        withAnimation(.snappy) {
+            selectedID = id
+            isInboxListed = false
+            isInspectorPresented = true
+        }
     }
 }

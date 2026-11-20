@@ -1,5 +1,6 @@
 import DesignSystem
 import SwiftUI
+import SylvraCore
 
 /// Which state of the pull request the AI review saw (pure): a clear hint with *Run again* when new commits
 /// arrived since, otherwise when it ran and a quiet *Run again*.
@@ -52,4 +53,47 @@ struct ReviewFreshnessView: View {
     }
     .padding()
     .frame(width: 340)
+}
+
+/// One review runs at a time: says which pull request it is for, shows it or replaces it with this one (pure).
+struct OtherReviewRunningView: View {
+    let pullRequest: PullRequestID
+    let finished: Int
+    let total: Int
+    var show: (() -> Void)?
+    let reviewHere: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 6) {
+                ProgressView().controlSize(.mini)
+                Text("Reviewing \(pullRequest.repository) #\(pullRequest.number)")
+                    .aiFont(.caption, weight: .semibold)
+                    .lineLimit(1)
+                if total > 0 {
+                    Text("\(finished) of \(total) agents").aiFont(.caption).foregroundStyle(.secondary)
+                }
+            }
+            Text("One AI review runs at a time.").aiFont(.caption).foregroundStyle(.secondary)
+            HStack(spacing: 10) {
+                if let show { Button("Show", action: show).buttonStyle(.borderless) }
+                Button("Stop It and Review This One", action: reviewHere)
+                    .buttonStyle(.borderless)
+                    .help("Cancels the running review and starts one for this pull request")
+            }
+            .aiFont(.caption)
+        }
+        .padding(8)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(SylvraColor.brandPrimary.opacity(0.08), in: RoundedRectangle(cornerRadius: 8))
+    }
+}
+
+#Preview("Another review running") {
+    OtherReviewRunningView(
+        pullRequest: PullRequestID(owner: "acme", repository: "billing", number: 881), finished: 2, total: 3,
+        show: {}, reviewHere: {}
+    )
+    .padding()
+    .frame(width: 320)
 }

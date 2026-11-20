@@ -265,7 +265,9 @@ Existing threads inline (collapsible) with reply, resolve / unresolve, reactions
 ```
 
 - Single click runs with the PR's settings (or the global defaults).
-- **Progress** in the inspector: one row per agent / shard / model, streaming status, elapsed time, cancel. The toolbar activity indicator is active.
+- **Progress** in the inspector: one row per agent / shard / model, streaming status, elapsed time, cancel. The toolbar activity indicator gives the overview ("AI review · billing #881", "2 of 3 agents", a button opens that pull request); the inspector has the detail.
+- **One review at a time.** The inspector header always offers the next step: *Run AI Review* before the first review, *Run again* after it, *Cancel* while it runs. While a review runs for another pull request, the header says which one (with its progress), and offers *Show* and *Stop It and Review This One*.
+- The tabs **Findings · Patterns · Chat** are always shown for a selected pull request: the chat works without a review; findings and patterns say "No AI review yet" until there is one (no count badge then).
 - Findings and patterns appear **live** as shards complete.
 - **Findings list**: grouped by severity or file; filter by category or model; `J`/`K` next/previous, `↩` jump, `D` dismiss, `C` turn into comment.
 - **Whole pull request**: above the findings, a card with points about the change as a whole (*Could be simpler*, *Too much code*, *Too scattered*), when the agents found any.
@@ -312,7 +314,7 @@ stateDiagram-v2
 
 ## 13. Background activity and notifications
 
-- **Activity indicator** in the toolbar whenever something runs in the background; click opens a popover with all jobs (progress, cancel).
+- **Activity indicator** in the toolbar whenever something runs in the background; its help names the jobs, a click opens a popover with all jobs (name with the pull request, progress; a job on a pull request opens it).
 - **macOS notification** when a job finishes while Sylvra is not focused, e.g. "AI review of #1234 finished — 2 major, 5 minor". Configurable per job type in settings.
 - **Replies**: new comments by others on a PR the user is involved in raise a notification; clicking it opens the PR. Open PRs reload their review threads every 60 s and only redraw when something changed.
 
