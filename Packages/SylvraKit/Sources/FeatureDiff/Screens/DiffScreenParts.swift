@@ -1,5 +1,7 @@
 import SwiftUI
 
+// Parts of `DiffScreen` that observe the model on their own, so their updates don't re-evaluate every row.
+
 /// The diff's width, kept out of `DiffScreen`'s state: it changes on every frame while a column is resized,
 /// and only the horizontal offset and the scroll indicator depend on it. Reading it in `DiffScreen.body`
 /// re-evaluated every file's rows per frame.
@@ -33,5 +35,22 @@ struct DiffHorizontalIndicator: View {
                 codeWidth: DiffScreenModel.codeWidth(diffWidth: width.value, layout: model.layout)
             ) { model.scrollHorizontally(by: $0, diffWidth: width.value) }
         }
+    }
+}
+
+/// Find in diff: searches once per update of its own (in `DiffScreen.body` every diff update searched twice).
+struct DiffSearchPanel: View {
+    @Bindable var model: DiffScreenModel
+
+    var body: some View {
+        let matches = model.searchMatches
+        DiffSearchBar(
+            query: $model.searchQuery,
+            matchCount: matches.count,
+            currentIndex: model.currentSearchMatch.flatMap { matches.firstIndex(of: $0) },
+            next: { model.selectSearchMatch(offset: 1) },
+            previous: { model.selectSearchMatch(offset: -1) },
+            close: { model.isSearchPresented = false }
+        )
     }
 }

@@ -57,15 +57,8 @@ public struct DiffScreen<LineAccessory: View>: View {
         content
             .safeAreaInset(edge: .top) {
                 if model.isSearchPresented {
-                    DiffSearchBar(
-                        query: $model.searchQuery,
-                        matchCount: model.searchMatches.count,
-                        currentIndex: model.currentSearchMatch.flatMap { model.searchMatches.firstIndex(of: $0) },
-                        next: { model.selectSearchMatch(offset: 1) },
-                        previous: { model.selectSearchMatch(offset: -1) },
-                        close: { model.isSearchPresented = false }
-                    )
-                    .transition(.move(edge: .top).combined(with: .opacity))
+                    DiffSearchPanel(model: model)
+                        .transition(.move(edge: .top).combined(with: .opacity))
                 }
             }
             .animation(.snappy, value: model.isSearchPresented)
