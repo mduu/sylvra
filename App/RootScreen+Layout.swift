@@ -86,6 +86,13 @@ private struct WindowLayoutModifier: ViewModifier {
                     root.isInboxListed = false
                 }
             }
+            .onChange(of: root.columnVisibility) { _, visibility in
+                keepsSidebarHidden(visibility)
+            }
+            .onChange(of: root.displays.setup) {
+                // The columns are rebuilt for the new screens: they start with the layout's columns again.
+                Task { @MainActor in root.columnVisibility = root.layout.columnVisibility }
+            }
             .overlay(alignment: .leading) { floatingInbox(layout) }
             .overlay(alignment: .trailing) { floatingInspector(layout) }
             .animation(.snappy, value: root.isInboxFloating)
@@ -95,6 +102,21 @@ private struct WindowLayoutModifier: ViewModifier {
 }
 
 extension WindowLayoutModifier {
+    /// Compact and focus show the inbox in the pull request column or floating, never as the split view's
+    /// sidebar: a sidebar shown anyway (*View → Show Sidebar*, a rebuilt split view) listed the inbox twice.
+    /// It goes away again, and the inbox opens where the layout shows it.
+    fileprivate func keepsSidebarHidden(_ visibility: NavigationSplitViewVisibility) {
+        let layout = root.layout
+        guard root.role == .main, layout.stacksInbox || layout.floatsInbox, visibility == .all else { return }
+        // After the current update: the split view is changing its columns right now.
+        Task { @MainActor in
+            withAnimation(.snappy) {
+                root.columnVisibility = layout.columnVisibility
+                if layout.stacksInbox { root.isInboxListed = true } else { root.isInboxFloating = true }
+            }
+        }
+    }
+
     /// Focus: the inbox floats in from the left, its handle on the panel's edge.
     @ViewBuilder
     fileprivate func floatingInbox(_ layout: WindowLayout) -> some View {
