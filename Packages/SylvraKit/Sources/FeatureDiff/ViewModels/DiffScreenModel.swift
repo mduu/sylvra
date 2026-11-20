@@ -19,12 +19,20 @@ public final class DiffScreenModel {
 
     public private(set) var diff: PullRequestDiff?
     public private(set) var loadState: LoadState = .idle
-    /// Side by side or inline; the reviewer's choice is kept across pull requests, reviews and launches.
+    /// Side by side or inline, remembered per pull request (see `DiffLayoutMemory`); pull requests without
+    /// a choice start with the last one made.
     public var layout: Layout = .sideBySide {
-        didSet { if layout != oldValue { defaults?.set(layout.rawValue, forKey: Self.layoutKey) } }
+        didSet {
+            guard layout != oldValue, !isRestoringLayout else { return }
+            defaults?.set(layout.rawValue, forKey: Self.layoutKey)
+            if let defaults, let pullRequestID {
+                DiffLayoutMemory(defaults: defaults).remember(layout, for: pullRequestID)
+            }
+        }
     }
+    @ObservationIgnored var isRestoringLayout = false
     /// Where the layout is remembered (`nil`: not remembered, e.g. demo launches and tests).
-    @ObservationIgnored private let defaults: UserDefaults?
+    @ObservationIgnored let defaults: UserDefaults?
     public var scope: Scope = .focused
     /// File the reviewer jumped to (from the navigator).
     public var selectedPath: String?
@@ -243,21 +251,7 @@ public final class DiffScreenModel {
             loadState = .idle
             return
         }
-        if pullRequestID != id {
-            diff = nil
-            expandedPaths = []
-            fullFileHunks = [:]
-            selectedPath = nil
-            progress = nil
-            sinceReviewFiles = nil
-            revealedContext = [:]
-            headLines = [:]
-            selectedCommit = nil
-            commitFiles = nil
-            horizontalOffset = 0
-            if scope == .sinceLastReview { scope = .focused }
-            loadState = .loading
-        }
+        if pullRequestID != id { resetForNewPullRequest(id) }
         pullRequestID = id
         self.headSHA = headSHA
         do {
@@ -354,10 +348,30 @@ public final class DiffScreenModel {
 }
 
 extension DiffScreenModel {
-    public enum Layout: String, CaseIterable, Identifiable {
+    public enum Layout: String, CaseIterable, Identifiable, Codable {
         case sideBySide, inline
         public var id: String { rawValue }
     }
 
     static let layoutKey = "diff.layout"
+}
+
+extension DiffScreenModel {
+    /// Another pull request: nothing of the previous one stays; its own layout comes back.
+    fileprivate func resetForNewPullRequest(_ id: PullRequestID) {
+        diff = nil
+        expandedPaths = []
+        fullFileHunks = [:]
+        selectedPath = nil
+        progress = nil
+        sinceReviewFiles = nil
+        revealedContext = [:]
+        headLines = [:]
+        selectedCommit = nil
+        commitFiles = nil
+        horizontalOffset = 0
+        if scope == .sinceLastReview { scope = .focused }
+        loadState = .loading
+        restoreLayout(for: id)
+    }
 }

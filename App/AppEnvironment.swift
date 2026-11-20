@@ -134,6 +134,9 @@ final class AppEnvironment {
         if !isDemo {
             let worktrees = worktrees
             Task { await worktrees.keepCleaning() }
+            // Diff layouts remembered for pull requests that were closed or not opened for a week.
+            let diff = diff
+            Task { await diff.pruneRememberedLayouts { try? await gitHub.isPullRequestOpen($0) } }
         }
     }
 
