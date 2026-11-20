@@ -36,7 +36,7 @@ Sylvra is **not a Git client** and not a code generator. It helps you understand
 - **The PR conversation, like on GitHub** (Comments tab): write comments with preview, tone check and writing help, react with emoji, quote-reply, edit and delete your own; updates every minute. Comments render as full Markdown, including what bots post. Code threads are listed separately and jump to their line.
 - **Repository and `#number` in the title** open the repository and the pull request on GitHub.
 - **AI summary and reading order** pinned above the tabs, visible during the whole review. The diff sorts itself by the reading order.
-- **Since my last review**: only what changed since you last reviewed, plus a banner when someone pushes.
+- **Since my last review**: only what changed since you last reviewed, and new pushes load by themselves (while you write a comment, a banner offers to refresh).
 - **Commit by commit**: select a commit and review only its changes; step through with `⌥]` / `⌥[`.
 - **Failing checks explained**: click a check to read what it reported (summary, annotations with file and line) without leaving the app.
 

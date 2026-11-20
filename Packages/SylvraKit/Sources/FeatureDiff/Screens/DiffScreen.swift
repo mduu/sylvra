@@ -19,6 +19,9 @@ public struct DiffScreen<LineAccessory: View>: View {
     private let openInIDE: DiffOpenInIDE?
     /// Reloads the PR after a push (details, head SHA → diff); `nil` reloads only the diff.
     private let onRefresh: (() async -> Void)?
+    /// Whether a detected push may reload right away (not while the reviewer writes a comment); otherwise a
+    /// banner offers *Refresh*.
+    private let refreshesAutomatically: () -> Bool
     @State private var diffIsWide = true
     @State private var diffWidth: CGFloat = 800
     @State private var commentAnchor: CodeLocation?
@@ -35,7 +38,8 @@ public struct DiffScreen<LineAccessory: View>: View {
         onStartComment: ((CodeLocation, String) -> Void)? = nil,
         onAskAI: ((CodeLocation, String) -> Void)? = nil,
         openInIDE: DiffOpenInIDE? = nil,
-        onRefresh: (() async -> Void)? = nil
+        onRefresh: (() async -> Void)? = nil,
+        refreshesAutomatically: @escaping () -> Bool = { false }
     ) {
         self.model = model
         self.pullRequestID = pullRequestID
@@ -45,6 +49,7 @@ public struct DiffScreen<LineAccessory: View>: View {
         self.onAskAI = onAskAI
         self.openInIDE = openInIDE
         self.onRefresh = onRefresh
+        self.refreshesAutomatically = refreshesAutomatically
     }
 
     public var body: some View {
@@ -83,17 +88,13 @@ public struct DiffScreen<LineAccessory: View>: View {
                     isShowingSinceReview: model.scope == .sinceLastReview,
                     showSinceReview: { Task { await model.setScope(.sinceLastReview) } },
                     showAll: { Task { await model.setScope(.focused) } },
-                    refresh: {
-                        Task {
-                            if let onRefresh {
-                                await onRefresh()
-                            } else {
-                                await model.load(pullRequestID, headSHA: headSHA)
-                            }
-                        }
-                    }
+                    refresh: { Task { await refresh() } }
                 )
                 .animation(.snappy, value: model.hasNewCommits)
+            }
+            .onChange(of: model.hasNewCommits) { _, hasNew in
+                // A push: reload the file list, commits and diff right away unless a comment is being written.
+                if hasNew, refreshesAutomatically() { Task { await refresh() } }
             }
             .task(id: pullRequestID) {
                 // Watch for pushes while the PR is open.
@@ -284,6 +285,14 @@ extension DiffScreen where LineAccessory == EmptyView {
 }
 
 extension DiffScreen {
+    fileprivate func refresh() async {
+        if let onRefresh {
+            await onRefresh()
+        } else {
+            await model.load(pullRequestID, headSHA: headSHA)
+        }
+    }
+
     /// Shown while some line is wider than the view.
     @ViewBuilder fileprivate var horizontalIndicator: some View {
         let maxOffset = model.maxHorizontalOffset(diffWidth: diffWidth)

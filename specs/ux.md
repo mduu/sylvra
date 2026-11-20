@@ -197,6 +197,7 @@ All tabs stay visible side by side (⌘1–⌘5) with their counts as small badg
 - Context menu: *Mark as viewed* / *Mark as not viewed*; on folders: *Mark all as viewed / not viewed*.
 - Marking a file as viewed in its diff header collapses it and scrolls the diff to the header of the next file still to review (the next file below that isn't viewed yet), which also becomes the selected file.
 - Synced with GitHub's "Viewed" state in both directions.
+- **New pushes**: Sylvra checks for a new head commit every minute while a pull request is open and then reloads it right away — details, file list, commits, checks and the diff. Only while a comment is being written does a banner ("New commits were pushed") offer *Refresh* instead, so the composer keeps its lines.
 - When a viewed file changes in a new push, it automatically flips back to *not viewed* and shows a "changed since viewed" marker (like GitHub).
 - Viewed state is per file for the whole PR (GitHub has no per-commit viewed state); commit-by-commit mode shows the same toggles.
 

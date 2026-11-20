@@ -156,7 +156,9 @@ extension RootScreen {
                     guard let id = selection?.id else { return }
                     await environment.pullRequest.load(id)
                     await environment.inbox.refresh()
-                }
+                },
+                // A comment being written keeps its lines; the banner then offers Refresh.
+                refreshesAutomatically: { environment.review.draft == nil }
             )
             .environment(\.diffTrailingCover, floatingInspectorInset)
             .animation(.snappy, value: floatingInspectorInset)
