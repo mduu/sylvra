@@ -16,6 +16,19 @@ func trailingClearance(cover: CGFloat, width: CGFloat, minimum: CGFloat) -> CGFl
     return min(cover, max(width - minimum, 0))
 }
 
+extension View {
+    /// Reports the width only while it matters: every row measuring itself on each frame of a column drag
+    /// made resizing stutter, and the width is only needed to keep clear of a floating panel.
+    @ViewBuilder
+    func measuringWidth(into width: Binding<CGFloat>, while isNeeded: Bool) -> some View {
+        if isNeeded {
+            onGeometryChange(for: CGFloat.self, of: \.size.width) { width.wrappedValue = $0 }
+        } else {
+            self
+        }
+    }
+}
+
 struct AccessoryLane<Content: View>: View {
     var minWidth: CGFloat = 0
     /// Width of the gutter the lane continues (inline has two line-number columns).
@@ -49,7 +62,7 @@ struct AccessoryLane<Content: View>: View {
                     cover: trailingCover, width: width - gutterWidth, minimum: Self.minimumContentWidth) : 0
         )
         .padding(.leading, gutterWidth)
-        .onGeometryChange(for: CGFloat.self, of: \.size.width) { width = $0 }
+        .measuringWidth(into: $width, while: reachesTrailingEdge && trailingCover > 0)
         .background {
             // Clipped to the lane: the change bar's minimum height made an empty lane's surface spill 1 pt
             // into the line above (a white seam between lines).
@@ -136,7 +149,7 @@ struct AIHighlightOverlay: View {
                 )
                 .allowsHitTesting(false)
             }
-            .onGeometryChange(for: CGFloat.self, of: \.size.width) { width = $0 }
+            .measuringWidth(into: $width, while: trailingCover > 0)
             .transition(.opacity)
         }
     }

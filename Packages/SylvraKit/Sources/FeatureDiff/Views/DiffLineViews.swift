@@ -324,11 +324,15 @@ struct ChangeBar: View {
 
     var body: some View {
         if let accent = DiffColors.accent(kind) {
+            // The glow is a wider, faint capsule behind the bar: a shadow per row needed an offscreen pass
+            // for every changed line on each frame of a resize.
             Capsule()
                 .fill(accent)
                 .frame(width: 3)
                 .padding(.vertical, 1)
-                .shadow(color: accent.opacity(0.7), radius: 3)
+                .background {
+                    Capsule().fill(accent.opacity(0.22)).frame(width: 9)
+                }
         } else {
             Color.clear.frame(width: 3)
         }

@@ -84,12 +84,13 @@ struct DiffFileBodyView<Accessory: View>: View {
                                 newLine: row.right?.newNumber)
                         }
                         .overlay(alignment: .trailing) {
-                            GeometryReader { geometry in
-                                AIHighlightOverlay(
-                                    highlight: row.right?.newNumber.flatMap(highlight), line: row.right?.newNumber
-                                )
-                                .frame(width: max((geometry.size.width - connectorWidth) / 2, 0))
-                                .frame(maxWidth: .infinity, alignment: .trailing)
+                            // Only on highlighted rows: a geometry reader on every row re-ran per resize frame.
+                            if let lineHighlight = row.right?.newNumber.flatMap(highlight) {
+                                GeometryReader { geometry in
+                                    AIHighlightOverlay(highlight: lineHighlight, line: row.right?.newNumber)
+                                        .frame(width: max((geometry.size.width - connectorWidth) / 2, 0))
+                                        .frame(maxWidth: .infinity, alignment: .trailing)
+                                }
                             }
                         }
                         sideBySideAccessories(row, continuation: continuation)
