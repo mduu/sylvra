@@ -148,7 +148,10 @@ extension RootScreen {
                 onStartComment: { environment.review.startComment(at: $0, lineText: $1) },
                 onAskAI: { location, code in askAI(about: location, code: code) },
                 openInIDE: selection.map { pullRequest in
-                    DiffOpenInIDE(name: environment.openInIDE.preferredIDE(for: pullRequest.id).name) { path, line in
+                    DiffOpenInIDE(
+                        name: environment.openInIDE.preferredIDE(for: pullRequest.id).name,
+                        context: pullRequest.id.description
+                    ) { path, line in
                         Task { await environment.openInIDE.open(pullRequest.id, file: path, line: line) }
                     }
                 },

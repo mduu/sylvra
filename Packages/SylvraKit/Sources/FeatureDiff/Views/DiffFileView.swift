@@ -22,71 +22,13 @@ struct DiffFileBodyView<Accessory: View>: View {
     @Environment(\.diffIsWide) private var diffIsWide
     @Environment(\.diffSelectFinding) private var selectFinding
     @Environment(\.diffOpenInIDE) var ide
-
-    /// One lazily built row; unique string IDs (nested offset-based IDs collided and dropped rows).
-    private enum Row: Identifiable {
-        case header(Int, Hunk)
-        case inline(Int, Int, DiffLine, HalfContinuation)
-        case sideBySide(Int, Int, SideBySideRow, ConnectorSegment?, Continuation)
-
-        var id: String {
-            switch self {
-            case .header(let hunk, _): "h\(hunk)"
-            case .inline(let hunk, let index, _, _): "i\(hunk)-\(index)"
-            case .sideBySide(let hunk, let index, _, _, _): "s\(hunk)-\(index)"
-            }
-        }
-
-        /// Scroll anchor: new-side lines use `DiffScreenModel.lineAnchor`, so jumps can target them.
-        func anchor(path: String) -> String {
-            switch self {
-            case .header(let hunk, _): "\(path)#hunk\(hunk)"
-            case .inline(_, _, let line, _):
-                line.kind == .removed || line.newNumber == nil
-                    ? "\(path)#old\(line.oldNumber ?? 0)"
-                    : DiffScreenModel.lineAnchor(path: path, line: line.newNumber ?? 0)
-            case .sideBySide(_, _, let row, _, _):
-                row.right?.newNumber.map { DiffScreenModel.lineAnchor(path: path, line: $0) }
-                    ?? "\(path)#old\(row.left?.oldNumber ?? 0)"
-            }
-        }
-    }
+    @Environment(\.diffRowCache) private var rowCache
 
     /// Rows with their scroll anchors as identity. They are direct children of the diff's lazy stack: a nested
     /// lazy stack hid the IDs of rows not built yet, so jumps to lines further down a file went nowhere.
-    private var identifiedRows: [(id: String, row: Row)] {
-        var seen = Set<String>()
-        return rows.map { row in
-            let anchor = row.anchor(path: path)
-            return (seen.insert(anchor).inserted ? anchor : "\(path)#\(row.id)", row)
-        }
-    }
-
-    private var rows: [Row] {
-        hunks.enumerated().flatMap { hunkIndex, hunk -> [Row] in
-            let lines: [Row] =
-                switch layout {
-                case .inline:
-                    hunk.lines.enumerated().map { index, line in
-                        let next = hunk.lines.indices.contains(index + 1) ? hunk.lines[index + 1] : nil
-                        return .inline(hunkIndex, index, line, .between(line, and: next, hasNext: next != nil))
-                    }
-                case .sideBySide:
-                    {
-                        let rows = SideBySideRow.rows(for: hunk)
-                        let segments = ConnectorSegment.segments(for: rows)
-                        return rows.indices.map { index in
-                            let next = rows.indices.contains(index + 1) ? rows[index + 1] : nil
-                            let continuation = Continuation(
-                                left: .between(rows[index].left, and: next?.left, hasNext: next != nil),
-                                right: .between(rows[index].right, and: next?.right, hasNext: next != nil),
-                                ribbon: segments[index]?.crossSection(rowHeight: diffRowHeight))
-                            return .sideBySide(hunkIndex, index, rows[index], segments[index], continuation)
-                        }
-                    }()
-                }
-            return [.header(hunkIndex, hunk)] + lines
-        }
+    private var identifiedRows: [(id: String, row: DiffRow)] {
+        rowCache?.rows(path: path, hunks: hunks, layout: layout)
+            ?? DiffRow.identifiedRows(path: path, hunks: hunks, layout: layout)
     }
 
     var body: some View {
@@ -195,7 +137,7 @@ struct DiffFileBodyView<Accessory: View>: View {
     /// Wide diffs put a thread under its own half; narrow diffs (all columns visible) use one lane across the
     /// code width, so cards never get squeezed into half a column.
     @ViewBuilder
-    private func sideBySideAccessories(_ row: SideBySideRow, continuation: Continuation) -> some View {
+    private func sideBySideAccessories(_ row: SideBySideRow, continuation: DiffRowContinuation) -> some View {
         Group {
             if diffIsWide {
                 HStack(alignment: .top, spacing: 0) {
@@ -232,12 +174,6 @@ struct DiffFileBodyView<Accessory: View>: View {
         .background(SylvraColor.codeSurface)
     }
 
-    /// How the row's halves and ribbon continue through its accessories.
-    struct Continuation: Hashable {
-        let left: HalfContinuation
-        let right: HalfContinuation
-        let ribbon: ClosedRange<CGFloat>?
-    }
 }
 
 struct FileKindIcon: View {

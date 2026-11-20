@@ -23,7 +23,8 @@ public struct DiffScreen<LineAccessory: View>: View {
     /// banner offers *Refresh*.
     private let refreshesAutomatically: () -> Bool
     @State private var diffIsWide = true
-    @State private var diffWidth: CGFloat = 800
+    @State private var diffWidth = DiffWidth()
+    @State private var rowCache = DiffRowCache()
     @State private var commentAnchor: CodeLocation?
     @State private var textSelection = DiffTextSelectionController()
     /// Only used to scroll while a selection is dragged past an edge (offsets, no IDs: see below).
@@ -161,7 +162,7 @@ public struct DiffScreen<LineAccessory: View>: View {
                             textSelection.drag(
                                 from: value.startLocation, to: value.location,
                                 horizontalOffset: min(
-                                    model.horizontalOffset, model.maxHorizontalOffset(diffWidth: diffWidth)))
+                                    model.horizontalOffset, model.maxHorizontalOffset(diffWidth: diffWidth.value)))
                         }
                         .onEnded { _ in textSelection.endDrag() }
                     )
@@ -181,20 +182,27 @@ public struct DiffScreen<LineAccessory: View>: View {
                 .onGeometryChange(for: CGFloat.self) {
                     $0.size.width
                 } action: { width in
-                    diffWidth = width
+                    if diffWidth.value != width { diffWidth.value = width }
                     let isWide = width >= 760  // room for two thread lanes of ~320 pt
                     if diffIsWide != isWide { diffIsWide = isWide }
                 }
-                .horizontalWheelScrolling { model.scrollHorizontally(by: $0, diffWidth: diffWidth) }
-                .overlay(alignment: .bottom) { horizontalIndicator }
-                .environment(
-                    \.diffHorizontalOffset, min(model.horizontalOffset, model.maxHorizontalOffset(diffWidth: diffWidth))
-                )
+                .horizontalWheelScrolling { model.scrollHorizontally(by: $0, diffWidth: diffWidth.value) }
+                .overlay(alignment: .bottom) { DiffHorizontalIndicator(model: model, width: diffWidth) }
+                .modifier(DiffHorizontalOffsetEnvironment(model: model, width: diffWidth))
                 .environment(\.diffIsWide, diffIsWide)
                 .environment(\.diffTextSelection, textSelection)
                 .onAppear(perform: connectTextSelection)
-                .onChange(of: pullRequestID) { textSelection.clear() }
-                .environment(\.diffSelectFinding, isCommitMode ? nil : model.selectFinding)
+                .environment(\.diffRowCache, rowCache)
+                .onChange(of: pullRequestID) {
+                    textSelection.clear()
+                    rowCache.removeAll()
+                }
+                .environment(
+                    \.diffSelectFinding,
+                    isCommitMode
+                        ? nil
+                        : model.selectFinding.map { DiffFindingSelection(owner: ObjectIdentifier(model), select: $0) }
+                )
                 .environment(\.diffOpenInIDE, openInIDE)
                 .environment(\.diffSearchQuery, model.isSearchPresented ? model.searchQuery : "")
                 .environment(
@@ -264,8 +272,16 @@ public struct DiffScreen<LineAccessory: View>: View {
         commentAnchor = location
         onStartComment?(location, model.text(at: location))
     }
+}
 
-    @ViewBuilder private var placeholder: some View {
+extension DiffScreen where LineAccessory == EmptyView {
+    public init(model: DiffScreenModel, pullRequestID: PullRequestID?, headSHA: String?) {
+        self.init(model: model, pullRequestID: pullRequestID, headSHA: headSHA) { _ in EmptyView() }
+    }
+}
+
+extension DiffScreen {
+    @ViewBuilder fileprivate var placeholder: some View {
         switch model.loadState {
         case .loading:
             ProgressView()
@@ -276,31 +292,11 @@ public struct DiffScreen<LineAccessory: View>: View {
             ContentUnavailableView("No diff", systemImage: "plus.forwardslash.minus")
         }
     }
-}
-
-extension DiffScreen where LineAccessory == EmptyView {
-    public init(model: DiffScreenModel, pullRequestID: PullRequestID?, headSHA: String?) {
-        self.init(model: model, pullRequestID: pullRequestID, headSHA: headSHA) { _ in EmptyView() }
-    }
-}
-
-extension DiffScreen {
     fileprivate func refresh() async {
         if let onRefresh {
             await onRefresh()
         } else {
             await model.load(pullRequestID, headSHA: headSHA)
-        }
-    }
-
-    /// Shown while some line is wider than the view.
-    @ViewBuilder fileprivate var horizontalIndicator: some View {
-        let maxOffset = model.maxHorizontalOffset(diffWidth: diffWidth)
-        if maxOffset > 0 {
-            HorizontalScrollIndicator(
-                offset: min(model.horizontalOffset, maxOffset), maxOffset: maxOffset,
-                codeWidth: DiffScreenModel.codeWidth(diffWidth: diffWidth, layout: model.layout)
-            ) { model.scrollHorizontally(by: $0, diffWidth: diffWidth) }
         }
     }
 

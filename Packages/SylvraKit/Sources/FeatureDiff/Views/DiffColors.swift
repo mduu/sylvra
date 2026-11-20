@@ -102,7 +102,7 @@ extension EnvironmentValues {
     @Entry var diffSearchQuery = ""
     @Entry var diffCurrentMatch: String?
     /// Selects an AI finding when its highlight is clicked (set by the app, see `DiffScreenModel.selectFinding`).
-    @Entry var diffSelectFinding: ((String) -> Void)?
+    @Entry var diffSelectFinding: DiffFindingSelection?
     /// How far the code is scrolled horizontally (gutters stay in place), see `DiffScreenModel.horizontalOffset`.
     @Entry var diffHorizontalOffset: CGFloat = 0
     /// Mouse selection across lines (`nil`: code can't be selected, e.g. previews).
@@ -112,16 +112,33 @@ extension EnvironmentValues {
 }
 
 /// *Open in IDE* at a line of the diff (gutter button on hover, right-click menu).
-public struct DiffOpenInIDE {
+///
+/// Equal when `name` and `context` are: the closure is recreated on every update, and comparing it would
+/// invalidate every row reading it each time.
+public struct DiffOpenInIDE: Equatable {
     /// The IDE's name for labels ("Rider").
     public let name: String
+    /// What `open` acts on (e.g. the pull request), so a new target is a new value.
+    public let context: String
     /// Opens the file at a line of the pull request's head.
     public let open: (_ path: String, _ line: Int) -> Void
 
-    public init(name: String, open: @escaping (_ path: String, _ line: Int) -> Void) {
+    public init(name: String, context: String = "", open: @escaping (_ path: String, _ line: Int) -> Void) {
         self.name = name
+        self.context = context
         self.open = open
     }
+
+    public static func == (lhs: Self, rhs: Self) -> Bool { lhs.name == rhs.name && lhs.context == rhs.context }
+}
+
+/// Selecting a finding from its highlight; one per model, so it compares by the model's identity (a fresh
+/// closure per update invalidated every row reading it).
+struct DiffFindingSelection: Equatable {
+    let owner: ObjectIdentifier
+    let select: (String) -> Void
+
+    static func == (lhs: Self, rhs: Self) -> Bool { lhs.owner == rhs.owner }
 }
 
 /// Remembers rendered lines so scrolling and re-renders don't re-tokenise (bounded LRU-ish cache).

@@ -153,7 +153,7 @@ struct AIHighlightOverlay: View {
                 .background(SylvraColor.codeGutter)
                 .overlay {
                     if let id = highlight.findingID, let selectFinding {
-                        tapArea { selectFinding(id) }
+                        tapArea { selectFinding.select(id) }
                     }
                 }
         }
@@ -245,10 +245,10 @@ struct AIFindingBoxSlice: View {
 extension View {
     /// A plain click on a highlighted line opens its finding, without blocking text selection in the code
     /// (drags and double-clicks select text as usual).
-    func selectsFinding(_ id: String?, using select: ((String) -> Void)?) -> some View {
+    func selectsFinding(_ id: String?, using selection: DiffFindingSelection?) -> some View {
         simultaneousGesture(
             TapGesture().onEnded {
-                if let id, let select { select(id) }
+                if let id, let selection { selection.select(id) }
             },
             including: id == nil ? .subviews : .all)
     }
