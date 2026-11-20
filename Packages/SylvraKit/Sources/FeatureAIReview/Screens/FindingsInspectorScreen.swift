@@ -163,11 +163,12 @@ public struct FindingsInspectorScreen: View {
                 count: model.results[id]?.patterns.count),
         ]
         if let chat {
-            let messages = chat.messages(for: id).count { $0.role == .assistant }
+            // Chats with at least one message (a new, empty chat doesn't count).
+            let chats = chat.chatCount(for: id)
             items.append(
                 SectionTabItem(
                     tab: AIReviewModel.Tab.chat, title: String(localized: "Chat"),
-                    symbol: "bubble.left.and.text.bubble.right", count: messages > 0 ? messages : nil))
+                    symbol: "bubble.left.and.text.bubble.right", count: chats > 0 ? chats : nil))
         }
         return items
     }

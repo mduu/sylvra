@@ -204,6 +204,10 @@ struct AIChatModelTests {
         await chat.send(for: id)
         #expect(chat.draft.isEmpty)
         #expect(chat.messages(for: id).map(\.role) == [.user, .assistant])
+        // The Chat tab counts chats, not answers.
+        chat.draft = "Und noch?"
+        await chat.send(for: id)
+        #expect(chat.chatCount(for: id) == 1)
         #expect(chat.messages(for: PullRequestID(owner: "o", repository: "r", number: 1)).isEmpty)
         chat.reset(id)
         #expect(chat.messages(for: id).isEmpty)
@@ -281,6 +285,7 @@ struct AIChatModelTests {
         chat.newChat(for: id)
         chat.newChat(for: id)
         #expect(chat.chatList(for: id).count == 1)
+        #expect(chat.chatCount(for: id) == 0)
     }
 
     @Test func chatPassesEffort() throws {

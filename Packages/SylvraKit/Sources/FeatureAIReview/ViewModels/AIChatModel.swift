@@ -244,6 +244,11 @@ public final class AIChatModel {
         return seen
     }
 
+    /// Chats of the pull request that have messages (the Chat tab's badge).
+    public func chatCount(for id: PullRequestID?) -> Int {
+        chatList(for: id).count { !$0.messages.isEmpty }
+    }
+
     /// Whether a chat of the pull request asked about this line (path, side and last line).
     public func isDiscussed(_ location: CodeLocation, in id: PullRequestID?) -> Bool {
         guard let id else { return false }
