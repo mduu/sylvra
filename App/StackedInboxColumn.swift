@@ -30,18 +30,12 @@ struct StackedInboxColumn<Inbox: View, PullRequest: View>: View {
     }
 
     private var backBar: some View {
-        Button(action: showInbox) {
-            Label("Inbox", systemImage: "chevron.left")
-                .font(.callout)
-                .foregroundStyle(SylvraColor.brandPrimary)
-                .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .help("Back to the inbox (⌘0)")
-        .padding(.horizontal, 16)
-        .padding(.top, 10)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(SylvraColor.surfacePrimary)
+        BackButton("Inbox", action: showInbox)
+            .help("Back to the inbox (⌘0)")
+            .padding(.horizontal, 12)
+            .padding(.top, 6)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(SylvraColor.surfacePrimary)
     }
 
     /// A push like a navigation stack; a cross-fade with Reduce Motion.

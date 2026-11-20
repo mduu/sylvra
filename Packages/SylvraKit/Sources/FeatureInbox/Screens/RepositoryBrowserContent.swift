@@ -84,16 +84,9 @@ struct RepositoryBrowserContent<RowMenu: View>: View {
 
     private var header: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Button {
-                model.closeRepository()
-            } label: {
-                Label("Inbox", systemImage: "chevron.left")
-                    .font(.caption)
-                    .foregroundStyle(SylvraColor.brandPrimary)
-            }
-            .buttonStyle(.plain)
-            .keyboardShortcut(.escape, modifiers: [])
-            .help("Back to the inbox (Esc)")
+            BackButton("Inbox") { model.closeRepository() }
+                .keyboardShortcut(.escape, modifiers: [])
+                .help("Back to the inbox (Esc)")
             HStack(alignment: .firstTextBaseline) {
                 Text(browser.repository.name).font(.headline)
                 Spacer()
