@@ -16,6 +16,30 @@ Sylvra is **not a Git client** and not a code generator. It helps you understand
 
 **Why "Sylvra"?** The name is a coined word from Latin *silva* and English *sylvan*: forest, wooded. A forest is a quiet place where you can think — that is the mood Sylvra aims for: a calm space to read a change carefully, without the noise of a busy web page. It also fits the subject: code lives in (work-)trees and branches, and a good review sees the forest, not just the trees.
 
+## Install
+
+**Requirements**
+
+- A Mac with Apple silicon and macOS 27 or later
+- [Git](https://git-scm.com), installed (e.g. `brew install git`)
+- A github.com account and the [GitHub CLI](https://cli.github.com) (`gh`), installed (e.g. `brew install gh`) and logged in with `gh auth login` — Sylvra uses its token
+- Optional, for the AI review and chat: [Claude Code](https://docs.claude.com/en/docs/claude-code), installed and logged in
+
+**Steps**
+
+1. Download `Sylvra-<version>.dmg` from the [latest release](https://github.com/mduu/sylvra/releases/latest) (signed and notarized by Apple).
+2. Open the DMG and drag **Sylvra** into **Applications**, then start it from there.
+3. Install the GitHub CLI and log in once, if you haven't already — Sylvra uses its token:
+   ```bash
+   brew install gh
+   gh auth login
+   ```
+4. Optional, for the AI review and chat: install [Claude Code](https://docs.claude.com/en/docs/claude-code) and log in.
+
+Sylvra keeps itself up to date: it looks for new releases at launch and every few hours and installs them with one click (*Sylvra → Check for Updates…*).
+
+To try it without a GitHub account, start it with sample data: `open -a Sylvra --args --demo`.
+
 ## What it focuses on
 
 ### 1. Find what needs you
@@ -110,26 +134,19 @@ Sylvra is **not a Git client** and not a code generator. It helps you understand
 
 ## Status
 
-A personal project, used and developed for my own daily reviews (version 0.5). Expect rough edges — feedback is welcome as an [issue](https://github.com/mduu/sylvra/issues).
+A personal project, used and developed for my own daily reviews (version 0.6). Expect rough edges — feedback is welcome as an [issue](https://github.com/mduu/sylvra/issues).
 
-**Download**: the signed and notarized DMG of the [latest release](https://github.com/mduu/sylvra/releases/latest). Open it and drag Sylvra into Applications. Or build it from source (see below).
+To install it, see [Install](#install); to build it yourself, read on.
 
-## Requirements
+## Building from source
 
-- macOS (latest major release) and Xcode (latest release) to build
-- `git`
-- A github.com account and the [GitHub CLI](https://cli.github.com) (`gh`), logged in (Sylvra uses its token)
-- Optional, for the AI features: [Claude Code](https://docs.claude.com/en/docs/claude-code), installed and logged in
-
-## Getting started
+Needs macOS 27 and Xcode (latest release), plus what the [Install](#install) section lists (`gh` logged in; optionally Claude Code).
 
 ```bash
 git clone git@github.com:mduu/sylvra.git
 cd sylvra
 open Sylvra.xcodeproj      # run the "Sylvra" scheme
 ```
-
-Installed from the DMG, Sylvra keeps itself up to date: it looks for new GitHub Releases at launch and every few hours and installs them with one click (*Sylvra → Check for Updates…*).
 
 Launch with the argument `--demo` to try the app with sample data, without a GitHub account.
 
