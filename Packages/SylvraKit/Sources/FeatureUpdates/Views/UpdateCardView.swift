@@ -237,3 +237,20 @@ public struct UpdateCardView: View {
         fraction.formatted(.percent.precision(.fractionLength(0)))
     }
 }
+
+#Preview("Update card") {
+    ScrollView {
+        VStack(spacing: 20) {
+            ForEach(["available", "downloading", "verifying", "upToDate", "failed", "downloaded"], id: \.self) { name in
+                if let demo = DemoUpdates.state(named: name) {
+                    UpdateCardView(
+                        state: demo.state, currentVersion: "0.5.35", canInstallInPlace: true,
+                        icon: Image(systemName: "leaf.fill"), install: {}, later: {}, skip: {}, openPage: { _ in })
+                }
+            }
+        }
+        .padding(30)
+    }
+    .frame(height: 900)
+    .background(SylvraColor.surfacePrimary)
+}
