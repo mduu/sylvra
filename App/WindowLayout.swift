@@ -174,11 +174,13 @@ struct WindowLayoutCommands: Commands {
 }
 
 /// A panel floating over the content at one edge (inbox left, AI inspector right), closed with Esc.
-struct FloatingPanel<Content: View>: View {
+/// An optional `handle` sits on the panel's inner edge (the side facing the content), inside the panel.
+struct FloatingPanel<Content: View, Handle: View>: View {
     let edge: HorizontalEdge
     let width: CGFloat
     @Binding var isPresented: Bool
     @ViewBuilder let content: Content
+    @ViewBuilder var handle: Handle
 
     var body: some View {
         content
@@ -187,9 +189,16 @@ struct FloatingPanel<Content: View>: View {
             .background(.regularMaterial)
             .clipShape(RoundedRectangle(cornerRadius: 12))
             .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(.separator))
+            .overlay(alignment: edge == .leading ? .trailing : .leading) { handle }
             .shadow(color: .black.opacity(0.25), radius: 18, x: edge == .leading ? 6 : -6)
             .padding(8)
             .onExitCommand { isPresented = false }
             .transition(.move(edge: edge == .leading ? .leading : .trailing).combined(with: .opacity))
+    }
+}
+
+extension FloatingPanel where Handle == EmptyView {
+    init(edge: HorizontalEdge, width: CGFloat, isPresented: Binding<Bool>, @ViewBuilder content: () -> Content) {
+        self.init(edge: edge, width: width, isPresented: isPresented, content: content) { EmptyView() }
     }
 }

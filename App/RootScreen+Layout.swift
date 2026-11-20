@@ -132,17 +132,17 @@ extension WindowLayoutModifier {
         }
     }
 
-    /// Compact: the AI panel floats in from the right, its handle on the panel's edge.
+    /// Compact: the AI panel floats in from the right, its handle inside on the panel's left edge.
     @ViewBuilder
     fileprivate func floatingInspector(_ layout: WindowLayout) -> some View {
         if !layout.docksInspector, root.isInspectorPresented {
-            HStack(spacing: -8) {
+            // The handle sits inside the panel on its left edge, not floating beside it over the diff.
+            FloatingPanel(
+                edge: .trailing, width: WindowLayout.floatingInspectorWidth, isPresented: root.inspectorBinding
+            ) {
+                root.inspectorContent
+            } handle: {
                 root.aiHandle
-                FloatingPanel(
-                    edge: .trailing, width: WindowLayout.floatingInspectorWidth, isPresented: root.inspectorBinding
-                ) {
-                    root.inspectorContent
-                }
             }
             .transition(.move(edge: .trailing).combined(with: .opacity))
         }
