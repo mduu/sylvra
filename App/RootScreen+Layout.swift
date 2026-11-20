@@ -175,6 +175,18 @@ extension View {
     func windowLayout(_ root: RootScreen) -> some View {
         modifier(WindowLayoutModifier(root: root))
     }
+
+    /// Compact: a click into the diff puts the floating AI panel away, since it covers the diff's right side
+    /// (on a laptop much of the right half of a side-by-side diff). Taken on mouse-down, so a click that
+    /// opens the panel again on mouse-up (✦ on a finding, *Ask in chat*) still wins.
+    func closesFloatingPanel(_ isPresented: Binding<Bool>, isEnabled: Bool) -> some View {
+        simultaneousGesture(
+            DragGesture(minimumDistance: 0).onChanged { _ in
+                guard isPresented.wrappedValue else { return }
+                withAnimation(.snappy) { isPresented.wrappedValue = false }
+            },
+            including: isEnabled ? .all : .subviews)
+    }
 }
 
 /// Focus layout: the changed files in a popover (the pull request column is hidden).

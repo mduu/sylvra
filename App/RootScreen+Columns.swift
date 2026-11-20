@@ -178,6 +178,7 @@ extension RootScreen {
             )
             .environment(\.diffTrailingCover, floatingInspectorInset)
             .animation(.snappy, value: floatingInspectorInset)
+            .closesFloatingPanel(inspectorBinding, isEnabled: !layout.docksInspector && isInspectorPresented)
         }
         .panelHandle(.leading, isVisible: showsInboxHandle(onReviewColumn: true)) { inboxHandle }
         .panelHandle(.trailing, isVisible: hasAIPanel && !isInspectorPresented) { aiHandle }
