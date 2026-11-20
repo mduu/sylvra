@@ -58,15 +58,15 @@ public struct InboxScreen: View {
         .toolbar {
             ToolbarItem {
                 Button {
-                    Task {
-                        await model.refresh()
-                        await model.browser?.load(
-                            matching: model.browser?.searchText ?? "",
-                            excludingAuthors: model.filter.preferences.hiddenAuthors)
-                    }
+                    Task { await model.refreshAll() }
                 } label: {
-                    Label("Refresh", systemImage: "arrow.clockwise")
+                    if model.isRefreshing {
+                        ProgressView().controlSize(.small)
+                    } else {
+                        Label("Refresh", systemImage: "arrow.clockwise")
+                    }
                 }
+                .help(model.isRefreshing ? "Refreshing…" : "Refresh")
                 .keyboardShortcut("r", modifiers: .command)
             }
         }

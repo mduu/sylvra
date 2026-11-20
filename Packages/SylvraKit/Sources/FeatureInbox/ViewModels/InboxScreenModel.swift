@@ -19,6 +19,9 @@ public final class InboxScreenModel {
     /// (wired by the app for notifications).
     @ObservationIgnored public var onNewActivity: (([PullRequestSummary]) -> Void)?
     public private(set) var loadState: LoadState = .idle
+    /// A refresh runs (manual or periodic); the refresh button shows a spinner meanwhile.
+    public var isRefreshing: Bool { runningRefreshes > 0 }
+    private var runningRefreshes = 0
     public var searchText = ""
     /// Repositories the broad sections search (persisted; empty = all).
     public private(set) var scope: InboxScope
@@ -98,6 +101,8 @@ public final class InboxScreenModel {
     }
 
     public func refresh() async {
+        runningRefreshes += 1
+        defer { runningRefreshes -= 1 }
         if snapshot.isEmpty { loadState = .loading }
         do {
             let loaded = try await loader.loadInbox(scope: scope)
@@ -115,6 +120,16 @@ public final class InboxScreenModel {
             Self.logger.error("Loading the inbox failed: \(String(describing: error), privacy: .public)")
             loadState = .failed(Self.message(for: error))
         }
+    }
+
+    /// The refresh button: the inbox and, when shown, the browsed repository.
+    public func refreshAll() async {
+        guard !isRefreshing else { return }
+        runningRefreshes += 1
+        defer { runningRefreshes -= 1 }
+        await refresh()
+        await browser?.load(
+            matching: browser?.searchText ?? "", excludingAuthors: filter.preferences.hiddenAuthors)
     }
 
     // MARK: - Repository browser

@@ -183,6 +183,32 @@ struct InboxScreenModelTests {
         #expect(found.map(\.name) == ["billing", "billing-legacy"])
     }
 
+    @Test @MainActor func showsRefreshingWhileLoading() async {
+        actor Gate {
+            var continuation: CheckedContinuation<Void, Never>?
+            func wait() async { await withCheckedContinuation { continuation = $0 } }
+            func open() { continuation?.resume() }
+            var isWaiting: Bool { continuation != nil }
+        }
+        struct Gated: InboxLoading {
+            let gate: Gate
+            func loadInbox(scope: InboxScope) async throws -> InboxSnapshot {
+                await gate.wait()
+                return try await DemoInboxLoader().loadInbox(scope: scope)
+            }
+        }
+        let gate = Gate()
+        let model = InboxScreenModel(loader: Gated(gate: gate))
+        #expect(!model.isRefreshing)
+        let refresh = Task { await model.refreshAll() }
+        while await !gate.isWaiting { await Task.yield() }
+        #expect(model.isRefreshing)
+        await gate.open()
+        await refresh.value
+        #expect(!model.isRefreshing)
+        #expect(model.loadState == .loaded)
+    }
+
     @Test func reportsFailures() async {
         struct Failing: InboxLoading {
             func loadInbox(scope: InboxScope) async throws -> InboxSnapshot { throw GitHubError.notAuthenticated }
