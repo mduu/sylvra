@@ -29,6 +29,18 @@ public struct JSONCache: Sendable {
         try? data.write(to: url(for: key), options: .atomic)
     }
 
+    /// Encodes and writes on a background queue (in order), so a refresh never waits for the disk.
+    public func saveInBackground(_ value: some Encodable & Sendable, key: String) {
+        Self.writes.async { save(value, key: key) }
+    }
+
+    /// Returns once the background writes queued so far are on disk (tests, before quitting).
+    public static func waitForWrites() async {
+        await withCheckedContinuation { continuation in writes.async { continuation.resume() } }
+    }
+
+    private static let writes = DispatchQueue(label: "Sylvra.JSONCache", qos: .utility)
+
     private func url(for key: String) -> URL {
         let safe = key.map { $0.isLetter || $0.isNumber || $0 == "-" ? $0 : "_" }
         return directory.appending(path: String(safe) + ".json")

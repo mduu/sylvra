@@ -68,4 +68,14 @@ struct JSONCacheTests {
         #expect(cache.load([String: Date].self, key: "acme/billing#1")?["a"] == Date(timeIntervalSince1970: 0))
         #expect(cache.load([String: Date].self, key: "missing") == nil)
     }
+
+    @Test func savesInTheBackgroundInOrder() async {
+        let directory = FileManager.default.temporaryDirectory.appending(path: "sylvra-cache-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let cache = JSONCache(directory: directory)
+        cache.saveInBackground(["first"], key: "k")
+        cache.saveInBackground(["second"], key: "k")
+        await JSONCache.waitForWrites()
+        #expect(cache.load([String].self, key: "k") == ["second"])
+    }
 }

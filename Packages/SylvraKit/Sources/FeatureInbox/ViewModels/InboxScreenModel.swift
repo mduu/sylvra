@@ -110,7 +110,7 @@ public final class InboxScreenModel {
             // Unchanged results leave the list alone (no re-render while the reviewer scrolls).
             if !loaded.hasSameContent(as: previous) { snapshot = loaded }
             if loadState != .loaded { loadState = .loaded }
-            cache?.save(loaded, key: "inbox")
+            cache?.saveInBackground(loaded, key: "inbox")
             let active = loaded.newActivity(comparedTo: previous)
             if !active.isEmpty { onNewActivity?(active) }
             await refreshRepositoryCounts()

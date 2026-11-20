@@ -320,6 +320,7 @@ struct AIReviewPersistenceTests {
                 cache: JSONCache(directory: directory))
         }
         await makeModel().run(id, title: "t", body: "")
+        await JSONCache.waitForWrites()
         #expect(makeModel().results[id]?.findings.isEmpty == false)
         #expect(PullRequestID("acme/billing#7") == id)
     }

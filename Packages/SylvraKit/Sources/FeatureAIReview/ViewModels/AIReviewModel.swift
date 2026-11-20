@@ -165,7 +165,7 @@ public final class AIReviewModel {
             reviewed.headSHA = headSHA
             reviewed.reviewedAt = .now
             results[id] = reviewed
-            cache?.save(
+            cache?.saveInBackground(
                 Dictionary(uniqueKeysWithValues: results.map { ($0.key.description, $0.value) }),
                 key: "ai-review-results")
             let failures = progress.filter { if case .failed = $0.state { true } else { false } }
