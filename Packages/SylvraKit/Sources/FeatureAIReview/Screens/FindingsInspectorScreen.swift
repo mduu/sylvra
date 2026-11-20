@@ -80,6 +80,9 @@ public struct FindingsInspectorScreen: View {
                 runControl(for: pullRequest)
             }
             if model.runningPullRequest == pullRequest?.id {
+                if model.runState == .running, model.progress.isEmpty {
+                    ReviewPreparationRowView(step: model.preparation ?? String(localized: "Starting…"))
+                }
                 ForEach(model.progress, id: \.id) { AgentProgressRowView(progress: $0) }
                 if model.runState == .running {
                     Button("Cancel review", role: .cancel) { model.cancel() }.controlSize(.small)

@@ -52,6 +52,9 @@ struct RootModelBridges: View {
             .onChange(of: aiHighlights) { _, highlights in
                 withAnimation(.snappy) { environment.diff.lineHighlights = highlights }
             }
+            .onChange(of: environment.aiReview.preparation) {
+                if environment.aiReview.runState == .running { environment.activity.start(aiReviewJob) }
+            }
             .onChange(of: environment.aiReview.progress) {
                 // The overview shows how far the review got; the inspector has the agents in detail.
                 if environment.aiReview.runState == .running { environment.activity.start(aiReviewJob) }
@@ -95,7 +98,8 @@ extension RootModelBridges {
             ?? String(localized: "AI review")
         let detail =
             review.progress.isEmpty
-            ? nil : String(localized: "\(review.finishedAgentCount) of \(review.progress.count) agents")
+            ? review.preparation
+            : String(localized: "\(review.finishedAgentCount) of \(review.progress.count) agents")
         return ActivityJob(id: "ai-review", kind: .aiReview, title: title, detail: detail, pullRequest: pullRequest)
     }
 }

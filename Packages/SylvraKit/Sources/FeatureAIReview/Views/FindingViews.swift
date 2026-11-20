@@ -168,6 +168,23 @@ private struct FlowLocations: View {
 }
 
 /// Status of one agent job (pure).
+/// Before the agents start: what the review is preparing (pure).
+struct ReviewPreparationRowView: View {
+    let step: String
+
+    var body: some View {
+        HStack(spacing: 8) {
+            ProgressView().controlSize(.mini)
+            Text(step).aiFont(.caption).lineLimit(1)
+            Spacer()
+        }
+    }
+}
+
+#Preview("Preparing") {
+    ReviewPreparationRowView(step: "Checking out the pull request…").padding().frame(width: 300)
+}
+
 struct AgentProgressRowView: View {
     let progress: ReviewEngine.Progress
 

@@ -265,7 +265,7 @@ Existing threads inline (collapsible) with reply, resolve / unresolve, reactions
 ```
 
 - Single click runs with the PR's settings (or the global defaults).
-- **Progress** in the inspector: one row per agent / shard / model, streaming status, elapsed time, cancel. The toolbar activity indicator gives the overview ("AI review · billing #881", "2 of 3 agents", a button opens that pull request); the inspector has the detail.
+- **Progress** in the inspector: before the agents start, the step being prepared ("Loading the diff…", "Checking out the pull request…", "Reading the project's guidelines…"); then one row per agent / shard / model, streaming status, elapsed time, cancel. The toolbar activity indicator gives the overview ("AI review · billing #881", "2 of 3 agents", a button opens that pull request); the inspector has the detail.
 - **One review at a time.** The inspector header always offers the next step: *Run AI Review* before the first review, *Run again* after it, *Cancel* while it runs. While a review runs for another pull request, the header says which one (with its progress), and offers *Show* and *Stop It and Review This One*.
 - The tabs **Findings · Patterns · Chat** are always shown for a selected pull request: the chat works without a review; findings and patterns say "No AI review yet" until there is one (no count badge then).
 - Findings and patterns appear **live** as shards complete.

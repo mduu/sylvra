@@ -23,6 +23,9 @@ public final class AIReviewModel {
 
     public private(set) var results: [PullRequestID: ReviewResult] = [:]
     public private(set) var progress: [ReviewEngine.Progress] = []
+    /// What the review prepares before its agents start (loading the diff, checking out, reading guidelines);
+    /// `nil` once the agents run. Without it the inspector showed only *Cancel* for that time.
+    public private(set) var preparation: String?
     public private(set) var runState: RunState = .idle
     public private(set) var runningPullRequest: PullRequestID?
     public private(set) var agentVersion: String?
@@ -152,10 +155,13 @@ public final class AIReviewModel {
 
     private func perform(_ id: PullRequestID, title: String, body: String) async {
         let headSHA = currentHeadSHA(id)
+        defer { preparation = nil }
         do {
+            preparation = String(localized: "Loading the diff…")
             async let filesToReview = files(id)
             async let checkout = workspace(id)
             let reviewable = try await filesToReview
+            preparation = String(localized: "Checking out the pull request…")
             var directory: URL?
             do {
                 directory = try await checkout
@@ -163,11 +169,13 @@ public final class AIReviewModel {
                 workspaceWarning = String(
                     localized: "Reviewing the diff only — checkout failed: \(error.localizedDescription)")
             }
+            preparation = String(localized: "Reading the project's guidelines…")
             let root = directory
             let context = await Task.detached { root.map { RepoContextDiscovery().documents(in: $0) } ?? [] }.value
             let input = ReviewEngine.Input(
                 files: reviewable, title: title, body: body, context: context, history: [], settings: settings(for: id),
                 workingDirectory: directory)
+            preparation = nil
             let result = await engine.run(input) { [weak self] update in
                 self?.apply(update)
             }
