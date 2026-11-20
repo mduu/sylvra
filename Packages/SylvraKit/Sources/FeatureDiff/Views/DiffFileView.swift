@@ -138,6 +138,7 @@ struct DiffFileBodyView<Accessory: View>: View {
     @Environment(\.diffCurrentMatch) private var currentMatch
     @Environment(\.diffIsWide) private var diffIsWide
     @Environment(\.diffSelectFinding) private var selectFinding
+    @Environment(\.diffOpenInIDE) var ide
 
     /// One lazily built row; unique string IDs (nested offset-based IDs collided and dropped rows).
     private enum Row: Identifiable {
@@ -218,7 +219,7 @@ struct DiffFileBodyView<Accessory: View>: View {
                 case .inline(let hunkIndex, let rowIndex, let line, let continuation):
                     VStack(spacing: 0) {
                         InlineLineView(
-                            line: line, onComment: onComment,
+                            line: line, onComment: onComment, openInIDE: ideAction(line, in: hunks[hunkIndex]),
                             selectionKey: .init(path: path, lane: .inline, hunk: hunkIndex, row: rowIndex)
                         )
                         .selectsFinding(
@@ -228,7 +229,8 @@ struct DiffFileBodyView<Accessory: View>: View {
                         .contextMenu {
                             DiffCopyMenu(
                                 newLine: line.kind == .removed ? nil : line,
-                                oldLine: line.kind == .removed ? line : nil, hunk: hunks[hunkIndex], copy: copy)
+                                oldLine: line.kind == .removed ? line : nil, hunk: hunks[hunkIndex], copy: copy,
+                                openInIDE: ideAction(line, in: hunks[hunkIndex]))
                         }
                         .overlay {
                             AIHighlightOverlay(
@@ -242,11 +244,14 @@ struct DiffFileBodyView<Accessory: View>: View {
                     VStack(spacing: 0) {
                         SideBySideRowView(
                             row: row, connector: connector, onComment: onComment,
+                            openInIDE: { ideAction($0 == .left ? row.left : row.right, in: hunks[hunkIndex]) },
                             selectionPlace: .init(path: path, hunk: hunkIndex, row: rowIndex)
                         )
                         .selectsFinding(row.right?.newNumber.flatMap(highlight)?.findingID, using: selectFinding)
                         .contextMenu {
-                            DiffCopyMenu(newLine: row.right, oldLine: row.left, hunk: hunks[hunkIndex], copy: copy)
+                            DiffCopyMenu(
+                                newLine: row.right, oldLine: row.left, hunk: hunks[hunkIndex], copy: copy,
+                                openInIDE: ideAction(row.right ?? row.left, in: hunks[hunkIndex]))
                         }
                         .overlay {
                             searchOverlay(

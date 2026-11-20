@@ -4,10 +4,10 @@ import SwiftUI
 import SylvraCore
 
 let diffRowHeight: CGFloat = 22
-/// Gutter of one side-by-side half: comment button (20) + line number (34 + 8).
-let halfGutterWidth: CGFloat = 62
-/// Gutter of the inline layout: comment button + old and new line numbers.
-let inlineGutterWidth: CGFloat = 104
+/// Gutter of one side-by-side half: hover buttons (comment, open in IDE: 38) + line number (34 + 8).
+let halfGutterWidth: CGFloat = 80
+/// Gutter of the inline layout: hover buttons + old and new line numbers.
+let inlineGutterWidth: CGFloat = 122
 private let codeFont = Font.system(size: 12.5, design: .monospaced)
 /// Unchanged code is slightly dimmed, so the change is in the light (focus lens, see specs/ux.md §7.2).
 private let contextOpacity = 0.62
@@ -21,6 +21,8 @@ struct InlineLineView: View {
     @Environment(\.syntaxLanguage) private var language
     let line: DiffLine
     var onComment: CommentRequest?
+    /// Opens this line in the IDE (`nil`: no IDE).
+    var openInIDE: GutterIDEAction?
     /// The row's place for mouse selection (`nil`: not selectable).
     var selectionKey: DiffTextSelectionController.RowKey?
     @State private var isHovered = false
@@ -28,7 +30,7 @@ struct InlineLineView: View {
     var body: some View {
         HStack(spacing: 0) {
             HStack(spacing: 0) {
-                CommentGutter(isHovered: isHovered, action: commentAction)
+                LineGutterButtons(isHovered: isHovered, comment: commentAction, openInIDE: openInIDE)
                 LineNumber(line.oldNumber, kind: line.kind)
                 LineNumber(line.newNumber, kind: line.kind)
             }
@@ -79,6 +81,8 @@ struct SideBySideRowView: View {
     let row: SideBySideRow
     var connector: ConnectorSegment?
     var onComment: CommentRequest?
+    /// Opens the line of a half in the IDE (`nil`: no IDE).
+    var openInIDE: (CodeLocation.Side) -> GutterIDEAction? = { _ in nil }
     /// File, hunk and row for mouse selection (`nil`: not selectable); each half is its own lane.
     var selectionPlace: DiffTextSelectionController.RowPlace?
 
@@ -86,11 +90,11 @@ struct SideBySideRowView: View {
         HStack(spacing: 0) {
             SideBySideHalf(
                 line: row.left, number: row.left?.oldNumber, side: .left, onComment: onComment,
-                selectionKey: key(.left))
+                openInIDE: openInIDE(.left), selectionKey: key(.left))
             ConnectorRibbonView(segment: connector, rowHeight: diffRowHeight).frame(width: connectorWidth)
             SideBySideHalf(
                 line: row.right, number: row.right?.newNumber, side: .right, onComment: onComment,
-                selectionKey: key(.right))
+                openInIDE: openInIDE(.right), selectionKey: key(.right))
         }
         .font(codeFont)
         .frame(height: diffRowHeight)
@@ -107,13 +111,16 @@ private struct SideBySideHalf: View {
     let number: Int?
     let side: CodeLocation.Side
     let onComment: CommentRequest?
+    let openInIDE: GutterIDEAction?
     let selectionKey: DiffTextSelectionController.RowKey?
     @State private var isHovered = false
 
     var body: some View {
         HStack(spacing: 0) {
             HStack(spacing: 0) {
-                CommentGutter(isHovered: isHovered && line != nil, action: commentAction)
+                LineGutterButtons(
+                    isHovered: isHovered && line != nil, comment: commentAction,
+                    openInIDE: line == nil ? nil : openInIDE)
                 LineNumber(number, kind: line?.kind ?? .context)
             }
             .frame(maxHeight: .infinity)
@@ -143,33 +150,6 @@ private struct SideBySideHalf: View {
     private var commentAction: ((Bool) -> Void)? {
         guard let onComment, let number, line != nil else { return nil }
         return { onComment(side, number, $0) }
-    }
-}
-
-/// `+` button shown in the gutter while the line is hovered. ⇧-click extends the comment to a range.
-private struct CommentGutter: View {
-    let isHovered: Bool
-    let action: ((_ extendsRange: Bool) -> Void)?
-
-    var body: some View {
-        ZStack {
-            if let action, isHovered {
-                Button {
-                    action(NSEvent.modifierFlags.contains(.shift))
-                } label: {
-                    Image(systemName: "plus")
-                        .font(.system(size: 10, weight: .bold))
-                        .foregroundStyle(.white)
-                        .frame(width: 16, height: 16)
-                        .background(SylvraColor.brandPrimary, in: RoundedRectangle(cornerRadius: 4))
-                }
-                .buttonStyle(.plain)
-                .help("Comment on this line (⇧-click to extend a range)")
-                .transition(.scale(scale: 0.6).combined(with: .opacity))
-            }
-        }
-        .frame(width: 20)
-        .animation(.snappy(duration: 0.12), value: isHovered)
     }
 }
 

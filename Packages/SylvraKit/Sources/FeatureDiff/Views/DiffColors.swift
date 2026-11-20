@@ -107,6 +107,21 @@ extension EnvironmentValues {
     @Entry var diffHorizontalOffset: CGFloat = 0
     /// Mouse selection across lines (`nil`: code can't be selected, e.g. previews).
     @Entry var diffTextSelection: DiffTextSelectionController?
+    /// Opens a line of the diff in the reviewer's IDE (`nil`: no IDE action, e.g. previews).
+    @Entry var diffOpenInIDE: DiffOpenInIDE?
+}
+
+/// *Open in IDE* at a line of the diff (gutter button on hover, right-click menu).
+public struct DiffOpenInIDE {
+    /// The IDE's name for labels ("Rider").
+    public let name: String
+    /// Opens the file at a line of the pull request's head.
+    public let open: (_ path: String, _ line: Int) -> Void
+
+    public init(name: String, open: @escaping (_ path: String, _ line: Int) -> Void) {
+        self.name = name
+        self.open = open
+    }
 }
 
 /// Remembers rendered lines so scrolling and re-renders don't re-tokenise (bounded LRU-ish cache).

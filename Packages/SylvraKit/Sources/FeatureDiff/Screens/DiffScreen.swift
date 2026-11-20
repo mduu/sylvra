@@ -7,7 +7,8 @@ import SylvraCore
 /// - `lineAccessory` renders content below a line (e.g. review threads and the comment composer),
 /// - `onStartComment` is called with the location and its text when the reviewer starts a comment
 ///   (gutter `+` or click on a line number; ⇧-click extends the range on the same side),
-/// - `onAskAI` opens a chat about code selected with the mouse (location and selected text).
+/// - `onAskAI` opens a chat about code selected with the mouse (location and selected text),
+/// - `openInIDE` opens a line in the reviewer's IDE (gutter button on hover, right-click menu).
 public struct DiffScreen<LineAccessory: View>: View {
     @Bindable private var model: DiffScreenModel
     private let pullRequestID: PullRequestID?
@@ -15,6 +16,7 @@ public struct DiffScreen<LineAccessory: View>: View {
     private let lineAccessory: (CodeLocation) -> LineAccessory
     private let onStartComment: ((CodeLocation, String) -> Void)?
     private let onAskAI: ((CodeLocation, String) -> Void)?
+    private let openInIDE: DiffOpenInIDE?
     /// Reloads the PR after a push (details, head SHA → diff); `nil` reloads only the diff.
     private let onRefresh: (() async -> Void)?
     @State private var diffIsWide = true
@@ -32,6 +34,7 @@ public struct DiffScreen<LineAccessory: View>: View {
         @ViewBuilder lineAccessory: @escaping (CodeLocation) -> LineAccessory,
         onStartComment: ((CodeLocation, String) -> Void)? = nil,
         onAskAI: ((CodeLocation, String) -> Void)? = nil,
+        openInIDE: DiffOpenInIDE? = nil,
         onRefresh: (() async -> Void)? = nil
     ) {
         self.model = model
@@ -40,6 +43,7 @@ public struct DiffScreen<LineAccessory: View>: View {
         self.lineAccessory = lineAccessory
         self.onStartComment = onStartComment
         self.onAskAI = onAskAI
+        self.openInIDE = openInIDE
         self.onRefresh = onRefresh
     }
 
@@ -190,6 +194,7 @@ public struct DiffScreen<LineAccessory: View>: View {
                 .onAppear(perform: connectTextSelection)
                 .onChange(of: pullRequestID) { textSelection.clear() }
                 .environment(\.diffSelectFinding, isCommitMode ? nil : model.selectFinding)
+                .environment(\.diffOpenInIDE, openInIDE)
                 .environment(\.diffSearchQuery, model.isSearchPresented ? model.searchQuery : "")
                 .environment(
                     \.diffCurrentMatch,

@@ -54,6 +54,18 @@ public struct Hunk: Hashable, Sendable {
     }
 }
 
+extension Hunk {
+    /// The line in the new version (the pull request's head) to open for a line of this hunk: its own new line,
+    /// for a removed line the next line that still exists (else the previous one, else the hunk's start).
+    public func headLine(for line: DiffLine) -> Int {
+        if let number = line.newNumber { return number }
+        guard let index = lines.firstIndex(of: line) else { return max(newStart, 1) }
+        let after = lines[index...].lazy.compactMap(\.newNumber).first
+        let before = lines[..<index].reversed().lazy.compactMap(\.newNumber).first
+        return after ?? before ?? max(newStart, 1)
+    }
+}
+
 /// One line of a hunk.
 public struct DiffLine: Hashable, Sendable {
     public enum Kind: Sendable {

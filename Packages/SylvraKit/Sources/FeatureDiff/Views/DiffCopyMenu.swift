@@ -7,8 +7,16 @@ struct DiffCopyMenu: View {
     let oldLine: DiffLine?
     let hunk: Hunk
     let copy: (String) -> Void
+    /// *Open in <IDE> at Line n* on top (`nil`: no IDE).
+    var openInIDE: GutterIDEAction?
 
     var body: some View {
+        if let openInIDE {
+            Button("Open in \(openInIDE.name) at Line \(openInIDE.line)", systemImage: "arrow.up.forward.app") {
+                openInIDE.open()
+            }
+            Divider()
+        }
         if let newLine, let oldLine, newLine != oldLine {
             Button("Copy New Line") { copy(newLine.text) }
             Button("Copy Old Line") { copy(oldLine.text) }
