@@ -30,9 +30,9 @@ public enum ReviewMerger {
             for raw in output.patterns ?? [] {
                 add(pattern(raw, files: byPath), to: &patterns)
             }
-            // Shards and models may name the same point; the first wording wins.
+            // Shards and models may name the same point in other words; the first wording wins.
             for raw in output.overall ?? []
-            where !overall.contains(where: { $0.title.caseInsensitiveCompare(raw.title) == .orderedSame }) {
+            where !overall.contains(where: { overlap(stems($0.title), stems(raw.title)) >= 0.6 }) {
                 overall.append(
                     OverallFinding(
                         kind: raw.kind.flatMap(OverallFinding.Kind.init(rawValue:)) ?? .other, title: raw.title,
@@ -128,16 +128,37 @@ public enum ReviewMerger {
             isAnchored: anchored)
     }
 
-    /// Same file, overlapping lines and a similar title.
+    /// The same problem reported twice (other models or shards): same file, close lines and similar wording.
+    ///
+    /// Deliberately cautious, since merging two different problems hides one; what slips through is grouped by
+    /// `FindingConsolidator` when several models ran.
     static func isDuplicate(_ lhs: ReviewFinding, _ rhs: ReviewFinding) -> Bool {
-        guard lhs.path == rhs.path, lhs.startLine <= rhs.endLine + 2, rhs.startLine <= lhs.endLine + 2 else {
-            return false
+        guard lhs.path == rhs.path else { return false }
+        // Lines between the two ranges (negative: they overlap).
+        let gap = max(lhs.startLine, rhs.startLine) - min(lhs.endLine, rhs.endLine)
+        guard gap <= 6 else { return false }
+        let lhsTitle = stems(lhs.title)
+        let rhsTitle = stems(rhs.title)
+        guard !lhsTitle.isEmpty, !rhsTitle.isEmpty else { return gap <= 2 && lhs.category == rhs.category }
+        let title = overlap(lhsTitle, rhsTitle)
+        if gap <= 2 {
+            return title >= 0.4 || (lhs.category == rhs.category && lhs.startLine == rhs.startLine)
+                || (title >= 0.25 && overlap(stems(lhs.rationale), stems(rhs.rationale)) >= 0.35)
         }
-        let lhsWords = Set(lhs.title.lowercased().split(whereSeparator: { !$0.isLetter }).filter { $0.count > 3 })
-        let rhsWords = Set(rhs.title.lowercased().split(whereSeparator: { !$0.isLetter }).filter { $0.count > 3 })
-        guard !lhsWords.isEmpty, !rhsWords.isEmpty else { return lhs.category == rhs.category }
-        return Double(lhsWords.intersection(rhsWords).count) / Double(min(lhsWords.count, rhsWords.count)) >= 0.4
-            || (lhs.category == rhs.category && lhs.startLine == rhs.startLine)
+        // A few lines apart (one model at the cause, the other at the effect): clearly the same wording.
+        return lhs.category == rhs.category && title >= 0.5
+    }
+
+    /// Word stems: words longer than three letters, cut to five letters, so "rounding" / "rounded" and
+    /// "Rundung" / "Rundungen" match.
+    static func stems(_ text: String) -> Set<Substring> {
+        Set(text.lowercased().split(whereSeparator: { !$0.isLetter }).filter { $0.count > 3 }.map { $0.prefix(5) })
+    }
+
+    /// Shared stems relative to the shorter text.
+    static func overlap(_ lhs: Set<Substring>, _ rhs: Set<Substring>) -> Double {
+        guard !lhs.isEmpty, !rhs.isEmpty else { return 0 }
+        return Double(lhs.intersection(rhs).count) / Double(min(lhs.count, rhs.count))
     }
 }
 
