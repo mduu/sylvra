@@ -287,6 +287,7 @@ stateDiagram-v2
 ## 10. Chat
 
 - Inspector tab *Chat* or floating panel (⌘⇧K).
+- While an answer is on its way: a pulsing sparkle in a turning ring of the AI colors, a shimmering status that changes every few seconds ("Reading the diff…", "Weighing edge cases…") and, after 3 s, the time waited; still with Reduce Motion (the status keeps changing).
 - Context chips: PR, current file, selected lines, selected finding, current commit — removable.
 - Answers in the configured **agent language** (e.g. German), rendered Markdown (headings, nested lists, fenced code, quotes, rules, tables with aligned columns; long code lines wrap), clickable `path:line` references. The reviewer's own messages stay plain.
 - The chat follows new messages: an answer is scrolled to its first line, a sent question to the end, and opening the tab shows the end. Scrolled up, a round ↓ button floats at the bottom centre and jumps to the latest message.

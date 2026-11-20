@@ -37,10 +37,7 @@ public struct AIChatPanel: View {
                 .id(message.id)
             }
             if model.isSending {
-                HStack(spacing: 6) {
-                    ProgressView().controlSize(.small)
-                    Text("Thinking…").aiFont(.caption).foregroundStyle(.secondary)
-                }
+                ChatThinkingView()
             }
             if model.messages(for: pullRequestID).isEmpty, let id = pullRequestID {
                 FlowPrompts(prompts: AIChatModel.quickPrompts) { prompt in Task { await model.send(prompt, for: id) } }

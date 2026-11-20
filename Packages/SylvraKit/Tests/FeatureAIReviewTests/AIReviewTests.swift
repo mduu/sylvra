@@ -308,6 +308,14 @@ struct AIChatModelTests {
         #expect(prompt.contains("path:line"))
     }
 
+    @Test func thinkingStatusChangesEveryFewSecondsAndWraps() {
+        let count = ChatThinkingView.phrases.count
+        #expect(ChatThinkingView.phraseIndex(elapsed: 0, offset: 2, count: count) == 2)
+        #expect(ChatThinkingView.phraseIndex(elapsed: 2.7, offset: 2, count: count) == 2)
+        #expect(ChatThinkingView.phraseIndex(elapsed: 2.9, offset: 2, count: count) == 3)
+        #expect(ChatThinkingView.phraseIndex(elapsed: 2.8 * Double(count), offset: 0, count: count) == 0)
+    }
+
     @Test func findsCodeReferences() {
         let refs = AIChatModel.codeReferences(in: "See Sources/Billing/InvoiceService.swift:9 and Package.swift:3.")
         #expect(refs.map(\.path) == ["Sources/Billing/InvoiceService.swift", "Package.swift"])
