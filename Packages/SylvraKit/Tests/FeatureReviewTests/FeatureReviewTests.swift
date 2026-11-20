@@ -218,9 +218,23 @@ struct ReviewScreenModelTests {
         let model = ReviewScreenModel(service: FailingResolveService())
         await model.load(id)
         let thread = try #require(model.threads.first { !$0.isResolved })
+        var reported: [String] = []
+        model.onResolvedChange = { id, _ in reported.append(id) }
         await model.setResolved(true, thread: thread)
         #expect(model.threads.first { $0.id == thread.id }?.isResolved == false)
         #expect(model.errorMessage != nil)
+        #expect(reported.isEmpty)
+        #expect(await model.setResolved(true, threadID: thread.id) == false)
+    }
+
+    @Test func resolvesByIDAndReportsTheChange() async throws {
+        let model = await loadedModel()
+        let thread = try #require(model.threads.first { !$0.isResolved })
+        var reported: [(String, Bool)] = []
+        model.onResolvedChange = { reported.append(($0, $1)) }
+        #expect(await model.setResolved(true, threadID: thread.id))
+        #expect(model.threads.first { $0.id == thread.id }?.isResolved == true)
+        #expect(reported.map(\.0) == [thread.id] && reported.map(\.1) == [true])
     }
 }
 

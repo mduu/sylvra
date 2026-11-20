@@ -99,7 +99,10 @@ public struct PullRequestScreen<Files: View, OverviewTop: View, Summary: View, C
                 conversation
             } else {
                 DiscussionListView(
-                    items: model.discussionFilter.apply(detail.discussion), showInCode: showInCode, open: open)
+                    items: model.discussionFilter.apply(detail.discussion), showInCode: showInCode,
+                    toggleResolved: model.resolveThread == nil
+                        ? nil : { item in Task { await model.toggleResolved(item) } },
+                    open: open)
             }
         case .checks:
             LazyVStack(alignment: .leading, spacing: 6) {

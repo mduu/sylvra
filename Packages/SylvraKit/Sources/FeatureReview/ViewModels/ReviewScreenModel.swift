@@ -45,7 +45,7 @@ public final class ReviewScreenModel {
 
     private var threadsByAnchor: [CodeLocation: [ReviewThread]] = [:]
     /// Threads the reviewer expanded or collapsed against their default.
-    private var toggledThreadIDs: Set<String> = []
+    var toggledThreadIDs: Set<String> = []
     var pullRequestID: PullRequestID?
     let service: any ReviewService
     private let logger = SylvraLog.logger("review")
@@ -121,6 +121,8 @@ public final class ReviewScreenModel {
     public var rewriter: Rewriter?
     /// Hands the draft's lines and text to a private AI discussion (wired by the app).
     public var discussHandler: ((_ location: CodeLocation, _ code: String, _ question: String) -> Void)?
+    /// A thread was resolved or reopened (wired by the app, so the Comments tab follows).
+    public var onResolvedChange: ((_ threadID: String, _ isResolved: Bool) -> Void)?
     /// Asks the AI agent about a review thread (wired by the app; `nil` hides "Ask AI").
     public var threadDiscussionHandler: ((ReviewThread) -> Void)?
     /// What the AI is doing with the draft right now (`nil`: nothing).
@@ -221,16 +223,6 @@ public final class ReviewScreenModel {
         }
     }
 
-    public func setResolved(_ resolved: Bool, thread: ReviewThread) async {
-        updateThread(thread.id) { $0.isResolved = resolved }
-        toggledThreadIDs.remove(thread.id)
-        await perform(resolved ? "resolve" : "unresolve") {
-            try await self.service.setResolved(resolved, threadID: thread.id)
-        } rollback: {
-            self.updateThread(thread.id) { $0.isResolved = !resolved }
-        }
-    }
-
     public func beginEditing(_ comment: ReviewComment) { editDrafts[comment.id] = comment.body }
 
     public func cancelEditing(_ comment: ReviewComment) { editDrafts[comment.id] = nil }
@@ -306,7 +298,7 @@ public final class ReviewScreenModel {
         snapshot = try await service.loadReview(for: pullRequestID)
     }
 
-    private func updateThread(_ id: String, _ change: (inout ReviewThread) -> Void) {
+    func updateThread(_ id: String, _ change: (inout ReviewThread) -> Void) {
         guard var thread = snapshot?.threads.first(where: { $0.id == id }),
             let index = snapshot?.threads.firstIndex(where: { $0.id == id })
         else { return }
@@ -324,7 +316,7 @@ public final class ReviewScreenModel {
         snapshot?.threads[threadIndex].comments[index] = comment
     }
 
-    private func perform(
+    func perform(
         _ action: String, _ work: () async throws -> Void, rollback: (() -> Void)? = nil
     ) async {
         isWorking = true

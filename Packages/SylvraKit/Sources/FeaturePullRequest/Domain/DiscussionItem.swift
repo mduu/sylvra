@@ -60,6 +60,14 @@ public struct DiscussionItem: Identifiable, Hashable, Sendable {
         return false
     }
 
+    /// The same code thread, resolved or reopened.
+    public func settingResolved(_ resolved: Bool) -> DiscussionItem {
+        guard case .code(let path, let line, _) = place else { return self }
+        return DiscussionItem(
+            id: id, place: .code(path: path, line: line, isResolved: resolved), author: author, body: body, date: date,
+            url: url, replies: replies)
+    }
+
     /// Number of comments, replies included.
     public var commentCount: Int { 1 + replies.count }
 }

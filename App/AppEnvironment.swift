@@ -111,6 +111,11 @@ final class AppEnvironment {
         conversation = ConversationModel(
             service: isDemo ? DemoConversationService() : GitHubConversationService(client: gitHub))
         Self.configureCommentRewriting(review, agent: agent, isDemo: isDemo)
+        // Resolving in the Comments tab and in the diff goes through the review model; both stay in step.
+        let reviewModel = review
+        let pullRequestModel = pullRequest
+        pullRequest.resolveThread = { id, resolved in await reviewModel.setResolved(resolved, threadID: id) }
+        review.onResolvedChange = { id, resolved in pullRequestModel.markResolved(id, resolved) }
         conversation.rewriter = review.rewriter
         conversation.defaultCommentLanguage = review.defaultCommentLanguage
         review.isSubmitSheetPresented = arguments.contains("--submit-review")

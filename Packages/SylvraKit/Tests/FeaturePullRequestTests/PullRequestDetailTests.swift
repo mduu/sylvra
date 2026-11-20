@@ -146,4 +146,25 @@ struct PullRequestScreenModelTests {
         await model.load(nil)
         #expect(model.detail == nil)
     }
+
+    @Test func resolvesCodeThreadsFromTheCommentsTab() async throws {
+        let model = PullRequestScreenModel(loader: DemoPullRequestDetailLoader())
+        await model.load(PullRequestID(owner: "acme", repository: "billing", number: 1234))
+        var accepts = true
+        model.resolveThread = { _, _ in accepts }
+        let thread = try #require(model.detail?.discussion.first { $0.id == "t1" })
+        #expect(!thread.isResolved)
+        await model.toggleResolved(thread)
+        #expect(model.detail?.discussion.first { $0.id == "t1" }?.isResolved == true)
+
+        // GitHub refuses: the thread shows as resolved again.
+        accepts = false
+        let resolved = try #require(model.detail?.discussion.first { $0.id == "t1" })
+        await model.toggleResolved(resolved)
+        #expect(model.detail?.discussion.first { $0.id == "t1" }?.isResolved == true)
+
+        // Reopened in the diff: the tab follows.
+        model.markResolved("t1", false)
+        #expect(model.detail?.discussion.first { $0.id == "t1" }?.isResolved == false)
+    }
 }

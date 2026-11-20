@@ -6,6 +6,7 @@ import SylvraCore
 struct DiscussionListView: View {
     let items: [DiscussionItem]
     var showInCode: ((String, Int?) -> Void)?
+    var toggleResolved: ((DiscussionItem) -> Void)?
     var open: (URL?) -> Void = { _ in }
 
     var body: some View {
@@ -14,7 +15,7 @@ struct DiscussionListView: View {
                 Text("No comments here").foregroundStyle(.secondary).padding(.top, 4)
             }
             ForEach(items) { item in
-                DiscussionRowView(item: item, showInCode: showInCode, open: open)
+                DiscussionRowView(item: item, showInCode: showInCode, toggleResolved: toggleResolved, open: open)
             }
         }
     }
@@ -24,6 +25,7 @@ struct DiscussionListView: View {
 struct DiscussionRowView: View {
     let item: DiscussionItem
     var showInCode: ((String, Int?) -> Void)?
+    var toggleResolved: ((DiscussionItem) -> Void)?
     var open: (URL?) -> Void = { _ in }
     @State private var isExpanded = false
 
@@ -63,11 +65,38 @@ struct DiscussionRowView: View {
                     replyView(reply)
                 }
             }
+            codeActions
         }
         .padding(10)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(.quaternary.opacity(0.35), in: RoundedRectangle(cornerRadius: 10))
         .opacity(item.isResolved ? 0.6 : 1)
+    }
+
+    /// Code threads: jump to the comment in the diff, resolve or reopen it.
+    @ViewBuilder private var codeActions: some View {
+        if let location = item.codeLocation, showInCode != nil || toggleResolved != nil {
+            HStack(spacing: 12) {
+                if let showInCode {
+                    Button("Show in diff", systemImage: "arrow.forward.circle") {
+                        showInCode(location.path, location.line)
+                    }
+                    .help(
+                        location.line == nil ? "Show the file (the commented code changed since)" : "Show in the diff")
+                }
+                if let toggleResolved {
+                    Button(
+                        item.isResolved ? "Unresolve" : "Resolve",
+                        systemImage: item.isResolved ? "arrow.uturn.backward.circle" : "checkmark.circle"
+                    ) { toggleResolved(item) }
+                    .help(
+                        item.isResolved ? "Reopen this conversation on GitHub" : "Resolve this conversation on GitHub")
+                }
+            }
+            .buttonStyle(.borderless)
+            .font(.caption)
+            .padding(.top, 2)
+        }
     }
 
     private var moreTitle: String {
