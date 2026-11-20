@@ -94,7 +94,7 @@ Sylvra is **not a Git client** and not a code generator. It helps you understand
 
 ### 7. Fits the screen you're on
 - **Window layouts** (`⌃⌘0`–`⌃⌘4`): *Automatic*, *Wide* (all columns), *Compact* for laptops (inbox and AI float in on demand), *Focus* (only the diff), *Two windows* for two screens.
-- Collapse the inbox and the AI panel with their edge handles; column widths are remembered.
+- Collapse the inbox and the AI panel with their edge handles; window layout, column widths and window frames are remembered per screen setup (laptop, 34", 49", two 27"…).
 - Light, dark or automatic appearance.
 
 <p align="center">

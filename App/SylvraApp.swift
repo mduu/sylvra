@@ -23,6 +23,7 @@ struct SylvraApp: App {
         ScrollerPreference.apply()
         WindowLayout.applyLaunchArgument()
         Self.expandReadingOrderIfAsked()
+        DisplaySetupMonitor.shared.start()
     }
 
     /// `--expand-reading-order` (screenshots): the AI summary's reading order starts expanded, for this launch.

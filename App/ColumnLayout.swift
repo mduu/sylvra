@@ -1,12 +1,12 @@
 import SwiftUI
 
-/// Remembers the widths the user dragged the columns to and restores them at launch.
+/// The columns whose widths are remembered (per screen setup, see `DisplaySetupMonitor`).
 ///
 /// `NavigationSplitView` and `.inspector` don't persist column widths, so each column reports its width
-/// and the stored value becomes the column's ideal width at the next launch. The stored values are read
-/// once: feeding them back while dragging would fight the split view.
+/// and the stored value becomes the column's ideal width when the columns are built (at launch and after a
+/// screen change). Feeding the values back while dragging would fight the split view.
 enum ColumnLayout {
-    enum Column: String {
+    enum Column: String, CaseIterable {
         case inbox, pullRequest, inspector
 
         var range: ClosedRange<CGFloat> {
@@ -25,25 +25,13 @@ enum ColumnLayout {
             }
         }
 
-        var key: String { "layout.columnWidth.\(rawValue)" }
-    }
-
-    /// The width to start with: the last width the user chose, otherwise the default.
-    static func initialWidth(_ column: Column, defaults: UserDefaults = .standard) -> CGFloat {
-        let stored = defaults.double(forKey: column.key)
-        guard stored > 0 else { return column.defaultWidth }
-        return min(max(stored, column.range.lowerBound), column.range.upperBound)
-    }
-
-    /// Saves a width the column was laid out with (ignores hidden or collapsing columns).
-    static func save(_ width: CGFloat, for column: Column, defaults: UserDefaults = .standard) {
-        guard column.range.contains(width) else { return }
-        defaults.set(Double(width.rounded()), forKey: column.key)
+        /// Stored as `layout.columnWidth.<column>` before widths were remembered per setup.
+        var memoryName: String { "columnWidth.\(rawValue)" }
     }
 }
 
 extension View {
-    /// Column width that is stable while content changes and remembered across launches.
+    /// Column width that is stable while content changes and remembered per screen setup.
     ///
     /// The content can neither widen nor narrow the column (otherwise a refresh that changes a chip or a
     /// title makes the split view redistribute the columns); the limits come from the split view alone.
@@ -57,7 +45,7 @@ extension View {
             .onGeometryChange(for: CGFloat.self) {
                 $0.size.width
             } action: { width in
-                ColumnLayout.save(width, for: column)
+                DisplaySetupMonitor.shared.saveWidth(width, for: column)
             }
     }
 

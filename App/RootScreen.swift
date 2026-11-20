@@ -23,10 +23,12 @@ struct RootScreen: View {
     @State var columnVisibility: NavigationSplitViewVisibility
     @State var overlay: Overlay?
     @State private var keyboard = KeyboardNavigator()
-    /// Column widths of the last session (read once at launch, see `ColumnLayout`).
-    let inboxWidth = ColumnLayout.initialWidth(.inbox)
-    let pullRequestWidth = ColumnLayout.initialWidth(.pullRequest)
-    let inspectorWidth = ColumnLayout.initialWidth(.inspector)
+    /// Remembers columns, layout and window frames per screen combination.
+    let displays = DisplaySetupMonitor.shared
+    /// Column widths last used with these screens (see `ColumnLayout`).
+    var inboxWidth: CGFloat { displays.width(.inbox) }
+    var pullRequestWidth: CGFloat { displays.width(.pullRequest) }
+    var inspectorWidth: CGFloat { displays.width(.inspector) }
     @AppStorage(WindowLayout.storageKey) var layoutMode = WindowLayout.automatic.rawValue
     /// The window is narrower than `WindowLayout.compactBelow` (only this changes the automatic layout).
     @State var isNarrowWindow = false
@@ -66,6 +68,11 @@ struct RootScreen: View {
                     .inspectorColumnWidth(
                         min: ColumnLayout.Column.inspector.range.lowerBound, ideal: inspectorWidth,
                         max: ColumnLayout.Column.inspector.range.upperBound)
+            }
+            // Other screens: rebuild the columns with the widths remembered for them.
+            .id(displays.setup)
+            .onChange(of: layoutMode) { _, mode in
+                if role == .main { displays.saveLayoutMode(mode) }
             }
             .windowLayout(self)
             .task(id: selection?.id) {
