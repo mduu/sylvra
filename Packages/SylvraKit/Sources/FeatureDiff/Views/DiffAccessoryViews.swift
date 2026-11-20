@@ -16,16 +16,40 @@ func trailingClearance(cover: CGFloat, width: CGFloat, minimum: CGFloat) -> CGFl
     return min(cover, max(width - minimum, 0))
 }
 
-extension View {
-    /// Reports the width only while it matters: every row measuring itself on each frame of a column drag
-    /// made resizing stutter, and the width is only needed to keep clear of a floating panel.
-    @ViewBuilder
-    func measuringWidth(into width: Binding<CGFloat>, while isNeeded: Bool) -> some View {
-        if isNeeded {
-            onGeometryChange(for: CGFloat.self, of: \.size.width) { width.wrappedValue = $0 }
-        } else {
-            self
-        }
+/// Insets its single subview by `leading`/`trailing` plus the clearance for a floating panel, computed from
+/// the width offered in the same layout pass.
+///
+/// Not a measured width fed back as padding: a card wider than the minimum (e.g. an AI finding with its
+/// button row) then made the lane wider, which raised the padding, which made the lane wider again — a
+/// state change and a new layout pass each round, thousands of them (the app hung for minutes).
+struct TrailingClearanceLayout: Layout {
+    var leading: CGFloat = 0
+    var trailing: CGFloat = 0
+    var cover: CGFloat
+    var minimum: CGFloat
+    /// Part of the offered width that isn't the box's own (a lane's gutter).
+    var excluded: CGFloat = 0
+
+    /// The whole horizontal inset for an offered width; no clearance while sizing ideally (nil or infinite).
+    func inset(forWidth width: CGFloat?) -> CGFloat {
+        guard let width, width.isFinite else { return leading + trailing }
+        return leading + trailing + trailingClearance(cover: cover, width: width - excluded, minimum: minimum)
+    }
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        guard let child = subviews.first else { return .zero }
+        let inset = inset(forWidth: proposal.width)
+        let size = child.sizeThatFits(
+            ProposedViewSize(width: proposal.width.map { max($0 - inset, 0) }, height: proposal.height))
+        return CGSize(width: size.width + inset, height: size.height)
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        guard let child = subviews.first else { return }
+        let inset = inset(forWidth: bounds.width)
+        child.place(
+            at: CGPoint(x: bounds.minX + leading, y: bounds.minY),
+            proposal: ProposedViewSize(width: max(bounds.width - inset, 0), height: bounds.height))
     }
 }
 
@@ -41,7 +65,6 @@ struct AccessoryLane<Content: View>: View {
     var reachesTrailingEdge = true
     @ViewBuilder let content: Content
     @Environment(\.diffTrailingCover) private var trailingCover
-    @State private var width: CGFloat = 0
 
     /// Threads, composers and finding cards stay readable from this width on.
     static var minimumContentWidth: CGFloat { 420 }
@@ -49,20 +72,17 @@ struct AccessoryLane<Content: View>: View {
     var body: some View {
         // The zero-height placeholder keeps an empty lane in the layout (an empty `if` would vanish and let
         // the other side's thread take the full width).
-        ZStack(alignment: .topLeading) {
-            Color.clear.frame(height: 0)
-            content
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
         // Keeps cards, composers and their buttons clear of a floating panel; the surface still runs underneath.
-        .padding(
-            .trailing,
-            reachesTrailingEdge
-                ? trailingClearance(
-                    cover: trailingCover, width: width - gutterWidth, minimum: Self.minimumContentWidth) : 0
-        )
-        .padding(.leading, gutterWidth)
-        .measuringWidth(into: $width, while: reachesTrailingEdge && trailingCover > 0)
+        TrailingClearanceLayout(
+            leading: gutterWidth, cover: reachesTrailingEdge ? trailingCover : 0,
+            minimum: Self.minimumContentWidth, excluded: gutterWidth
+        ) {
+            ZStack(alignment: .topLeading) {
+                Color.clear.frame(height: 0)
+                content
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
         .background {
             // Clipped to the lane: the change bar's minimum height made an empty lane's surface spill 1 pt
             // into the line above (a white seam between lines).
@@ -124,7 +144,6 @@ struct AIHighlightOverlay: View {
     @Environment(\.diffSelectFinding) private var selectFinding
     @Environment(\.diffTrailingCover) private var trailingCover
     @State private var isHovered = false
-    @State private var width: CGFloat = 0
 
     var body: some View {
         if let highlight {
@@ -134,22 +153,19 @@ struct AIHighlightOverlay: View {
                 Color.clear
                     .frame(width: gutterWidth)
                     .overlay(alignment: .leading) { gutterMark(highlight, isFirst: isFirst) }
-                AIFindingBoxSlice(
-                    isFirst: isFirst, isLast: span.index == span.count - 1,
-                    strength: isHovered ? 1 : 0.55 + 0.45 * highlight.intensity,
-                    isSelected: highlight.isSelected
-                )
-                .overlay(alignment: .topTrailing) {
-                    if isFirst { badge(highlight) }
-                }
                 // Clear of the change bar on the left and of a floating panel on the right.
-                .padding(.leading, 4)
-                .padding(
-                    .trailing, 4 + trailingClearance(cover: trailingCover, width: width - gutterWidth, minimum: 240)
-                )
+                TrailingClearanceLayout(leading: 4, trailing: 4, cover: trailingCover, minimum: 240) {
+                    AIFindingBoxSlice(
+                        isFirst: isFirst, isLast: span.index == span.count - 1,
+                        strength: isHovered ? 1 : 0.55 + 0.45 * highlight.intensity,
+                        isSelected: highlight.isSelected
+                    )
+                    .overlay(alignment: .topTrailing) {
+                        if isFirst { badge(highlight) }
+                    }
+                }
                 .allowsHitTesting(false)
             }
-            .measuringWidth(into: $width, while: trailingCover > 0)
             .transition(.opacity)
         }
     }

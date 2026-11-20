@@ -52,4 +52,21 @@ struct TrailingClearanceTests {
         #expect(trailingClearance(cover: 376, width: 380, minimum: 420) == 0)
         #expect(trailingClearance(cover: 0, width: 1000, minimum: 420) == 0)
     }
+
+    /// Regression: selecting an AI finding in the compact layout hung the app. The lane measured its own width
+    /// and fed it back as padding; a card wider than the minimum grew the lane, which grew the padding, round
+    /// after round. The inset now comes from the offered width alone, in one layout pass.
+    @Test func laneInsetDependsOnlyOnTheOfferedWidth() {
+        let lane = TrailingClearanceLayout(leading: 16, cover: 376, minimum: 420, excluded: 16)
+        #expect(lane.inset(forWidth: 1016) == 392)  // gutter + whole cover
+        #expect(lane.inset(forWidth: 616) == 196)  // gutter + what keeps 420 pt
+        #expect(lane.inset(forWidth: 300) == 16)
+        // Ideal sizing (nil or infinite) never adds a clearance.
+        #expect(lane.inset(forWidth: nil) == 16)
+        #expect(lane.inset(forWidth: .infinity) == 16)
+
+        let box = TrailingClearanceLayout(leading: 4, trailing: 4, cover: 376, minimum: 240)
+        #expect(box.inset(forWidth: 400) == 168)  // paddings + what keeps 240 pt
+        #expect(TrailingClearanceLayout(leading: 4, trailing: 4, cover: 0, minimum: 240).inset(forWidth: 900) == 8)
+    }
 }
