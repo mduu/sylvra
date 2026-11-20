@@ -60,7 +60,8 @@ enum TerminalWiring {
         environment.activity.start(
             ActivityJob(id: job, kind: .checkout, title: String(localized: "Preparing review worktree…")))
         defer { environment.activity.finish(job, message: nil) }
-        return try await CheckoutService().prepareWorktree(for: id)
+        return try await CheckoutService().prepareWorktree(
+            for: id, purpose: .ide, branch: environment.inbox.summary(for: id)?.headRefName)
     }
 }
 

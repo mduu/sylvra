@@ -57,6 +57,9 @@ public final class OpenInIDEModel {
 
     // MARK: Opening
 
+    /// The PR's head branch (wired by the app); an existing checkout of it is opened instead of a worktree.
+    public var headBranch: @MainActor (PullRequestID) -> String? = { _ in nil }
+
     /// Checks out the PR head and opens it in `ide` (remembered as the repo's default).
     public func open(_ id: PullRequestID, in ide: IDE? = nil, file: String? = nil, line: Int? = nil) async {
         let ide = ide ?? preferredIDE(for: id)
@@ -80,7 +83,7 @@ public final class OpenInIDEModel {
             let directory: URL
             switch target {
             case .worktree:
-                directory = try await checkout.prepareWorktree(for: id)
+                directory = try await checkout.prepareWorktree(for: id, branch: headBranch(id))
             case .mainClone:
                 directory = try await checkout.prepareMainClone(for: id, stashChanges: stash).clone
             }

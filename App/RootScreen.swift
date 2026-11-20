@@ -355,6 +355,7 @@ extension RootScreen {
             isInspectorPresented = true
             withAnimation(.snappy) { environment.aiReview.showFinding(id) }
         }
+        environment.openInIDE.headBranch = { environment.inbox.summary(for: $0)?.headRefName }
         // Replies after the reviewer's comments: notify; a click on the notification opens the PR.
         environment.inbox.onNewActivity = { environment.activity.notifyNewActivity(on: $0) }
         environment.notifications.open = { id in

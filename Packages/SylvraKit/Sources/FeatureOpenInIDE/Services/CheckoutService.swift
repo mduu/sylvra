@@ -53,12 +53,42 @@ public struct CheckoutService: Sendable {
         storageRoot.appending(path: "repos/\(id.owner)/\(id.repository)")
     }
 
-    /// Checks the PR head out in a review worktree and returns its path.
+    /// Checks the PR head out in a review worktree and returns its path. For the IDE, a checkout of the PR's
+    /// `branch` the user already has (their clone or one of its worktrees) is used instead, untouched.
     /// Git operations on the same repository are serialised (no `index.lock` races between features).
-    public func prepareWorktree(for id: PullRequestID, purpose: Purpose) async throws -> URL {
+    public func prepareWorktree(for id: PullRequestID, purpose: Purpose, branch: String? = nil) async throws -> URL {
         try await RepositoryLocks.shared.withLock("\(id.owner)/\(id.repository)") {
-            try await checkOutWorktree(for: id, purpose: purpose)
+            if purpose == .ide, let branch, let existing = try await usersCheckout(of: branch, for: id) {
+                return existing
+            }
+            return try await checkOutWorktree(for: id, purpose: purpose)
         }
+    }
+
+    /// Where the user has `branch` checked out — only when it contains the PR head (up to date or ahead), so the
+    /// IDE shows the code under review. Sylvra's own worktrees don't count; nothing is changed there.
+    private func usersCheckout(of branch: String, for id: PullRequestID) async throws -> URL? {
+        guard let clone = await locator.localClone(owner: id.owner, name: id.repository) else { return nil }
+        let list = try await git.run(["worktree", "list", "--porcelain"], in: clone)
+        guard let path = Self.worktree(withBranch: branch, inPorcelain: list),
+            !Self.canonical(path).hasPrefix(Self.canonical(storageRoot.path) + "/")
+        else { return nil }
+        try await git.run(["fetch", "--quiet", "origin", "pull/\(id.number)/head"], in: clone)
+        let head = try await git.run(["rev-parse", "FETCH_HEAD"], in: clone)
+        // Exits non-zero (throws) when the local branch lacks the PR head, e.g. a colleague pushed since.
+        guard (try? await git.run(["merge-base", "--is-ancestor", head, "refs/heads/\(branch)"], in: clone)) != nil
+        else { return nil }
+        return URL(fileURLWithPath: path)
+    }
+
+    /// The worktree (the main one included) with `branch` checked out, from `git worktree list --porcelain`.
+    nonisolated static func worktree(withBranch branch: String, inPorcelain list: String) -> String? {
+        var path: String?
+        for line in list.split(separator: "\n", omittingEmptySubsequences: false) {
+            if line.hasPrefix("worktree ") { path = String(line.dropFirst("worktree ".count)) }
+            if line == "branch refs/heads/\(branch)" { return path }
+        }
+        return nil
     }
 
     private func checkOutWorktree(for id: PullRequestID, purpose: Purpose) async throws -> URL {

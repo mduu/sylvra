@@ -194,6 +194,7 @@ All tabs stay visible side by side (⌘1–⌘5) with their counts as small badg
 **Viewed / not viewed** is a manual, per-file toggle — always under the reviewer's control:
 
 - Checkbox on every file row in the file list and in every sticky file header in the diff; shortcut `V`.
+- Clicking the file name in a sticky file header offers *Copy Path* and *Copy File Name*.
 - Context menu: *Mark as viewed* / *Mark as not viewed*; on folders: *Mark all as viewed / not viewed*.
 - Marking a file as viewed in its diff header collapses it and scrolls the diff to the header of the next file still to review (the next file below that isn't viewed yet), which also becomes the selected file.
 - Synced with GitHub's "Viewed" state in both directions.
@@ -207,7 +208,7 @@ The diff must feel like the best diff one has ever used: fast, beautiful and ins
 
 ### 7.1 Modes
 
-- **Layout**: `Side by side` | `Inline` (⌘⌥1 / ⌘⌥2); the choice is remembered across pull requests, AI reviews and launches
+- **Layout**: `Side by side` | `Inline` (⌘⌥1 / ⌘⌥2); remembered per pull request across AI reviews and launches (a pull request without a choice starts with the last one made); a pull request's choice is forgotten once it is merged or closed (checked at launch) or after a week without opening it
 - **Scope**: `Focused` (changed hunks + N context lines, N ∈ {3, 5, 10, custom}) | `Full file`
 - **Range**: `All changes` | `Since my last review` | `Commit…` (commit-by-commit, with ◀ ▶ to step through commits; toolbar menu and Commits tab) | custom range (later)
 - Toggles: hide whitespace, wrap lines, show moved code.

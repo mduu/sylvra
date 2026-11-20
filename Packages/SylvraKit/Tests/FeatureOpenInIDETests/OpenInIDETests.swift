@@ -80,11 +80,57 @@ struct CheckoutServiceTests {
         let (root, clone, service) = try await makeFixture()
         defer { try? FileManager.default.removeItem(at: root) }
 
-        let worktree = try await service.prepareWorktree(for: id)
+        let worktree = try await service.prepareWorktree(for: id, branch: nil)
         #expect(try await git.run(["log", "-1", "--format=%s"], in: worktree) == "pr")
         #expect(try await git.currentBranch(clone) == "main")
         // Second call re-uses the stable path.
-        #expect(try await service.prepareWorktree(for: id) == worktree)
+        #expect(try await service.prepareWorktree(for: id, branch: nil) == worktree)
+    }
+
+    @Test func opensTheUsersOwnCheckoutOfTheBranchInstead() async throws {
+        let (root, clone, service) = try await makeFixture()
+        defer { try? FileManager.default.removeItem(at: root) }
+        try await git.run(["fetch", "--quiet", "origin", "pull/7/head"], in: clone)
+        try await git.run(["branch", "feature/invoice", "FETCH_HEAD"], in: clone)
+        let checkout = root.appending(path: "Dev/billing-invoice")
+        try await git.run(["worktree", "add", "--quiet", checkout.path, "feature/invoice"], in: clone)
+
+        let opened = try await service.prepareWorktree(for: id, branch: "feature/invoice")
+        #expect(CheckoutService.canonical(opened.path) == CheckoutService.canonical(checkout.path))
+        // Nothing of Sylvra's was created.
+        #expect(!FileManager.default.fileExists(atPath: service.worktreePath(for: id).path))
+    }
+
+    @Test func aBranchBehindThePullRequestGetsAReviewWorktree() async throws {
+        let (root, clone, service) = try await makeFixture()
+        defer { try? FileManager.default.removeItem(at: root) }
+        // Checked out, but without the PR's latest commit (someone pushed since).
+        try await git.run(["checkout", "--quiet", "-b", "feature/invoice"], in: clone)
+
+        let opened = try await service.prepareWorktree(for: id, branch: "feature/invoice")
+        #expect(opened == service.worktreePath(for: id))
+        #expect(try await git.run(["log", "-1", "--format=%s"], in: opened) == "pr")
+    }
+
+    @Test func findsTheWorktreeOfABranch() {
+        let list = """
+            worktree /Users/me/Dev/billing
+            HEAD abc
+            branch refs/heads/main
+
+            worktree /Users/me/Dev/billing-invoice
+            HEAD def
+            branch refs/heads/feature/invoice
+
+            worktree /Users/me/Library/Sylvra/worktrees/acme/billing
+            HEAD 123
+            detached
+            """
+        #expect(
+            CheckoutService.worktree(withBranch: "feature/invoice", inPorcelain: list)
+                == "/Users/me/Dev/billing-invoice")
+        #expect(CheckoutService.worktree(withBranch: "main", inPorcelain: list) == "/Users/me/Dev/billing")
+        #expect(CheckoutService.worktree(withBranch: "feature", inPorcelain: list) == nil)
     }
 
     @Test func mainCloneRequiresConfirmationWhenDirty() async throws {
@@ -105,7 +151,9 @@ struct CheckoutServiceTests {
 @MainActor
 struct OpenInIDEModelTests {
     struct DirtyCheckout: CheckoutPreparing {
-        func prepareWorktree(for id: PullRequestID) async throws -> URL { URL(fileURLWithPath: "/tmp/w") }
+        func prepareWorktree(for id: PullRequestID, branch: String?) async throws -> URL {
+            URL(fileURLWithPath: "/tmp/w")
+        }
         func prepareMainClone(for id: PullRequestID, stashChanges: Bool) async throws -> (
             clone: URL, previousBranch: String?
         ) {

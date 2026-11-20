@@ -3,7 +3,8 @@ import SylvraCore
 
 /// Prepares checkouts (abstracted for tests and demo mode).
 public protocol CheckoutPreparing: Sendable {
-    func prepareWorktree(for id: PullRequestID) async throws -> URL
+    /// A review worktree, or the user's own checkout of `branch` when it has the PR head.
+    func prepareWorktree(for id: PullRequestID, branch: String?) async throws -> URL
     func prepareMainClone(for id: PullRequestID, stashChanges: Bool) async throws -> (
         clone: URL, previousBranch: String?
     )
@@ -17,8 +18,8 @@ public protocol IDEOpening {
 }
 
 extension CheckoutService: CheckoutPreparing {
-    public func prepareWorktree(for id: PullRequestID) async throws -> URL {
-        try await prepareWorktree(for: id, purpose: .ide)
+    public func prepareWorktree(for id: PullRequestID, branch: String?) async throws -> URL {
+        try await prepareWorktree(for: id, purpose: .ide, branch: branch)
     }
 }
 extension IDELauncher: IDEOpening {}
@@ -27,7 +28,7 @@ extension IDELauncher: IDEOpening {}
 public struct DemoCheckout: CheckoutPreparing {
     public init() {}
 
-    public func prepareWorktree(for id: PullRequestID) async throws -> URL {
+    public func prepareWorktree(for id: PullRequestID, branch: String?) async throws -> URL {
         try await Task.sleep(for: .milliseconds(400))
         return URL(fileURLWithPath: "/tmp/sylvra-demo/\(id.repository)")
     }
