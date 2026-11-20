@@ -66,10 +66,17 @@ public struct DemoAgentProvider: AgentProvider {
                "impact": "low", "likelihood": "low"}
              ],
              "patterns": [
-              {"name": "Service layer", "verdict": "followed", "rationale": "Logic stays in InvoiceService."},
+              {"name": "Service layer", "verdict": "followed", "rationale": "Logic stays in InvoiceService.", \
+            "evidence": [{"path": "Sources/Billing/InvoiceService.swift", "startLine": 7, "endLine": 7}]},
               {"name": "Single rounding point", "verdict": "violated", "rationale": "specs/billing.md requires rounding \
-            only on the invoice total.", "evidence": [{"path": "Sources/Billing/InvoiceService.swift", "startLine": 9}]},
-              {"name": "Encoder strategy", "verdict": "introduced", "rationale": "ExportFormat selects the encoder."}
+            only on the invoice total.", "evidence": [{"path": "Sources/Billing/InvoiceService.swift", "startLine": 9, "endLine": 9}]},
+              {"name": "Encoder strategy", "verdict": "introduced", "rationale": "ExportFormat selects the encoder.", \
+            "evidence": [{"path": "Sources/Export/ExportFormat.swift", "startLine": 1, "endLine": 3}]}
+             ],
+             "overall": [
+              {"kind": "scattered", "title": "Export formats are defined in two places", "rationale": \
+            "ExportFormat and CSVEncoder both list the formats; keeping them in ExportFormat would make adding one a \
+            one-file change."}
              ],
              "history": ["#812 “Fix VAT rounding” changed the same total calculation — this PR partly reverts it."]}
             """

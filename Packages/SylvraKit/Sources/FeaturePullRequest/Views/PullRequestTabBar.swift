@@ -2,7 +2,7 @@ import DesignSystem
 import SwiftUI
 import SylvraCore
 
-/// One tab of the PR column with its count (`nil`: no count) and whether the count signals a problem.
+/// One tab of the PR column (shown with `SectionTabBar`) with its count (`nil`: no count) and whether the count signals a problem.
 struct PullRequestTabItem: Identifiable {
     let tab: PullRequestScreenModel.Tab
     var count: Int?
@@ -48,103 +48,11 @@ struct PullRequestTabItem: Identifiable {
     var shortcut: KeyEquivalent {
         KeyEquivalent(Character(String((PullRequestScreenModel.Tab.allCases.firstIndex(of: tab) ?? 0) + 1)))
     }
-}
 
-/// The PR column's tabs side by side, always all visible (pure). Narrow columns get smaller text, then
-/// symbols with counts and the name only on the selected tab, then symbols only (names in the tooltips) —
-/// never a menu. ⌘1–⌘5 switch tabs.
-struct PullRequestTabBar: View {
-    let items: [PullRequestTabItem]
-    @Binding var selection: PullRequestScreenModel.Tab
-
-    enum Style: CaseIterable { case full, compact, selectedTitle, symbols }
-
-    var body: some View {
-        ViewThatFits(in: .horizontal) {
-            ForEach(Style.allCases, id: \.self) { style in
-                bar(style).fixedSize()
-            }
-        }
-    }
-
-    private func bar(_ style: Style) -> some View {
-        HStack(spacing: 2) {
-            ForEach(items) { item in
-                tabButton(item, style: style)
-            }
-        }
-        .padding(2)
-        .background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 8))
-    }
-
-    private func tabButton(_ item: PullRequestTabItem, style: Style) -> some View {
-        let isSelected = selection == item.tab
-        return Button {
-            selection = item.tab
-        } label: {
-            HStack(spacing: 4) {
-                if item.isAlert {
-                    // A failing check shows a warning in every style (also where other tabs have no symbol).
-                    Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(.red)
-                } else if style != .compact {
-                    Image(systemName: item.symbol)
-                }
-                if Self.showsTitle(style, isSelected: isSelected) { Text(item.title) }
-                if let count = item.count {
-                    CountBadge(count: count, isAlert: item.isAlert, isSelected: isSelected)
-                }
-            }
-            .font(style == .full ? .callout : .caption)
-            .fontWeight(isSelected ? .semibold : .regular)
-            .lineLimit(1)
-            .padding(.horizontal, style == .full ? 9 : 7)
-            .padding(.vertical, 4)
-            .background(
-                isSelected ? AnyShapeStyle(SylvraColor.brandPrimary.opacity(0.18)) : AnyShapeStyle(.clear),
-                in: RoundedRectangle(cornerRadius: 6)
-            )
-            .contentShape(RoundedRectangle(cornerRadius: 6))
-        }
-        .buttonStyle(.plain)
-        .keyboardShortcut(item.shortcut, modifiers: .command)
-        .help(
-            item.isAlert
-                ? "\(item.title) — failing (⌘\(String(item.shortcut.character)))"
-                : "\(item.title) (⌘\(String(item.shortcut.character)))"
-        )
-        .accessibilityLabel(item.title)
-        .accessibilityAddTraits(isSelected ? .isSelected : [])
-    }
-
-    static func showsTitle(_ style: Style, isSelected: Bool) -> Bool {
-        switch style {
-        case .full, .compact: true
-        case .selectedTitle: isSelected
-        case .symbols: false
-        }
-    }
-}
-
-/// A count as a small capsule (pure): grey, violet on the selected tab, red when it signals a problem.
-struct CountBadge: View {
-    let count: Int
-    var isAlert = false
-    var isSelected = false
-
-    var body: some View {
-        Text(verbatim: "\(count)")
-            .font(.caption2.weight(.semibold))
-            .monospacedDigit()
-            .foregroundStyle(isAlert || isSelected ? AnyShapeStyle(.white) : AnyShapeStyle(.secondary))
-            .padding(.horizontal, 5)
-            .frame(minWidth: 16)
-            .background(background, in: Capsule())
-    }
-
-    private var background: AnyShapeStyle {
-        if isAlert { return AnyShapeStyle(Color.red) }
-        if isSelected { return AnyShapeStyle(SylvraColor.brandPrimary) }
-        return AnyShapeStyle(.quaternary)
+    /// For the shared tab bar (same look as the AI inspector's tabs).
+    var barItem: SectionTabItem<PullRequestScreenModel.Tab> {
+        SectionTabItem(
+            tab: tab, title: title, symbol: symbol, count: count, isAlert: isAlert, shortcut: shortcut)
     }
 }
 
@@ -156,9 +64,8 @@ struct CountBadge: View {
         PullRequestTabItem(tab: .comments, count: 5),
     ]
     VStack(alignment: .leading, spacing: 16) {
-        PullRequestTabBar(items: items, selection: $selection).frame(width: 520, alignment: .leading)
-        PullRequestTabBar(items: items, selection: $selection).frame(width: 360, alignment: .leading)
-        PullRequestTabBar(items: items, selection: $selection).frame(width: 260, alignment: .leading)
+        SectionTabBar(items: items.map(\.barItem), selection: $selection).frame(width: 520, alignment: .leading)
+        SectionTabBar(items: items.map(\.barItem), selection: $selection).frame(width: 260, alignment: .leading)
     }
     .padding()
 }

@@ -39,13 +39,7 @@ public struct FindingsInspectorScreen: View {
             // Header and tabs stay put; only the tab content scrolls (long chats, many findings).
             header
             if let id = pullRequest?.id, hasContent(id) {
-                Picker("Section", selection: $model.tab) {
-                    Text("Findings \(model.visibleFindings(for: id).count)").tag(AIReviewModel.Tab.findings)
-                    Text("Patterns").tag(AIReviewModel.Tab.patterns)
-                    if chat != nil { Text("Chat").tag(AIReviewModel.Tab.chat) }
-                }
-                .pickerStyle(.segmented)
-                .labelsHidden()
+                SectionTabBar(items: tabItems(for: id), selection: $model.tab)
                 scrollingContent(for: id)
             } else {
                 ScrollView { emptyState }
@@ -108,6 +102,9 @@ public struct FindingsInspectorScreen: View {
     func content(for id: PullRequestID) -> some View {
         switch model.tab {
         case .findings:
+            if let overall = model.results[id]?.overall, !overall.isEmpty {
+                OverallFindingsView(points: overall)
+            }
             ForEach(model.visibleFindings(for: id)) { finding in
                 if model.selectedFindingID == finding.id {
                     FindingDetailView(
@@ -141,13 +138,38 @@ public struct FindingsInspectorScreen: View {
             }
         case .patterns:
             ForEach(model.results[id]?.patterns ?? []) { pattern in
-                PatternRowView(pattern: pattern) { location in jumpToLocation(location.path, location.startLine) }
+                PatternRowView(pattern: pattern, isSelected: model.selectedPatternID == pattern.id) { location in
+                    model.selectedPatternID = pattern.id
+                    model.selectedFindingID = nil
+                    jumpToLocation(location.path, location.startLine)
+                }
+                .id(pattern.id)
             }
         case .chat:
             if let chat {
                 AIChatPanel(model: chat, pullRequestID: id, jump: jumpToLocation, useAsComment: useAsComment)
             }
         }
+    }
+
+    /// Same look as the pull request column's tabs: symbols, counts, narrowing to symbols.
+    private func tabItems(for id: PullRequestID) -> [SectionTabItem<AIReviewModel.Tab>] {
+        var items = [
+            SectionTabItem(
+                tab: AIReviewModel.Tab.findings, title: String(localized: "Findings"),
+                symbol: "exclamationmark.bubble", count: model.visibleFindings(for: id).count),
+            SectionTabItem(
+                tab: AIReviewModel.Tab.patterns, title: String(localized: "Patterns"), symbol: "square.grid.3x3",
+                count: model.results[id]?.patterns.count),
+        ]
+        if let chat {
+            let messages = chat.messages(for: id).count { $0.role == .assistant }
+            items.append(
+                SectionTabItem(
+                    tab: AIReviewModel.Tab.chat, title: String(localized: "Chat"),
+                    symbol: "bubble.left.and.text.bubble.right", count: messages > 0 ? messages : nil))
+        }
+        return items
     }
 
     private var emptyState: some View {

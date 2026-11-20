@@ -12,6 +12,8 @@ public struct ReviewRequest: Sendable {
     public let language: String
     /// Checked-out code the agent may read (worktree), if available.
     public let workingDirectory: URL?
+    /// The pull request's files outside this shard (`path (+added −removed)`), to judge the change as a whole.
+    public var otherFiles: [String] = []
 
     public init(
         pullRequestTitle: String, pullRequestBody: String, shard: ShardPlanner.Shard,
@@ -38,8 +40,20 @@ public struct ReviewRequest: Sendable {
             shard (\(shard.name)). Focus on correctness, security, concurrency, performance, design and missing tests. \
             Be precise and concise; prefer few, important findings over many trivial ones. Do not invent problems.
 
+            Code comments: report comments that restate what the code already says or are longer than needed \
+            (category `style`, severity `nit` or `minor`, a `suggestion` that removes or shortens them). A comment \
+            belongs only where the intent or reason is not evident from the code, and then as short as possible.
+
+            Also judge the pull request as a whole, not line by line (`overall`): could it be implemented much more \
+            compactly or simply? Is it too much code for what it does (duplication, speculative abstractions, \
+            unused flexibility)? Is it scattered over more places than needed, or does it belong in fewer files or \
+            modules? Report only clear, substantial points — an empty list is fine. Give each a `kind` (`simpler`, \
+            `tooMuchCode`, `scattered` or `other`), a short `title` and a `rationale` naming the files concerned.
+
             Also answer "What patterns are used or missed?": name the architectural and code patterns the change \
-            follows, violates or newly introduces, especially rules documented in the repository guidelines below.
+            follows, violates or newly introduces, especially rules documented in the repository guidelines below. \
+            Every pattern needs `evidence`: one to three places on lines of the diff (path, startLine, endLine) that \
+            show it.
 
             Line numbers refer to the NEW version of the file (right side of the diff). Only report findings on lines \
             that appear in the diff. A `suggestion` is applied 1:1 as a GitHub suggestion: it must be the complete \
@@ -55,7 +69,8 @@ public struct ReviewRequest: Sendable {
             `reasons` naming what could break and for whom. For every finding, rate `impact` (how bad it is if it \
             happens) and `likelihood` (how likely it happens in practice), each low, medium or high.
 
-            Write summary, titles, rationales, risk reasons, reading-order reasons and pattern explanations in \
+            Write summary, titles, rationales, risk reasons, reading-order reasons, overall points and pattern \
+            explanations in \
             \(language). Keep code, identifiers and \
             suggestions unchanged.
             """)
@@ -67,6 +82,11 @@ public struct ReviewRequest: Sendable {
         if !history.isEmpty {
             parts.append("## Earlier changes to the same files\n\n" + history.joined(separator: "\n"))
         }
+        if !otherFiles.isEmpty {
+            parts.append(
+                "## Other files of this pull request (reviewed separately; for judging the change as a whole)\n\n"
+                    + otherFiles.map { "- \($0)" }.joined(separator: "\n"))
+        }
         let patches = shard.files.map { "### \($0.path)\n\n```diff\n\($0.patch)\n```" }.joined(separator: "\n\n")
         parts.append("## Diff of this shard\n\n\(patches)")
         if workingDirectory != nil {
@@ -77,7 +97,7 @@ public struct ReviewRequest: Sendable {
 
     /// JSON schema of the structured output.
     public static let outputSchema = """
-        {"type":"object","required":["summary","risk","findings","patterns"],"properties":{\
+        {"type":"object","required":["summary","risk","findings","overall","patterns"],"properties":{\
         "summary":{"type":"string"},\
         "risk":{"type":"object","required":["level","reasons"],"properties":{\
         "level":{"type":"string","enum":["low","medium","high"]},"reasons":{"type":"array","items":{"type":"string"}}}},\
@@ -90,9 +110,14 @@ public struct ReviewRequest: Sendable {
         "title":{"type":"string"},"rationale":{"type":"string"},"suggestion":{"type":"string"},\
         "confidence":{"type":"number"},"impact":{"type":"string","enum":["low","medium","high"]},\
         "likelihood":{"type":"string","enum":["low","medium","high"]}}}},\
-        "patterns":{"type":"array","items":{"type":"object","required":["name","verdict","rationale"],"properties":{\
+        "overall":{"type":"array","items":{"type":"object","required":["kind","title","rationale"],"properties":{\
+        "kind":{"type":"string","enum":["simpler","tooMuchCode","scattered","other"]},"title":{"type":"string"},\
+        "rationale":{"type":"string"}}}},\
+        "patterns":{"type":"array","items":{"type":"object","required":["name","verdict","rationale","evidence"],\
+        "properties":{\
         "name":{"type":"string"},"verdict":{"type":"string","enum":["followed","violated","introduced"]},\
-        "rationale":{"type":"string"},"evidence":{"type":"array","items":{"type":"object",\
+        "rationale":{"type":"string"},"evidence":{"type":"array","minItems":1,"items":{"type":"object",\
+        "required":["path","startLine","endLine"],\
         "properties":{"path":{"type":"string"},"startLine":{"type":"integer"},"endLine":{"type":"integer"}}}}}}},\
         "readingOrder":{"type":"array","items":{"type":"object","required":["path","reason"],"properties":{\
         "path":{"type":"string"},"reason":{"type":"string"},"risky":{"type":"boolean"}}}},\
@@ -145,6 +170,13 @@ public struct AgentReviewOutput: Decodable, Sendable {
         let endLine: Int?
     }
 
+    /// A point about the pull request as a whole (more compact, too much code, scattered).
+    public struct Overall: Decodable, Sendable {
+        let kind: String?
+        let title: String
+        let rationale: String?
+    }
+
     public struct Step: Decodable, Sendable {
         let path: String
         let reason: String?
@@ -155,6 +187,7 @@ public struct AgentReviewOutput: Decodable, Sendable {
     let risk: Risk?
     let readingOrder: [Step]?
     let findings: [Finding]
+    let overall: [Overall]?
     let patterns: [Pattern]?
     let history: [String]?
 }

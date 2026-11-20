@@ -102,6 +102,8 @@ public struct FindingActions {
 /// Pattern verdict row (pure).
 struct PatternRowView: View {
     let pattern: PatternFinding
+    /// Its evidence is marked in the diff.
+    var isSelected = false
     /// Shows a piece of evidence in the diff; `nil` keeps the locations as plain text.
     var jump: ((CodeLocationText) -> Void)?
 
@@ -126,6 +128,13 @@ struct PatternRowView: View {
             }
         }
         .padding(.vertical, 6)
+        .padding(.horizontal, 8)
+        .background(
+            isSelected ? AnyShapeStyle(AIAccent.cardBackground) : AnyShapeStyle(.clear), in: .rect(cornerRadius: 10)
+        )
+        .overlay {
+            if isSelected { RoundedRectangle(cornerRadius: 10).strokeBorder(AIAccent.border, lineWidth: 1.2) }
+        }
         .contentShape(Rectangle())
         // The whole row shows the first piece of evidence.
         .onTapGesture { if let first = pattern.evidence.first { jump?(first) } }

@@ -65,10 +65,11 @@ public struct ReviewEngine: Sendable {
                 group.addTask {
                     let label = Self.title(job.shard.name, job.model, models)
                     await progress(Progress(id: job.id, title: label, state: .running))
-                    let request = ReviewRequest(
+                    var request = ReviewRequest(
                         pullRequestTitle: title, pullRequestBody: body, shard: job.shard, repositoryContext: context,
                         history: history, model: job.model, effort: settings.effort, language: settings.agentLanguage,
                         workingDirectory: workingDirectory)
+                    request.otherFiles = Self.otherFiles(files, outside: job.shard)
                     do {
                         let output = try await provider.review(request)
                         await progress(Progress(id: job.id, title: label, state: .done))
@@ -86,6 +87,12 @@ public struct ReviewEngine: Sendable {
             }
         }
         return ReviewMerger.merge(outputs, files: files)
+    }
+
+    /// The pull request's files a shard doesn't review, with their size, so it can judge the change as a whole.
+    static func otherFiles(_ files: [ReviewableFile], outside shard: ShardPlanner.Shard) -> [String] {
+        let reviewed = Set(shard.files.map(\.path))
+        return files.filter { !reviewed.contains($0.path) }.map { "\($0.path) (+\($0.changedNewLines.count))" }
     }
 
     private static func title(_ shard: String, _ model: String, _ models: [String]) -> String {

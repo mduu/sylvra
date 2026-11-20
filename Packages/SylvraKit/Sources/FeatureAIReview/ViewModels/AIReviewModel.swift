@@ -40,6 +40,17 @@ public final class AIReviewModel {
         tab = .findings
         findingRequest = UUID()
     }
+
+    /// The pattern whose evidence is marked in the diff (also clicked there).
+    public var selectedPatternID: String?
+
+    /// Selects a pattern and shows it in the Patterns tab (e.g. its highlight was clicked in the diff).
+    public func showPattern(_ id: String) {
+        selectedPatternID = id
+        selectedFindingID = nil
+        tab = .patterns
+        findingRequest = UUID()
+    }
     public private(set) var dismissed: Set<UUID> = []
     /// The pull request's head commit right now (wired by the app), to tell whether a review is outdated.
     public var currentHeadSHA: @MainActor (PullRequestID) -> String? = { _ in nil }

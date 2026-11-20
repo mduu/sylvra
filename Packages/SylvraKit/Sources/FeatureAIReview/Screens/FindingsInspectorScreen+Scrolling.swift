@@ -36,10 +36,13 @@ extension FindingsInspectorScreen {
             }
             .animation(.snappy, value: isScrolledToBottom)
             .onChange(of: model.findingRequest) {
-                guard let selected = model.selectedFindingID else { return }
-                // A highlight clicked in the diff: show the finding here as well (after the tab switch).
+                // A highlight clicked in the diff: show the finding or pattern here as well (after the tab switch).
+                let target: AnyHashable? =
+                    model.tab == .patterns
+                    ? model.selectedPatternID.map(AnyHashable.init) : model.selectedFindingID.map(AnyHashable.init)
+                guard let target else { return }
                 Task { @MainActor in
-                    withAnimation(.snappy) { proxy.scrollTo(selected, anchor: .top) }
+                    withAnimation(.snappy) { proxy.scrollTo(target, anchor: .top) }
                 }
             }
             .onChange(of: chat?.messages(for: id).last?.id) {

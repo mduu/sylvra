@@ -297,6 +297,28 @@ extension RootScreen {
 extension RootScreen {
     /// AI findings of the selected PR as diff highlights (bridges FeatureAIReview → FeatureDiff).
     private var aiHighlights: [LineHighlight] {
+        findingHighlights + patternHighlights
+    }
+
+    /// Violated patterns are always marked (lightly); the selected pattern as well, whatever its verdict.
+    private var patternHighlights: [LineHighlight] {
+        let review = environment.aiReview
+        let patterns = selection.flatMap { review.results[$0.id] }?.patterns ?? []
+        return patterns.flatMap { pattern -> [LineHighlight] in
+            let isSelected = pattern.id == review.selectedPatternID
+            guard isSelected || pattern.verdict == .violated else { return [] }
+            return pattern.evidence.map { evidence in
+                LineHighlight(
+                    path: evidence.path, lines: evidence.startLine...max(evidence.startLine, evidence.endLine),
+                    intensity: 0.3, isSelected: isSelected, findingID: Self.patternPrefix + pattern.id)
+            }
+        }
+    }
+
+    /// Highlight IDs of patterns (findings use their UUID).
+    static let patternPrefix = "pattern:"
+
+    private var findingHighlights: [LineHighlight] {
         environment.aiReview.findings(for: selection?.id).map { finding in
             let intensity: Double =
                 switch finding.severity {
@@ -322,6 +344,13 @@ extension RootScreen {
         TitlebarDoubleClick.shared.start()
         // A click on an AI highlight in the diff opens that finding (card in the diff, row in the inspector).
         environment.diff.selectFinding = { id in
+            if id.hasPrefix(Self.patternPrefix) {
+                isInspectorPresented = true
+                withAnimation(.snappy) {
+                    environment.aiReview.showPattern(String(id.dropFirst(Self.patternPrefix.count)))
+                }
+                return
+            }
             guard let id = UUID(uuidString: id) else { return }
             isInspectorPresented = true
             withAnimation(.snappy) { environment.aiReview.showFinding(id) }

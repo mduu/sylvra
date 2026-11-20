@@ -108,11 +108,25 @@ public struct PatternFinding: Identifiable, Hashable, Sendable, Codable {
     public let evidence: [CodeLocationText]
 }
 
+/// A point about the pull request as a whole: could be more compact, too much code, too scattered.
+public struct OverallFinding: Identifiable, Hashable, Sendable, Codable {
+    public enum Kind: String, Codable, Sendable {
+        case simpler, tooMuchCode, scattered, other
+    }
+
+    public var id: String { title }
+    public let kind: Kind
+    public let title: String
+    public let rationale: String
+}
+
 /// Merged result of a review run.
 public struct ReviewResult: Hashable, Sendable, Codable {
     public var summary: String
     public var findings: [ReviewFinding]
     public var patterns: [PatternFinding]
+    /// Points about the pull request as a whole (empty for reviews from before they were asked for).
+    public var overall: [OverallFinding] = []
     public var history: [String]
     /// Suggested reading order (core and risky files first).
     public var readingOrder: [ReadingStep]
@@ -136,7 +150,7 @@ public struct ReviewResult: Hashable, Sendable, Codable {
     }
 
     private enum CodingKeys: String, CodingKey {
-        case summary, findings, patterns, history, readingOrder, headSHA, reviewedAt, risk
+        case summary, findings, patterns, overall, history, readingOrder, headSHA, reviewedAt, risk
     }
 
     // Results cached before reading orders (or head commits) were recorded decode without them.
@@ -145,6 +159,7 @@ public struct ReviewResult: Hashable, Sendable, Codable {
         summary = try container.decode(String.self, forKey: .summary)
         findings = try container.decode([ReviewFinding].self, forKey: .findings)
         patterns = try container.decode([PatternFinding].self, forKey: .patterns)
+        overall = try container.decodeIfPresent([OverallFinding].self, forKey: .overall) ?? []
         history = try container.decode([String].self, forKey: .history)
         readingOrder = try container.decodeIfPresent([ReadingStep].self, forKey: .readingOrder) ?? []
         headSHA = try container.decodeIfPresent(String.self, forKey: .headSHA)

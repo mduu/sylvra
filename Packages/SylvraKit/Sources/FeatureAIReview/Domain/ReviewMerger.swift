@@ -7,6 +7,7 @@ public enum ReviewMerger {
         let byPath = Dictionary(files.map { ($0.path, $0) }, uniquingKeysWith: { first, _ in first })
         var findings: [ReviewFinding] = []
         var patterns: [PatternFinding] = []
+        var overall: [OverallFinding] = []
         var summaries: [String] = []
         var history: [String] = []
         var readingOrder: [ReadingStep] = []
@@ -27,13 +28,23 @@ public enum ReviewMerger {
                 add(anchor(raw, source: source, file: byPath[raw.path]), to: &findings)
             }
             for raw in output.patterns ?? [] {
-                add(pattern(raw), to: &patterns)
+                add(pattern(raw, files: byPath), to: &patterns)
+            }
+            // Shards and models may name the same point; the first wording wins.
+            for raw in output.overall ?? []
+            where !overall.contains(where: { $0.title.caseInsensitiveCompare(raw.title) == .orderedSame }) {
+                overall.append(
+                    OverallFinding(
+                        kind: raw.kind.flatMap(OverallFinding.Kind.init(rawValue:)) ?? .other, title: raw.title,
+                        rationale: raw.rationale ?? ""))
             }
         }
         findings.sort { ($0.severity, $0.path, $0.startLine) < ($1.severity, $1.path, $1.startLine) }
-        return ReviewResult(
+        var result = ReviewResult(
             summary: summaries.filter { !$0.isEmpty }.joined(separator: "\n\n"), findings: findings, patterns: patterns,
             history: Array(Set(history)).sorted(), readingOrder: readingOrder, risk: overallRisk(risks))
+        result.overall = overall
+        return result
     }
 
     /// A new finding, or another source (and the higher ratings) for one already reported.
@@ -50,22 +61,31 @@ public enum ReviewMerger {
         findings[index].likelihood = higher(findings[index].likelihood, finding.likelihood)
     }
 
-    private static func pattern(_ raw: AgentReviewOutput.Pattern) -> PatternFinding {
+    /// Evidence only in files of the pull request, so a click on it can show it in the diff.
+    private static func pattern(_ raw: AgentReviewOutput.Pattern, files: [String: ReviewableFile]) -> PatternFinding {
         PatternFinding(
             name: raw.name, verdict: raw.verdict, rationale: raw.rationale ?? "",
             evidence: (raw.evidence ?? []).compactMap { evidence in
-                guard let path = evidence.path, let start = evidence.startLine else { return nil }
+                guard let path = evidence.path, files[path] != nil, let start = evidence.startLine else { return nil }
                 return CodeLocationText(path: path, startLine: start, endLine: evidence.endLine ?? start)
             })
     }
 
+    /// A new pattern, or more evidence for one already reported (other shards see other files).
     private static func add(_ pattern: PatternFinding, to patterns: inout [PatternFinding]) {
         guard
-            !patterns.contains(where: {
+            let index = patterns.firstIndex(where: {
                 $0.name.caseInsensitiveCompare(pattern.name) == .orderedSame && $0.verdict == pattern.verdict
             })
-        else { return }
-        patterns.append(pattern)
+        else {
+            patterns.append(pattern)
+            return
+        }
+        let added = pattern.evidence.filter { !patterns[index].evidence.contains($0) }
+        guard !added.isEmpty else { return }
+        patterns[index] = PatternFinding(
+            name: patterns[index].name, verdict: patterns[index].verdict, rationale: patterns[index].rationale,
+            evidence: patterns[index].evidence + added)
     }
 
     /// The highest rating of all shards and models; its reasons first, at most four, without repeats.

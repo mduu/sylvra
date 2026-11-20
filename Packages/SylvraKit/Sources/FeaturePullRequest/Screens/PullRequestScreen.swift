@@ -64,7 +64,7 @@ public struct PullRequestScreen<Files: View, OverviewTop: View, Summary: View, C
                 PullRequestHeaderView(detail: detail) { open(detail.summary.url) }
                 summary
                 // All tabs side by side; narrow columns get smaller text or symbols, never a menu.
-                PullRequestTabBar(items: PullRequestTabItem.items(for: detail), selection: $model.tab)
+                SectionTabBar(items: PullRequestTabItem.items(for: detail).map(\.barItem), selection: $model.tab)
             }
             .padding([.horizontal, .top], 16)
             .padding(.bottom, 10)

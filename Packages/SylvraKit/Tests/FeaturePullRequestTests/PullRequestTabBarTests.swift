@@ -16,11 +16,4 @@ struct PullRequestTabBarTests {
         #expect(checks?.isAlert == true)
         #expect(checks?.count == 1)
     }
-
-    @Test func narrowBarsKeepTheSelectedTabsName() {
-        #expect(PullRequestTabBar.showsTitle(.selectedTitle, isSelected: true))
-        #expect(!PullRequestTabBar.showsTitle(.selectedTitle, isSelected: false))
-        #expect(!PullRequestTabBar.showsTitle(.symbols, isSelected: true))
-        #expect(PullRequestTabBar.showsTitle(.compact, isSelected: false))
-    }
 }

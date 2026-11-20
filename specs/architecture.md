@@ -241,6 +241,8 @@ A `ReviewRequest` contains:
   - folders referenced from those files — typically `specs/`, `docs/`, `ai/` — and other well-known agent instruction files,
   - Sylvra's per-repo custom review prompt;
 - **history context**: recent commits and merged PRs touching the same paths, so the agent can relate the change to earlier decisions ("this reverts the fix from #812"),
+- the pull request's **other files** (path and size) when it is sharded, so each agent can judge the change as a whole,
+- review rules beyond correctness: **code comments** only where the intent is not evident from the code, and then as short as possible (restating or wordy comments are `style` findings); the **whole pull request** — could it be much more compact or simpler, is it too much code, is it scattered over more places than needed (`overall`); every **pattern** cites one to three evidence locations,
 - selected model and effort, the **agent language** (see §8.6) and the required output schema.
 
 ### 8.4 Structured output
@@ -258,6 +260,11 @@ A `ReviewRequest` contains:
     "suggestion": "optional replacement code for startLine..endLine",
     "confidence": 0.0
   }],
+  "overall": [{
+    "kind": "simpler | tooMuchCode | scattered | other",
+    "title": "string",
+    "rationale": "string naming the files concerned"
+  }],
   "patterns": [{
     "name": "Repository pattern",
     "verdict": "followed | violated | introduced",
@@ -268,7 +275,7 @@ A `ReviewRequest` contains:
 }
 ```
 
-Findings and pattern evidence are **validated** against the actual diff: paths must exist, line ranges must be inside the file. Invalid locations are re-anchored (nearest hunk) or marked "unanchored" instead of silently dropped.
+Findings and pattern evidence are **validated** against the actual diff: paths must exist, line ranges must be inside the file (pattern evidence outside the pull request's files is dropped). Shards and models that report the same pattern add their evidence to it; `overall` points are merged by title. Invalid locations are re-anchored (nearest hunk) or marked "unanchored" instead of silently dropped.
 
 ### 8.5 Parallel agents (sharding)
 
