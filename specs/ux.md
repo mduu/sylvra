@@ -209,7 +209,7 @@ The diff must feel like the best diff one has ever used: fast, beautiful and ins
 ### 7.1 Modes
 
 - **Layout**: `Side by side` | `Inline` (⌘⌥1 / ⌘⌥2); remembered per pull request across AI reviews and launches (a pull request without a choice starts with the last one made); a pull request's choice is forgotten once it is merged or closed (checked at launch) or after a week without opening it
-- **Scope**: `Focused` (changed hunks + N context lines, N ∈ {3, 5, 10, custom}) | `Full file` (only the selected file, every line of its head version; choosing another file in the navigator, `[`/`]` or a jump shows that one; each file loads when first shown, with a *Loading…* badge over the diff)
+- **Scope**: `Focused` (changed hunks + N context lines, N ∈ {3, 5, 10, custom}) | `Full file` (only the selected file, every line of its head version; choosing another file in the navigator, `[`/`]` or a jump shows that one; each file loads when first shown, with a *Loading…* badge over the diff, also while *Since my last review* loads)
 - **Range**: `All changes` | `Since my last review` | `Commit…` (commit-by-commit, with ◀ ▶ to step through commits; toolbar menu and Commits tab) | custom range (later)
 - Toggles: hide whitespace, wrap lines, show moved code.
 
@@ -217,7 +217,7 @@ The diff must feel like the best diff one has ever used: fast, beautiful and ins
 
 - **Connector ribbons** (side by side): smooth, softly tinted curves connect each changed region on the left with its counterpart on the right, flowing while scrolling.
 - **Intra-line highlights** with a gentle glow on the changed tokens.
-- **Animated context expansion**: "⋯ 24 unchanged lines ⋯" unfolds smoothly.
+- **Animated context expansion**: "⋯ 24 unchanged lines ⋯" unfolds smoothly (a small spinner replaces the buttons while the file loads for the first expansion).
 - **Focus lens**: unchanged code is slightly dimmed in focused mode; the change is in the light.
 - **Moved code** shown with a neutral tint and an animated link to its origin.
 - **Overview ruler / minimap** with a heat strip of changes, comments and AI findings; click to jump.

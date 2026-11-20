@@ -15,6 +15,8 @@ struct DiffFileBodyView<Accessory: View>: View {
     /// Unchanged lines hidden above each hunk, and how to reveal them (`nil`: all).
     var hiddenAbove: [Int] = []
     var expand: ((_ hunk: Int, _ count: Int?) -> Void)?
+    /// The file's lines for revealing context are loading.
+    var isExpanding = false
     /// Puts copied code on the clipboard (right-click menu of a line).
     var copy: (String) -> Void = { DiffCopy.toClipboard($0) }
     @Environment(\.diffSearchQuery) private var searchQuery
@@ -40,6 +42,7 @@ struct DiffFileBodyView<Accessory: View>: View {
                     HunkHeaderView(
                         hunk: hunk,
                         hiddenLines: hiddenAbove.indices.contains(index) ? hiddenAbove[index] : 0,
+                        isExpanding: isExpanding,
                         expand: expand.map { expand in { count in expand(index, count) } })
                 case .inline(let hunkIndex, let rowIndex, let line, let continuation):
                     VStack(spacing: 0) {

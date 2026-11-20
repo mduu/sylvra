@@ -23,7 +23,9 @@ extension DiffScreenModel {
     public var isLoadingFullFile: Bool { fullFilePath.map(loadingFullFiles.contains) ?? false }
 
     /// The diff waits for lines of the chosen scope (shown as a badge over the diff).
-    public var isLoadingScope: Bool { isLoadingFullFile }
+    public var isLoadingScope: Bool {
+        isLoadingFullFile || (scope == .sinceLastReview && selectedCommit == nil && isLoadingSinceReview)
+    }
 
     /// Loads the head version of the file shown in full (once per file and pull request).
     public func loadFullFile() async {

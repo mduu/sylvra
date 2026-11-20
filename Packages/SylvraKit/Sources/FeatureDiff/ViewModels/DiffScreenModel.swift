@@ -42,6 +42,10 @@ public final class DiffScreenModel {
     public internal(set) var fullFileHunks: [String: Hunk] = [:]
     /// Files whose head version is loading for `.fullFile`.
     var loadingFullFiles: Set<String> = []
+    /// The changes since the last review are loading (scope `.sinceLastReview`).
+    public internal(set) var isLoadingSinceReview = false
+    /// Files whose head version loads for revealing context (first expansion).
+    public internal(set) var expandingPaths: Set<String> = []
     /// AI highlights, set by the app from findings.
     public var lineHighlights: [LineHighlight] = [] {
         didSet { highlightIndex = Dictionary(grouping: lineHighlights, by: \.path) }

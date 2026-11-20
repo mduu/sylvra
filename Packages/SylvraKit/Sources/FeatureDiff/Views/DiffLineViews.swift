@@ -166,6 +166,8 @@ struct HunkHeaderView: View {
     let hunk: Hunk
     /// Unchanged lines hidden above this hunk.
     var hiddenLines = 0
+    /// The lines to reveal are loading.
+    var isExpanding = false
     /// Reveals more lines above (`nil`: all of them).
     var expand: ((Int?) -> Void)?
 
@@ -174,7 +176,9 @@ struct HunkHeaderView: View {
     var body: some View {
         HStack(spacing: 10) {
             hairline.frame(width: 24)
-            if hiddenLines > 0, let expand {
+            if hiddenLines > 0, isExpanding {
+                ProgressView().controlSize(.mini).help("Loading the file…")
+            } else if hiddenLines > 0, let expand {
                 HStack(spacing: 2) {
                     Button {
                         expand(Self.step)

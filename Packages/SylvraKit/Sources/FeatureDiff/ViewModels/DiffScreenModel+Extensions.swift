@@ -24,6 +24,8 @@ extension DiffScreenModel {
             sinceReviewFiles = []
             return
         }
+        isLoadingSinceReview = true
+        defer { isLoadingSinceReview = false }
         do {
             let loaded = try await loader.loadDiff(for: id, from: base, to: progress.headSHA)
             guard pullRequestID == id else { return }
@@ -51,11 +53,21 @@ extension DiffScreenModel {
     /// Reveals `count` more lines above a hunk (`nil`: the whole gap).
     public func expandContext(_ file: FileDiff, hunk index: Int, by count: Int?) async {
         if headLines[file.path] == nil {
-            guard let pullRequestID, let ref = progress?.headSHA ?? headSHA else { return }
+            guard let pullRequestID, let ref = progress?.headSHA ?? headSHA,
+                expandingPaths.insert(file.path).inserted
+            else { return }
+            defer { expandingPaths.remove(file.path) }
+            let loader = loader
+            let path = file.path
             do {
-                let content = try await loader.loadFileContent(for: pullRequestID, path: file.path, ref: ref)
+                // The first expansion loads the whole file: split off the main actor, the hunk header shows
+                // a spinner meanwhile.
+                let lines = try await Task.detached {
+                    try await loader.loadFileContent(for: pullRequestID, path: path, ref: ref)
+                        .split(separator: "\n", omittingEmptySubsequences: false).map(String.init)
+                }.value
                 guard self.pullRequestID == pullRequestID else { return }
-                headLines[file.path] = content.split(separator: "\n", omittingEmptySubsequences: false).map(String.init)
+                headLines[file.path] = lines
             } catch {
                 lastError = String(localized: "Couldn't load \(file.fileName): \(error.localizedDescription)")
                 return

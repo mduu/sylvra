@@ -327,7 +327,8 @@ extension DiffScreen {
             highlight: { commitMode ? nil : model.highlight(path: file.path, newLine: $0) },
             onComment: comment,
             hiddenAbove: hidden,
-            expand: expand
+            expand: expand,
+            isExpanding: model.expandingPaths.contains(file.path)
         )
     }
 }

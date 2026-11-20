@@ -122,6 +122,7 @@ struct SinceLastReviewTests {
         #expect(model.progress?.hasChangesSinceReview == true)
         #expect(model.files.count == 6)
         await model.setScope(.sinceLastReview)
+        #expect(!model.isLoadingScope)
         #expect(model.files.map(\.path) == ["Sources/Billing/Invoice.swift", "Sources/Export/CSVEncoder.swift"])
         await model.setScope(.focused)
         #expect(model.files.count == 6)
@@ -248,6 +249,7 @@ struct ContextExpansionModelTests {
         let file = try #require(model.files.first { $0.path == "Sources/Billing/InvoiceService.swift" })
         #expect(model.hiddenAbove(file) == [3])
         await model.expandContext(file, hunk: 0, by: 2)
+        #expect(model.expandingPaths.isEmpty)
         #expect(model.hiddenAbove(file) == [1])
         #expect(model.hunks(for: file).first?.lines.first?.text == "")
         await model.expandContext(file, hunk: 0, by: nil)
@@ -276,5 +278,64 @@ private actor RecordingContentLoader: DiffLoading {
     }
     func loadDiff(for id: PullRequestID, from base: String, to head: String) async throws -> [FileDiff] {
         try await demo.loadDiff(for: id, from: base, to: head)
+    }
+}
+
+/// The diff shows what is still loading: the changes since the last review, the file for revealing context.
+@MainActor
+struct DiffLoadingStateTests {
+    private let id = PullRequestID(owner: "acme", repository: "billing", number: 1234)
+
+    @Test func sinceLastReviewIsLoadingUntilTheChangesArrive() async {
+        let loader = GatedLoader()
+        let model = DiffScreenModel(loader: loader)
+        await model.load(id, headSHA: "e08b5a1")
+        let switching = Task { await model.setScope(.sinceLastReview) }
+        while await !loader.isWaiting { await Task.yield() }
+        #expect(model.isLoadingScope)
+        await loader.open()
+        await switching.value
+        #expect(!model.isLoadingScope)
+    }
+
+    @Test func revealingContextShowsTheFileLoading() async throws {
+        let loader = GatedLoader()
+        let model = DiffScreenModel(loader: loader)
+        await model.load(id, headSHA: "h")
+        let file = try #require(model.files.first { $0.path == "Sources/Billing/InvoiceService.swift" })
+        let expanding = Task { await model.expandContext(file, hunk: 0, by: 2) }
+        while await !loader.isWaiting { await Task.yield() }
+        #expect(model.expandingPaths == [file.path])
+        await loader.open()
+        await expanding.value
+        #expect(model.expandingPaths.isEmpty)
+    }
+}
+
+/// The demo diff; file contents and range diffs wait until the test opens the gate.
+private actor GatedLoader: DiffLoading {
+    private let demo = DemoDiffLoader()
+    private var continuation: CheckedContinuation<Void, Never>?
+    var isWaiting: Bool { continuation != nil }
+
+    func open() {
+        continuation?.resume()
+        continuation = nil
+    }
+
+    private func wait() async { await withCheckedContinuation { continuation = $0 } }
+
+    func loadDiff(for id: PullRequestID) async throws -> PullRequestDiff { try await demo.loadDiff(for: id) }
+    func loadFileContent(for id: PullRequestID, path: String, ref: String) async throws -> String {
+        await wait()
+        return try await demo.loadFileContent(for: id, path: path, ref: ref)
+    }
+    func setViewed(_ viewed: Bool, path: String, pullRequestNodeID: String) async throws {}
+    func loadReviewProgress(for id: PullRequestID) async throws -> ReviewProgress {
+        try await demo.loadReviewProgress(for: id)
+    }
+    func loadDiff(for id: PullRequestID, from base: String, to head: String) async throws -> [FileDiff] {
+        await wait()
+        return try await demo.loadDiff(for: id, from: base, to: head)
     }
 }
