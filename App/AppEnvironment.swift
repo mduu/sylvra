@@ -7,6 +7,7 @@ import FeatureOpenInIDE
 import FeaturePullRequest
 import FeatureReview
 import FeatureTerminal
+import FeatureUpdates
 import Foundation
 import Platform
 import SylvraCore
@@ -29,6 +30,7 @@ import SylvraCore
 /// - `--ask=question`: ask the AI chat this question once a PR is selected (screenshots)
 /// - `--window-layout=wide|compact|focus|…`: window layout for this launch (see `WindowLayout`)
 /// - `--expand-reading-order`: the AI summary's reading order starts expanded
+/// - `--update=available|downloading|…` (demo): show that step of the update card (see `DemoUpdates`)
 @MainActor
 final class AppEnvironment {
     let isDemo: Bool
@@ -61,6 +63,8 @@ final class AppEnvironment {
     /// Selection and inspector state shared by the main and the review window.
     let window: WindowState
     let customTools = CustomToolStore()
+    /// New releases on GitHub: checked at launch and every few hours, installed on request.
+    let updates: UpdateModel
 
     // swiftlint:disable:next function_body_length
     init(arguments: [String] = CommandLine.arguments) {
@@ -134,6 +138,7 @@ final class AppEnvironment {
         if let tab = Self.value(of: "--tab", in: arguments).flatMap(PullRequestScreenModel.Tab.init(rawValue:)) {
             pullRequest.tab = tab
         }
+        updates = Self.makeUpdates(isDemo: isDemo, arguments: arguments)
         worktrees = Self.makeWorktrees(
             gitHub: gitHub, isDemo: isDemo, window: window, aiReview: aiReview, terminal: terminal)
         if !isDemo {
@@ -143,6 +148,24 @@ final class AppEnvironment {
             let diff = diff
             Task { await diff.pruneRememberedLayouts { try? await gitHub.isPullRequestOpen($0) } }
         }
+    }
+
+    /// Demo launches never look on GitHub; `--update=<state>` shows one step of the update card.
+    private static func makeUpdates(isDemo: Bool, arguments: [String]) -> UpdateModel {
+        let version = (Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String).flatMap(
+            ReleaseVersion.init)
+        let model = UpdateModel(
+            fetcher: isDemo ? DemoReleaseFetcher() : GitHubReleaseFetcher(),
+            installer: isDemo ? DemoUpdateInstaller() : SystemUpdateInstaller(),
+            currentVersion: version, defaults: isDemo ? nil : .standard)
+        if isDemo {
+            if let demo = value(of: "--update", in: arguments).flatMap(DemoUpdates.state(named:)) {
+                model.present(demo.state, card: demo.card)
+            }
+        } else {
+            Task { await model.keepChecking() }
+        }
+        return model
     }
 
     /// Worktrees in use (shown, reviewed, open in a terminal tab) are never removed automatically.

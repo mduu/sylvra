@@ -318,6 +318,18 @@ stateDiagram-v2
 - **macOS notification** when a job finishes while Sylvra is not focused, e.g. "AI review of #1234 finished — 2 major, 5 minor". Configurable per job type in settings.
 - **Replies**: new comments by others on a PR the user is involved in raise a notification; clicking it opens the PR. Open PRs reload their review threads every 60 s and only redraw when something changed.
 
+### 13.1 Updates
+
+Sylvra updates itself from the GitHub Releases of `mduu/sylvra` (no Sparkle, no appcast; see architecture §14.3).
+
+- **When**: at launch and every 6 hours, silently. Only a newer, finished release with a DMG counts (no drafts or pre-releases). *Sylvra → Check for Updates…* (under *About*) always answers. *Settings → General → Check for updates automatically* turns the automatic checks off.
+- **Update card**: floats at the main window's top trailing corner (spring in from the top, a fade with Reduce Motion), brand colors only (violet tint, gold glint; never the AI accent). The app icon sits on a brand-gradient ring that turns while something happens. Title *Sylvra X is here*, subtitle *You have Y · size · when*, *What's new* (the release's *Changes since …* list as Markdown, scrolls above ~200 pt, *Release Notes* opens the GitHub page), then *Skip This Version* · *Later* · **Install & Relaunch**.
+- **Install**: download with a brand-gradient progress bar and percent → *Checking the signature…* (the disk image must be notarized and the app signed by Sylvra's Developer ID team) → *Restarting Sylvra…* → Sylvra quits, the new version replaces it and opens. If the app can't be replaced where it is (not in a writable *Applications* folder, e.g. started from the disk image or without admin rights) the button reads *Download* and the downloaded disk image opens in the Finder with a hint to drag Sylvra into Applications.
+- **Later** closes the card; a small *Update* button stays in the toolbar (its own capsule, before the activity) and opens it again. The same release doesn't pop up again by itself; a newer one does.
+- **Skip This Version**: no more automatic reminders for that version; *Check for Updates…* still shows it, and the next version is announced again.
+- **Up to date / errors**: a manual check shows *You're up to date* or *Couldn't check for updates* with the reason. A failed install says why (*Nothing was installed* when the check failed), with *Try Again* and *Open on GitHub*. Automatic checks never show errors (logged only).
+- Demo launches never look on GitHub; `--update=<step>` shows a step of the card for screenshots.
+
 ## 14. Keyboard
 
 | Action | Shortcut |
@@ -348,7 +360,7 @@ Built single-key shortcuts (active whenever no text is being edited — composer
 
 ## 15. Settings
 
-- **General** — appearance (Auto / Light / Dark), agent language, comment language, app version and build.
+- **General** — appearance (Auto / Light / Dark), agent language, comment language, app version and build, *Check for updates automatically* (§13.1).
 - **Accounts** — GitHub sign-in, organizations, teams.
 - **Repositories** — watched repos, path rules, local clone mapping, default IDE, default checkout target, file classification overrides, custom review prompt.
 - **IDEs** — detected IDEs, paths, default IDE, Rider recent-projects cleanup.

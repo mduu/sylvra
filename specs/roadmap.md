@@ -42,7 +42,7 @@ More ideas: [`backlog.md`](backlog.md).
 - Restore-stash helper after a main-clone checkout; cleanup of old per-PR agent worktrees.
 - Translate AI findings into the comment language when turning them into comments.
 - Watched repositories / path rules in the inbox, GitHub OAuth device flow as alternative to `gh`.
-- Release pipeline (Developer ID, notarization, Sparkle, Homebrew tap).
+- Release pipeline (Developer ID, notarization, self-update from GitHub Releases, Homebrew tap).
 
 ## Decisions taken autonomously
 

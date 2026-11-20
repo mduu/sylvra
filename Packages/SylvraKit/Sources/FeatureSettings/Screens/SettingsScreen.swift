@@ -1,5 +1,6 @@
 import DesignSystem
 import SwiftUI
+import SylvraCore
 
 /// The settings window. Feature-specific panes are provided by the app (slices don't import each other).
 public struct SettingsScreen<
@@ -51,11 +52,12 @@ extension SettingsScreen where TerminalPane == EmptyView, RepositoriesPane == Em
     }
 }
 
-/// Appearance and languages.
+/// Appearance, languages and updates.
 struct GeneralSettingsView: View {
     @AppStorage(AppearanceSetting.storageKey) private var appearance = AppearanceSetting.auto.rawValue
     @AppStorage("commentLanguage") private var commentLanguage = "English"
     @AppStorage(AITextSize.storageKey) private var aiTextSize = AITextSize.standard.rawValue
+    @AppStorage(UpdatePreferences.automaticChecksKey) private var checksForUpdates = true
 
     var body: some View {
         Form {
@@ -74,6 +76,8 @@ struct GeneralSettingsView: View {
                 LabeledContent("Version") {
                     Text(verbatim: AppVersion.display()).textSelection(.enabled).monospacedDigit()
                 }
+                Toggle("Check for updates automatically", isOn: $checksForUpdates)
+                    .help("Looks for new releases on GitHub at launch and every few hours")
             }
         }
         .formStyle(.grouped)

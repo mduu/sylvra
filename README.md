@@ -129,6 +129,8 @@ cd sylvra
 open Sylvra.xcodeproj      # run the "Sylvra" scheme
 ```
 
+Installed from the DMG, Sylvra keeps itself up to date: it looks for new GitHub Releases at launch and every few hours and installs them with one click (*Sylvra → Check for Updates…*).
+
 Launch with the argument `--demo` to try the app with sample data, without a GitHub account.
 
 To build an installable, signed and notarized `Sylvra-<version>.dmg` for another Mac (needs a Developer ID certificate):

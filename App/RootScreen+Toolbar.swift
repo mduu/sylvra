@@ -5,6 +5,7 @@ import FeatureDiff
 import FeatureOpenInIDE
 import FeaturePullRequest
 import FeatureReview
+import FeatureUpdates
 import SwiftUI
 
 /// The window toolbar: the pull request info in the middle; on the left what decides which code you see and
@@ -48,6 +49,13 @@ extension RootScreen {
             SubmitReviewToolbarButton(model: environment.review, pullRequestID: selection?.id)
         }
         ToolbarSpacer(.fixed, placement: .primaryAction)
+        if role == .main, environment.updates.pendingRelease != nil, !environment.updates.isCardPresented {
+            ToolbarItem(placement: .primaryAction) {
+                UpdateToolbarButton(model: environment.updates)
+            }
+            // Its own capsule: not part of the pull request actions.
+            ToolbarSpacer(.fixed, placement: .primaryAction)
+        }
         ToolbarItem(placement: .primaryAction) {
             ActivityToolbarPanel(center: environment.activity, open: showPullRequest)
         }

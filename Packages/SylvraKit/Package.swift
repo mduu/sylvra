@@ -16,6 +16,7 @@ let featureSlices = [
     "FeatureCustomTools",
     "FeatureActivity",
     "FeatureSettings",
+    "FeatureUpdates",
 ]
 
 let allModules = ["SylvraCore", "Platform", "DesignSystem"] + featureSlices

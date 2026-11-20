@@ -160,5 +160,5 @@ Everything GitHub shows about a PR, in a calmer layout:
 - Git and at least one supported AI agent (Claude Code first) are installed locally and authenticated by the user; Sylvra never handles AI provider credentials.
 - GitHub authentication via the GitHub CLI (`gh`) token or an OAuth device flow; tokens are stored in the Keychain.
 - An Apple Developer account is available for signing, notarization and App Store / TestFlight distribution.
-- Distribution as notarized DMG (Sparkle updates), optionally via an own Homebrew tap (`brew install --cask sylvra`); App Store only if the App Sandbox allows it (see `architecture.md` §14.3).
+- Distribution as notarized DMG (updates itself from GitHub Releases), optionally via an own Homebrew tap (`brew install --cask sylvra`); App Store only if the App Sandbox allows it (see `architecture.md` §14.3).
 - Accessibility is welcome but not a priority now: when it conflicts with functionality or ease of use, functionality wins (see `ux.md`).

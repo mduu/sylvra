@@ -46,7 +46,7 @@ There is **no Sylvra backend**. All data stays on the user's machine, except wha
 | Project layout | Xcode app target (composition root) + local Swift package `SylvraKit` with one target per feature slice |
 | Tests | Swift Testing (`import Testing`); XCTest only for UI tests |
 | Lint / format | SwiftLint (lint rules) + `swift format` (formatting), see §14 |
-| Dependencies | Keep minimal. Candidates: SwiftTreeSitter (syntax highlighting), GRDB (SQLite cache), SwiftTerm (terminal panel), Sparkle (updates outside the App Store) |
+| Dependencies | Keep minimal. Candidates: SwiftTreeSitter (syntax highlighting), GRDB (SQLite cache), SwiftTerm (terminal panel) (updates are built in, see §14.3) |
 
 ## 3. Code organization: feature slices
 
@@ -77,6 +77,7 @@ sylvra/
 │   │   ├── FeatureTerminal/    # Terminal panel (tabs, PTY sessions), external terminal launcher
 │   │   ├── FeatureCustomTools/ # User-defined commands for files / folders / PRs
 │   │   ├── FeatureActivity/    # Background jobs, activity indicator, completion notifications
+│   │   ├── FeatureUpdates/     # Self-update from GitHub Releases: check, download, verify, swap, relaunch
 │   │   └── FeatureSettings/    # Settings screens
 │   └── Tests/                  # One test target per slice and shared module
 ├── scripts/                    # lint, format, release helpers
@@ -114,6 +115,7 @@ flowchart BT
         FeatureTerminal
         FeatureCustomTools
         FeatureActivity
+        FeatureUpdates
         FeatureSettings
     end
     Slices --> Core
@@ -452,9 +454,10 @@ Like SolarLens, releases are done from the developer machine, driven by Claude C
 
 **Distribution channel and sandboxing** — important constraint: the Mac App Store **and TestFlight for macOS require the App Sandbox**. Sylvra spawns `git`, AI agent CLIs, IDE launchers and terminal shells, which the sandbox largely forbids. Therefore:
 
-- **Primary channel**: Developer ID signed + notarized build (`ExportOptions-developer-id.plist`, `notarytool`), distributed as DMG with Sparkle updates. The DMG opens a styled installer window (`scripts/dmg/`: violet background rendered from the app icon with a brushed golden arrow to *Applications*, Sylvra's icon as volume icon), laid out with `dmgbuild` (pinned, installed into a venv under `.build`) so no Finder automation is needed. `scripts/publish.sh` tags `v<version>` and publishes the notarized DMG as a GitHub Release with the commits since the previous release as notes (only when run explicitly).
-- **Homebrew** (option): `brew install --cask sylvra` via an own tap (`mduu/homebrew-tap`, cask `sylvra`). Builds on the notarized DMG; the cask declares `auto_updates true` because Sparkle updates the app itself. The release script bumps `version` and `sha256` in the cask. The official `homebrew/cask` repository is only an option once Sylvra is public and popular enough to meet its notability rules.
-  - DMGs are published as **GitHub Releases** of the public `mduu/sylvra` repository; the Sparkle appcast is served from the repository (e.g. GitHub Pages) or attached to the release.
+- **Primary channel**: Developer ID signed + notarized build (`ExportOptions-developer-id.plist`, `notarytool`), distributed as DMG; the app updates itself from the GitHub Releases (see *Self-update* below). The DMG opens a styled installer window (`scripts/dmg/`: violet background rendered from the app icon with a brushed golden arrow to *Applications*, Sylvra's icon as volume icon), laid out with `dmgbuild` (pinned, installed into a venv under `.build`) so no Finder automation is needed. `scripts/publish.sh` tags `v<version>` and publishes the notarized DMG as a GitHub Release with the commits since the previous release as notes (only when run explicitly).
+- **Homebrew** (option): `brew install --cask sylvra` via an own tap (`mduu/homebrew-tap`, cask `sylvra`). Builds on the notarized DMG; the cask declares `auto_updates true` because the app updates itself. The release script bumps `version` and `sha256` in the cask. The official `homebrew/cask` repository is only an option once Sylvra is public and popular enough to meet its notability rules.
+  - DMGs are published as **GitHub Releases** of the public `mduu/sylvra` repository.
+- **Self-update** (`FeatureUpdates`, no third-party dependency instead of Sparkle): `GitHubReleaseFetcher` asks `api.github.com/repos/mduu/sylvra/releases/latest` without a token (finished releases with a `.dmg` asset; tag `v<version>` compared part by part with `CFBundleShortVersionString`; notes = the *Changes since …* section written by `scripts/publish.sh`). `SystemUpdateInstaller` downloads the DMG with `URLSession`, then — all tools with argument arrays — checks the DMG (`codesign --verify --deep --strict`, `spctl --assess --type open --context context:primary-signature`), mounts it read-only (`hdiutil attach -nobrowse -readonly`), checks the app (`codesign`, `spctl --type execute`, `TeamIdentifier` must be Sylvra's team `UYT5K989XD`), copies it with `ditto` next to the running app (same volume) and detaches the image. A constant `/bin/sh` script (arguments: pid, staged app, target) waits for Sylvra to quit, swaps the bundles (the old one is restored if the move fails) and opens the new one. Only when the app lives in a writable `Applications` folder; otherwise the DMG is opened in the Finder. Release notes, URLs and versions never become part of a command string. Tests use fake fetchers, installers and process runners; the swap script runs on temporary folders; an opt-in test (`SYLVRA_E2E_DMG`) runs the real checks on a real DMG.
 - **App Store / TestFlight**: only if a sandbox-compatible design is found (see open questions). Sandbox-incompatible features would have to be disabled in that build.
 
 ## 15. Performance targets
@@ -470,5 +473,4 @@ Like SolarLens, releases are done from the developer machine, driven by Claude C
 - Exact agent CLI flags per provider/version — resolved via runtime capability detection.
 - Rider: is there a supported way to open a project without adding it to recent projects?
 - App Sandbox feasibility (security-scoped bookmarks for clones, helper tools) — decides whether a Mac App Store / TestFlight build is possible.
-- Sparkle appcast hosting: GitHub Pages vs. release asset.
 - GitHub Enterprise Server support timing.

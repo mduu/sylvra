@@ -7,6 +7,7 @@ import FeatureInbox
 import FeatureOpenInIDE
 import FeaturePullRequest
 import FeatureReview
+import FeatureUpdates
 import SwiftUI
 import SylvraCore
 
@@ -102,6 +103,9 @@ struct RootScreen: View {
             }
             .overlay(alignment: .bottom) {
                 RootOpenInIDEToast(model: environment.openInIDE)
+            }
+            .overlay(alignment: .topTrailing) {
+                if role == .main { UpdatePanel(model: environment.updates) }
             }
             .toolbar { mainToolbar }
     }

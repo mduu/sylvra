@@ -4,6 +4,7 @@ import FeatureAIReview
 import FeatureActivity
 import FeatureOpenInIDE
 import FeatureSettings
+import FeatureUpdates
 import Platform
 import SwiftUI
 
@@ -52,6 +53,7 @@ struct SylvraApp: App {
         }
         .defaultSize(width: 1440, height: 900)
         .commands {
+            UpdateCommands(model: environment.updates)
             ReviewCommands()
             TerminalCommands(terminal: environment.terminal, panel: environment.bottomPanel)
             CommandLogCommands(panel: environment.bottomPanel)
