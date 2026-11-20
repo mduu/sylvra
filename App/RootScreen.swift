@@ -90,26 +90,8 @@ struct RootScreen: View {
                 await environment.chat.send(question, for: id)
             }
             .focusedSceneValue(\.reviewActions, reviewActions)
-            .onChange(of: environment.pullRequest.detail?.commits, initial: true) { _, commits in
-                // Commit-by-commit review needs the PR's commits (oldest first, as GitHub lists them).
-                applyCommits(commits)
-            }
-            .onChange(of: environment.diff.selectedPath) { _, path in
-                environment.chat.context.file = path
-            }
-            .onChange(of: environment.diff.navigatorRevealToken) {
-                // A click on a file header in the diff shows the file in the Files tab of the PR column.
-                guard role == .main, layout != .focus else { return }
-                withAnimation(.snappy) {
-                    environment.pullRequest.tab = .files
-                    isInboxListed = false
-                }
-            }
-            .onChange(of: environment.aiReview.selectedFindingID) { _, id in
-                environment.chat.context.finding =
-                    environment.aiReview.findings(for: selection?.id)
-                    .first { $0.id == id }?.title
-            }
+            // Model-to-model wiring observes on its own: read here, every change re-evaluated the whole window.
+            .background { RootModelBridges(root: self) }
             .onAppear(perform: connectModels)
             .onDisappear { keyboard.stop() }
             .sheet(item: $overlay) { overlay in
@@ -118,43 +100,8 @@ struct RootScreen: View {
                 case .shortcuts: KeyboardShortcutsSheet()
                 }
             }
-            .onChange(of: aiReadingOrder, initial: true) { _, order in
-                withAnimation(.snappy) { environment.diff.readingOrder = order }
-            }
-            .onChange(of: aiHighlights) { _, highlights in
-                withAnimation(.snappy) { environment.diff.lineHighlights = highlights }
-            }
-            .onChange(of: environment.aiReview.runState) { _, state in
-                let id = "ai-review"
-                switch state {
-                case .running:
-                    environment.activity.start(
-                        ActivityJob(id: id, kind: .aiReview, title: String(localized: "AI review")))
-                case .done:
-                    let count = environment.aiReview.visibleFindings(for: environment.aiReview.runningPullRequest).count
-                    environment.activity.finish(id, message: String(localized: "Review finished — \(count) findings"))
-                case .failed(let message):
-                    environment.activity.finish(id, message: message)
-                case .idle:
-                    environment.activity.finish(id, message: nil)
-                }
-            }
-            .onChange(of: environment.openInIDE.status) { _, status in
-                if case .working(let message) = status {
-                    environment.activity.start(ActivityJob(id: "checkout", kind: .checkout, title: message))
-                } else {
-                    environment.activity.finish("checkout", message: nil)
-                }
-            }
-            .onChange(of: environment.inbox.snapshot) {
-                guard selectedID == nil, let wanted = environment.initialSelection else { return }
-                selectedID =
-                    environment.inbox.snapshot.sections.values.joined().first { $0.id.description == wanted }?.id
-            }
             .overlay(alignment: .bottom) {
-                OpenInIDEStatusToast(status: environment.openInIDE.status)
-                    .padding(.bottom, 16)
-                    .animation(.snappy, value: environment.openInIDE.status)
+                RootOpenInIDEToast(model: environment.openInIDE)
             }
             .toolbar { mainToolbar }
     }
@@ -227,7 +174,7 @@ struct RootScreen: View {
         .animation(.snappy, value: environment.aiReview.selectedFindingID)
     }
 
-    private var aiReadingOrder: [ReadingStep] {
+    var aiReadingOrder: [ReadingStep] {
         selection.flatMap { environment.aiReview.results[$0.id]?.readingOrder } ?? []
     }
 
@@ -300,7 +247,7 @@ extension RootScreen {
 
 extension RootScreen {
     /// AI findings of the selected PR as diff highlights (bridges FeatureAIReview → FeatureDiff).
-    private var aiHighlights: [LineHighlight] {
+    var aiHighlights: [LineHighlight] {
         findingHighlights + patternHighlights
     }
 
