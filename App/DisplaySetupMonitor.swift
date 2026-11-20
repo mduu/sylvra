@@ -13,6 +13,12 @@ final class DisplaySetupMonitor {
 
     /// The setup whose layout is on screen.
     private(set) var setup: DisplaySetup
+    /// The screens connected now (cached: asking `NSScreen` on every resize tick is too slow).
+    @ObservationIgnored private var connected: DisplaySetup
+    /// Widths and frames saved after dragging pauses (UserDefaults writes per frame made resizing stutter).
+    @ObservationIgnored private var pendingWidths: [ColumnLayout.Column: CGFloat] = [:]
+    @ObservationIgnored private var pendingFrames: [String: NSRect] = [:]
+    @ObservationIgnored private var pendingSave: Task<Void, Never>?
     @ObservationIgnored private var widths: [ColumnLayout.Column: CGFloat] = [:]
     @ObservationIgnored private let memory = DisplayLayoutMemory()
     @ObservationIgnored private let defaults = UserDefaults.standard
@@ -22,7 +28,9 @@ final class DisplaySetupMonitor {
     @ObservationIgnored private var restoredWindows: Set<String> = []
 
     private init() {
-        setup = DisplaySetup.current
+        let current = DisplaySetup.current
+        setup = current
+        connected = current
         loadWidths()
     }
 
@@ -35,6 +43,12 @@ final class DisplaySetupMonitor {
                 forName: NSApplication.didChangeScreenParametersNotification, object: nil, queue: .main
             ) { [weak self] _ in
                 MainActor.assumeIsolated { self?.screensChanged() }
+            })
+        observers.append(
+            center.addObserver(
+                forName: NSApplication.willTerminateNotification, object: nil, queue: .main
+            ) { [weak self] _ in
+                MainActor.assumeIsolated { self?.flushPendingSaves() }
             })
         for name in [NSWindow.didMoveNotification, NSWindow.didResizeNotification] {
             observers.append(
@@ -62,7 +76,8 @@ final class DisplaySetupMonitor {
 
     func saveWidth(_ width: CGFloat, for column: ColumnLayout.Column) {
         guard isSettled, column.range.contains(width) else { return }
-        memory.setNumber(Double(width.rounded()), column.memoryName, for: setup)
+        pendingWidths[column] = width.rounded()
+        scheduleSave()
     }
 
     private func loadWidths() {
@@ -97,7 +112,35 @@ final class DisplaySetupMonitor {
         guard let name = Self.frameName(of: window), restoredWindows.contains(name), window.isVisible, isSettled,
             !window.styleMask.contains(.fullScreen)
         else { return }
-        memory.setText(NSStringFromRect(window.frame), name, for: setup)
+        pendingFrames[name] = window.frame
+        scheduleSave()
+    }
+
+    // MARK: Saving
+
+    /// Saves once the drag or live resize pauses.
+    private func scheduleSave() {
+        pendingSave?.cancel()
+        pendingSave = Task { [weak self] in
+            try? await Task.sleep(for: .milliseconds(400))
+            guard !Task.isCancelled else { return }
+            self?.flushPendingSaves()
+        }
+    }
+
+    private func flushPendingSaves() {
+        pendingSave?.cancel()
+        pendingSave = nil
+        // Only for the setup the values were measured in (checked live: macOS may move windows before it
+        // reports the screen change).
+        if isSettled, DisplaySetup.current == setup {
+            for (column, width) in pendingWidths {
+                memory.setNumber(Double(width), column.memoryName, for: setup)
+            }
+            for (name, frame) in pendingFrames { memory.setText(NSStringFromRect(frame), name, for: setup) }
+        }
+        pendingWidths = [:]
+        pendingFrames = [:]
     }
 
     /// The first time a window is shown: SwiftUI has placed it by then, so the remembered frame wins.
@@ -130,9 +173,13 @@ final class DisplaySetupMonitor {
     // MARK: Screen changes
 
     /// The applied setup is still the connected one (false while macOS rearranges after a change).
-    private var isSettled: Bool { DisplaySetup.current == setup }
+    private var isSettled: Bool { connected == setup }
 
     private func screensChanged() {
+        connected = DisplaySetup.current
+        // Values measured while macOS rearranges belong to no setup.
+        pendingWidths = [:]
+        pendingFrames = [:]
         pendingChange?.cancel()
         // macOS sends several notifications per change; act once the screens are stable.
         pendingChange = Task { [weak self] in
@@ -143,6 +190,7 @@ final class DisplaySetupMonitor {
     }
 
     private func apply(_ new: DisplaySetup) {
+        connected = new
         guard new != setup else { return }
         setup = new
         loadWidths()
