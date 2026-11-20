@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Builds the styled installer DMG: violet background with a brushed arrow, the app on the left, Applications on
+# Builds the styled installer DMG: violet background with a golden vein arrow, the app on the left, Applications on
 # the right, Sylvra's icon as the volume icon. Uses dmgbuild (pinned, in a venv under .build), which writes the
 # Finder layout directly — no Finder automation, nothing pops up.
 #

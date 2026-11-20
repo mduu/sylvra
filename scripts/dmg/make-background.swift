@@ -1,4 +1,4 @@
-// Renders the DMG window background (violet, large faint app icon, brushed arrow to Applications).
+// Renders the DMG window background (violet, large faint app icon, golden vein arrow to Applications).
 //   swift scripts/dmg/make-background.swift <AppIcon.png> <out-dir>   → background.png, background@2x.png
 // Layout (points, top-left origin) must match scripts/release.sh: window 660×430, icons at (165,180) and (495,180).
 import AppKit
@@ -13,60 +13,64 @@ func color(_ hex: UInt32, _ alpha: CGFloat = 1) -> CGColor {
         blue: CGFloat(hex & 0xFF) / 255, alpha: alpha)
 }
 
-/// Deterministic noise, so every build renders the same strokes.
-struct Random {
-    var state: UInt64
-    mutating func next() -> CGFloat {
-        state = state &* 6_364_136_223_846_793_005 &+ 1_442_695_040_888_963_407
-        return CGFloat((state >> 33) % 10_000) / 10_000
-    }
-    mutating func signed() -> CGFloat { next() * 2 - 1 }
-}
-
 func cubic(_ p0: CGPoint, _ p1: CGPoint, _ p2: CGPoint, _ p3: CGPoint, _ t: CGFloat) -> CGPoint {
     let u = 1 - t
     let a = u * u * u, b = 3 * u * u * t, c = 3 * u * t * t, d = t * t * t
     return CGPoint(x: a * p0.x + b * p1.x + c * p2.x + d * p3.x, y: a * p0.y + b * p1.y + c * p2.y + d * p3.y)
 }
 
-/// A brush stroke: many thin bristles along the curve, tapered at both ends, with dry gaps.
-func brush(
-    _ context: CGContext, _ p0: CGPoint, _ p1: CGPoint, _ p2: CGPoint, _ p3: CGPoint, width: CGFloat,
-    seed: UInt64, colors: [UInt32], taper: (CGFloat) -> CGFloat = { sin(.pi * $0) }
-) {
-    var random = Random(state: seed)
-    let steps = 160
-    let bristles = 44
-    for bristle in 0..<bristles {
-        let offset = (CGFloat(bristle) / CGFloat(bristles - 1) - 0.5)  // −0.5 … 0.5 across the stroke
-        let wobble = random.signed() * 0.08
-        let dryFrom = 0.55 + random.next() * 0.5  // outer bristles run dry earlier
-        let alpha = 0.35 + random.next() * 0.5
-        let hex = colors[bristle % colors.count]
-        context.setStrokeColor(color(hex, alpha))
-        context.setLineCap(.round)
-        context.setLineWidth(1.0 + random.next() * 1.6)
-        var previous: CGPoint?
-        for step in 0...steps {
-            let t = CGFloat(step) / CGFloat(steps)
-            let taper = taper(t)
-            if abs(offset) * 2 > dryFrom && t < 0.25 + abs(offset) * 0.3 { previous = nil; continue }
-            let point = cubic(p0, p1, p2, p3, t)
-            let ahead = cubic(p0, p1, p2, p3, min(t + 0.01, 1))
-            let behind = cubic(p0, p1, p2, p3, max(t - 0.01, 0))
-            let dx = ahead.x - behind.x, dy = ahead.y - behind.y
-            let length = max(hypot(dx, dy), 0.0001)
-            let normal = CGPoint(x: -dy / length, y: dx / length)
-            let spread = width * taper * (offset + wobble * sin(t * 9 + CGFloat(bristle)))
-            let current = CGPoint(x: point.x + normal.x * spread, y: point.y + normal.y * spread)
-            if let previous, random.next() > 0.015 {
-                context.move(to: previous)
-                context.addLine(to: current)
-                context.strokePath()
-            }
-            previous = current
-        }
+/// The main vein's curve (points, top-left origin).
+let veinStart = CGPoint(x: 236, y: 196)
+let veinControl1 = CGPoint(x: 262, y: 92)
+let veinControl2 = CGPoint(x: 372, y: 64)
+let veinTip = CGPoint(x: 420, y: 160)
+
+func veinPoint(_ t: CGFloat) -> CGPoint { cubic(veinStart, veinControl1, veinControl2, veinTip, t) }
+
+/// The vein as a path.
+func veinPath() -> CGPath {
+    let path = CGMutablePath()
+    path.move(to: veinStart)
+    path.addCurve(to: veinTip, control1: veinControl1, control2: veinControl2)
+    return path
+}
+
+/// Strokes `path` with gold that brightens from the start toward the tip.
+func strokeGold(_ context: CGContext, _ path: CGPath, width: CGFloat, from: CGFloat = 0.7) {
+    let space = CGColorSpace(name: CGColorSpace.sRGB)!
+    let gold = CGGradient(
+        colorsSpace: space,
+        colors: [color(0xF2D27A, from), color(0xF5DC8E, 0.95), color(0xFFEDB8, 1)] as CFArray,
+        locations: [0, 0.6, 1])!
+    context.saveGState()
+    context.addPath(path)
+    context.setLineWidth(width)
+    context.setLineCap(.round)
+    context.setLineJoin(.round)
+    context.replacePathWithStrokedPath()
+    context.clip()
+    context.drawLinearGradient(
+        gold, start: veinStart, end: veinTip, options: [.drawsBeforeStartLocation, .drawsAfterEndLocation])
+    context.restoreGState()
+}
+
+func drawVeinArrow(_ context: CGContext) {
+    context.saveGState()
+    // The soft golden shimmer the icon's veins have.
+    context.setShadow(offset: .zero, blur: 10, color: color(0xF2D27A, 0.6))
+    context.beginTransparencyLayer(auxiliaryInfo: nil)
+        strokeGold(context, veinPath(), width: 2.6)
+    // Slim open arrowhead along the arriving direction.
+    let arriving = atan2(veinTip.y - veinPoint(0.94).y, veinTip.x - veinPoint(0.94).x)
+    let head = CGMutablePath()
+    for side in [-1.0, 1.0] {
+        let angle = arriving + .pi + side * 0.5
+        head.move(to: veinTip)
+        head.addLine(to: CGPoint(x: veinTip.x + cos(angle) * 19, y: veinTip.y + sin(angle) * 19))
     }
+    strokeGold(context, head, width: 2.6, from: 1)
+    context.endTransparencyLayer()
+    context.restoreGState()
 }
 
 /// White in the middle, fading to black at the edges (alpha mask for the faint icon).
@@ -132,30 +136,9 @@ func render(scale: CGFloat, icon: NSImage) -> NSBitmapImageRep {
         context.fillPath()
     }
 
-    // Brushed golden arrow, swinging up and over from the app to Applications.
-    let gold: [UInt32] = [0xF2D27A, 0xE9C46A, 0xFFE7A8, 0xD9B05A, 0xFFF1C9]
-    let start = CGPoint(x: 240, y: 178)
-    let control1 = CGPoint(x: 268, y: 78)
-    let control2 = CGPoint(x: 376, y: 70)
-    let tip = CGPoint(x: 418, y: 166)
-    context.beginTransparencyLayer(auxiliaryInfo: nil)
-    context.setShadow(offset: .zero, blur: 14, color: color(0xF2D27A, 0.35))
-    context.beginTransparencyLayer(auxiliaryInfo: nil)
-    // Lands with pressure: thin where the brush touches down, full width at the tip.
-    brush(context, start, control1, control2, tip, width: 18, seed: 7, colors: gold) { t in
-        min(t / 0.35, 1) * (0.35 + 0.65 * sin(.pi * min(t, 0.5)))
-    }
-    // Arrowhead: two strokes flicked back from the tip, ±38° around the arriving direction.
-    let arriving = atan2(tip.y - control2.y, tip.x - control2.x)
-    for (index, angle) in [arriving + .pi - 0.66, arriving + .pi + 0.66].enumerated() {
-        let back = CGPoint(x: tip.x + cos(angle) * 34, y: tip.y + sin(angle) * 34)
-        let bend = CGPoint(x: (tip.x * 2 + back.x) / 3, y: (tip.y * 2 + back.y) / 3)
-        brush(context, tip, bend, bend, back, width: 13, seed: 11 + UInt64(index), colors: gold) { t in
-            max(1 - t, 0) * 0.9 + 0.1
-        }
-    }
-    context.endTransparencyLayer()
-    context.endTransparencyLayer()
+    // A golden vein arcing from the app to Applications, drawn like the veins in the app icon: one fine line
+    // ending in a slim open arrowhead.
+    drawVeinArrow(context)
 
     // Caption.
     let paragraph = NSMutableParagraphStyle()
