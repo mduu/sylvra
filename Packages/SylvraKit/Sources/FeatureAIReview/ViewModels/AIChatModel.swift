@@ -68,6 +68,8 @@ public final class AIChatModel {
 
     /// All chats per PR, oldest first.
     public private(set) var chats: [PullRequestID: [Chat]] = [:]
+    /// Discussed lines per pull request, rebuilt when messages are added (asked per visible diff row).
+    @ObservationIgnored private var discussedCache: [PullRequestID: (messages: Int, lines: Set<DiscussedLine>)] = [:]
     private var activeChatIDs: [PullRequestID: Chat.ID] = [:]
     public private(set) var isSending = false
     public var draft = ""
@@ -242,6 +244,19 @@ public final class AIChatModel {
         return seen
     }
 
+    /// Whether a chat of the pull request asked about this line (path, side and last line).
+    public func isDiscussed(_ location: CodeLocation, in id: PullRequestID?) -> Bool {
+        guard let id else { return false }
+        let chats = chatList(for: id)
+        let count = chats.reduce(0) { $0 + $1.messages.count }
+        if let cached = discussedCache[id], cached.messages == count {
+            return cached.lines.contains(DiscussedLine(location))
+        }
+        let lines = Set(chats.flatMap(\.messages).compactMap(\.location).map(DiscussedLine.init))
+        discussedCache[id] = (count, lines)
+        return lines.contains(DiscussedLine(location))
+    }
+
     /// The code location an answer is about: the latest question with code before it.
     public func location(answering message: Message, in id: PullRequestID?) -> CodeLocation? {
         let messages = messages(for: id)
@@ -267,5 +282,18 @@ public final class AIChatModel {
             guard let line = Int(match.2) else { return nil }
             return CodeReference(range: match.range, path: String(match.1), line: line)
         }
+    }
+}
+
+/// A line as `AIChatModel.isDiscussed` compares it (a range's start line doesn't matter).
+struct DiscussedLine: Hashable {
+    let path: String
+    let side: CodeLocation.Side
+    let line: Int
+
+    init(_ location: CodeLocation) {
+        path = location.path
+        side = location.side
+        line = location.line
     }
 }

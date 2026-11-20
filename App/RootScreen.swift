@@ -181,19 +181,22 @@ struct RootScreen: View {
         Task { await environment.diff.revealFinding(path: finding.path, line: finding.startLine) }
     }
 
-    /// Below a diff line: review threads, and the selected AI finding as an inline card at its last line.
-    @ViewBuilder
+    /// Below a diff line (its own view: what it reads only invalidates this line, not the whole diff).
     func lineAccessory(at location: CodeLocation) -> some View {
+        LineAccessoryView(root: self, location: location)
+    }
+
+    /// Review threads, and the selected AI finding as an inline card at its last line.
+    @ViewBuilder
+    func lineAccessoryContent(at location: CodeLocation) -> some View {
         VStack(alignment: .leading, spacing: 0) {
             ReviewThreadsPanel(model: environment.review, location: location)
-            if environment.chat.discussedLocations(for: selection?.id).contains(where: {
-                $0.path == location.path && $0.side == location.side && $0.line == location.line
-            }) {
+            if environment.chat.isDiscussed(location, in: selectedID) {
                 DiscussionMarkerView(open: openChat)
                     .padding(.horizontal, 12)
                     .padding(.vertical, 6)
             }
-            if let finding = selectedFinding, location.side == .right, location.path == finding.path,
+            if location.side == .right, let finding = selectedFinding, location.path == finding.path,
                 location.line == finding.endLine
             {
                 InlineFindingCard(
@@ -229,7 +232,8 @@ struct RootScreen: View {
     }
 
     private var selectedFinding: ReviewFinding? {
-        environment.aiReview.findings(for: selection?.id).first { $0.id == environment.aiReview.selectedFindingID }
+        guard let id = environment.aiReview.selectedFindingID else { return nil }
+        return environment.aiReview.findings(for: selectedID).first { $0.id == id }
     }
 }
 
@@ -378,4 +382,12 @@ extension RootScreen {
         }
         keyboard.start()
     }
+}
+
+/// One diff line's accessory; observes threads, chat and the selected finding for itself.
+private struct LineAccessoryView: View {
+    let root: RootScreen
+    let location: CodeLocation
+
+    var body: some View { root.lineAccessoryContent(at: location) }
 }

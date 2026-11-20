@@ -222,6 +222,13 @@ struct AIChatModelTests {
         let answer = try #require(messages.last)
         #expect(chat.location(answering: answer, in: id) == location)
         #expect(chat.context.code?.label == "InvoiceService.swift:8–9")
+        #expect(!chat.isDiscussed(CodeLocation(path: location.path, line: 12, side: .right), in: id))
+        #expect(chat.isDiscussed(CodeLocation(path: location.path, line: 9, side: .right), in: id))
+        #expect(!chat.isDiscussed(CodeLocation(path: location.path, line: 9, side: .left), in: id))
+        // Added after the first lookup: the cache follows new messages.
+        let later = CodeLocation(path: location.path, line: 12, side: .right)
+        await chat.discuss(.init(location: later, text: "x"), question: "?", for: id)
+        #expect(chat.isDiscussed(later, in: id))
     }
 
     @Test func chatModelAndEffortDefaultToReviewSettingsAndCanChange() async throws {
