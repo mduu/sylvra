@@ -57,6 +57,19 @@ extension RootScreen {
                     .panelHandle(.leading, isVisible: showsInboxHandle(onReviewColumn: false)) { inboxHandle }
                     .stableColumn()
             }
+        } else if layout.stacksInbox {
+            // Compact: the inbox lives in the pull request column, so there is no inbox sidebar that could
+            // appear next to it (the inbox was listed twice).
+            NavigationSplitView(columnVisibility: $columnVisibility) {
+                pullRequestColumn
+                    .toolbar(removing: .sidebarToggle)
+                    .rememberedColumn(.pullRequest, ideal: pullRequestWidth)
+                    .navigationSplitViewColumnWidth(
+                        min: ColumnLayout.Column.pullRequest.range.lowerBound, ideal: pullRequestWidth,
+                        max: ColumnLayout.Column.pullRequest.range.upperBound)
+            } detail: {
+                reviewColumn
+            }
         } else {
             NavigationSplitView(columnVisibility: $columnVisibility) {
                 inboxColumn

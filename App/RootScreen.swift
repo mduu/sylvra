@@ -32,7 +32,7 @@ struct RootScreen: View {
     var inspectorWidth: CGFloat { displays.width(.inspector) }
     @AppStorage(WindowLayout.storageKey) var layoutMode = WindowLayout.automatic.rawValue
     /// The window is narrower than `WindowLayout.compactBelow` (only this changes the automatic layout).
-    @State var isNarrowWindow = false
+    @State var isNarrowWindow: Bool
     /// Width of the pull request box in the toolbar, in steps by window width.
     @State var titleBoxWidth = PullRequestTitleView.narrowWidth
     /// Focus layout: the inbox floats over the diff while open.
@@ -51,6 +51,10 @@ struct RootScreen: View {
         self.environment = environment
         self.role = role
         _columnVisibility = State(initialValue: environment.startsFocused ? .doubleColumn : .all)
+        // Measured once the window is on screen; until then the expected width avoids starting wide and
+        // switching to compact right away.
+        let width = DisplaySetupMonitor.shared.expectedMainWindowWidth() ?? WindowLayout.compactBelow
+        _isNarrowWindow = State(initialValue: width < WindowLayout.compactBelow)
     }
 
     var body: some View {

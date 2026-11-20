@@ -102,17 +102,17 @@ private struct WindowLayoutModifier: ViewModifier {
 }
 
 extension WindowLayoutModifier {
-    /// Compact and focus show the inbox in the pull request column or floating, never as the split view's
-    /// sidebar: a sidebar shown anyway (*View → Show Sidebar*, a rebuilt split view) listed the inbox twice.
-    /// It goes away again, and the inbox opens where the layout shows it.
+    /// Focus floats the inbox, never as the split view's sidebar: a sidebar shown anyway (*View → Show
+    /// Sidebar*) would list it twice. It goes away again and the inbox floats in instead. (Compact has no
+    /// inbox sidebar at all.)
     fileprivate func keepsSidebarHidden(_ visibility: NavigationSplitViewVisibility) {
         let layout = root.layout
-        guard root.role == .main, layout.stacksInbox || layout.floatsInbox, visibility == .all else { return }
+        guard root.role == .main, layout.floatsInbox, visibility == .all else { return }
         // After the current update: the split view is changing its columns right now.
         Task { @MainActor in
             withAnimation(.snappy) {
                 root.columnVisibility = layout.columnVisibility
-                if layout.stacksInbox { root.isInboxListed = true } else { root.isInboxFloating = true }
+                root.isInboxFloating = true
             }
         }
     }

@@ -163,6 +163,16 @@ final class DisplaySetupMonitor {
         pendingFrames = [:]
     }
 
+    /// The width the main window will most likely have: its remembered frame for these screens, else the main
+    /// screen. Decides the starting layout before the window is measured (no wide layout flashing first).
+    func expectedMainWindowWidth() -> CGFloat? {
+        if let stored = memory.text("frame.main", for: setup) {
+            let frame = NSRectFromString(stored)
+            if frame.width > 200 { return frame.width }
+        }
+        return NSScreen.main?.visibleFrame.width
+    }
+
     /// The first time a window is shown: SwiftUI has placed it by then, so the remembered frame wins.
     private func windowAppeared(_ window: NSWindow) {
         guard let name = Self.frameName(of: window), window.isVisible, isSettled,

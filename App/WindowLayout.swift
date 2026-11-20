@@ -107,8 +107,8 @@ enum WindowLayout: String, CaseIterable, Identifiable {
     /// Which split view columns are visible.
     var columnVisibility: NavigationSplitViewVisibility {
         switch self {
-        case .automatic, .wide, .twoWindows: .all
-        case .compact: .doubleColumn
+        // Compact has two columns (pull request or inbox, diff): both show with `.all`.
+        case .automatic, .wide, .twoWindows, .compact: .all
         case .focus: .detailOnly
         }
     }
