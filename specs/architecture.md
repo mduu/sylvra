@@ -275,7 +275,7 @@ A `ReviewRequest` contains:
 }
 ```
 
-Findings and pattern evidence are **validated** against the actual diff: paths must exist, line ranges must be inside the file (pattern evidence outside the pull request's files is dropped). Shards and models that report the same pattern add their evidence to it; `overall` points are merged by title. Invalid locations are re-anchored (nearest hunk) or marked "unanchored" instead of silently dropped.
+Findings and pattern evidence are **validated** against the actual diff: paths must exist, line ranges must be inside the file (pattern evidence outside the pull request's files is dropped). Shards and models that report the same pattern add their evidence to it; `overall` points are merged when their titles share most word stems. Invalid locations are re-anchored (nearest hunk) or marked "unanchored" instead of silently dropped.
 
 ### 8.5 Parallel agents (sharding)
 
@@ -308,7 +308,8 @@ sequenceDiagram
 1. **Shard planning**: group changed files by namespace/folder, balance by changed-line count, keep related files (source + tests) together, exclude noise.
 2. **Execution**: one agent process per shard (× per model), limited by `maxParallelAgents` (setting) via a `TaskGroup` with a concurrency limiter.
 3. **Cross-cutting pass** (optional): catches issues spanning shards and consolidates pattern analysis.
-4. **Merge**: de-duplicate findings (same location + similar title), order by severity, attach sources.
+4. **Merge**: de-duplicate findings, order by severity, attach sources (the higher impact / likelihood wins). A finding is a duplicate when it is in the same file and either within 2 lines with similar wording (shared word stems of the title, or of title and rationale; same category on the same line) or up to 6 lines apart with the same category and clearly the same title. Deliberately cautious: merging two different problems hides one.
+5. **Consolidate** (only when several models ran): one more agent call (Sonnet, low effort) gets the merged findings and whole-PR points and returns groups that describe the same problem in other words, another language or at another line. Each group becomes its most severe finding with all sources; groups across files or with invalid indices are ignored; on any failure the merged result stays. Shown as a progress row "Combining the models' findings".
 
 Small PRs automatically use a single agent (threshold configurable).
 

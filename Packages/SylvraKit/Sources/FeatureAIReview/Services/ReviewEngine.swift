@@ -86,7 +86,15 @@ public struct ReviewEngine: Sendable {
                 startNext()
             }
         }
-        return ReviewMerger.merge(outputs, files: files)
+        let merged = ReviewMerger.merge(outputs, files: files)
+        // Several models phrase the same problem differently: one more call groups what the merger missed.
+        guard Set(outputs.map(\.1.model)).count > 1, FindingConsolidator.isWorthwhile(merged) else { return merged }
+        let step = Progress(
+            id: "consolidate", title: String(localized: "Combining the models' findings"), state: .running)
+        await progress(step)
+        let result = await FindingConsolidator(provider: provider).consolidate(merged, language: settings.agentLanguage)
+        await progress(Progress(id: step.id, title: step.title, state: .done))
+        return result
     }
 
     /// The pull request's files a shard doesn't review, with their size, so it can judge the change as a whole.
