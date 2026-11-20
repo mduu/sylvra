@@ -19,6 +19,13 @@ final class DisplaySetupMonitor {
     @ObservationIgnored private var pendingWidths: [ColumnLayout.Column: CGFloat] = [:]
     @ObservationIgnored private var pendingFrames: [String: NSRect] = [:]
     @ObservationIgnored private var pendingSave: Task<Void, Never>?
+    /// Column widths reported before this moment come from the split view, not from the reviewer: while the
+    /// window is placed at launch, restored, resized or moved to other screens it squeezes the columns (often
+    /// down to their minimum), and those widths were saved as if chosen.
+    @ObservationIgnored private var acceptsWidthsAfter = Date.now.addingTimeInterval(2)
+    @ObservationIgnored private var windowSizes: [String: CGSize] = [:]
+    /// Demo launches (screenshots) share the reviewer's settings: they change nothing there.
+    @ObservationIgnored private let isDemo = CommandLine.arguments.contains("--demo")
     @ObservationIgnored private var widths: [ColumnLayout.Column: CGFloat] = [:]
     @ObservationIgnored private let memory = DisplayLayoutMemory()
     @ObservationIgnored private let defaults = UserDefaults.standard
@@ -75,7 +82,9 @@ final class DisplaySetupMonitor {
     }
 
     func saveWidth(_ width: CGFloat, for column: ColumnLayout.Column) {
-        guard isSettled, column.range.contains(width) else { return }
+        guard !isDemo, isSettled, column.range.contains(width), Date.now > acceptsWidthsAfter,
+            !NSApplication.shared.windows.contains(where: \.inLiveResize)
+        else { return }
         pendingWidths[column] = width.rounded()
         scheduleSave()
     }
@@ -90,7 +99,7 @@ final class DisplaySetupMonitor {
     // MARK: Window layout
 
     func saveLayoutMode(_ mode: String) {
-        guard isSettled, !isLayoutModeFromLaunchArgument else { return }
+        guard !isDemo, isSettled, !isLayoutModeFromLaunchArgument else { return }
         memory.setText(mode, "mode", for: setup)
     }
 
@@ -109,11 +118,22 @@ final class DisplaySetupMonitor {
 
     /// Saves a moved or resized window's frame once its frame for this setup has been restored.
     private func windowChanged(_ window: NSWindow) {
-        guard let name = Self.frameName(of: window), restoredWindows.contains(name), window.isVisible, isSettled,
+        guard let name = Self.frameName(of: window) else { return }
+        // A new window size squeezes or widens the columns: not a width the reviewer chose.
+        if windowSizes.updateValue(window.frame.size, forKey: name) != window.frame.size {
+            ignoreWidths(for: 0.8)
+        }
+        guard !isDemo, restoredWindows.contains(name), window.isVisible, isSettled,
             !window.styleMask.contains(.fullScreen)
         else { return }
         pendingFrames[name] = window.frame
         scheduleSave()
+    }
+
+    private func ignoreWidths(for seconds: TimeInterval) {
+        acceptsWidthsAfter = max(acceptsWidthsAfter, Date.now.addingTimeInterval(seconds))
+        // Widths measured just before belong to the old size too.
+        pendingWidths = [:]
     }
 
     // MARK: Saving
@@ -152,6 +172,7 @@ final class DisplaySetupMonitor {
     }
 
     private func restoreFrame(of window: NSWindow, name: String) {
+        ignoreWidths(for: 1.5)
         guard let stored = memory.text(name, for: setup) else { return }
         let frame = NSRectFromString(stored)
         // Only where it is fully reachable (a screen arrangement can change without changing the setup).
@@ -193,6 +214,7 @@ final class DisplaySetupMonitor {
         connected = new
         guard new != setup else { return }
         setup = new
+        ignoreWidths(for: 2)
         loadWidths()
         restoreLayoutMode()
         restoredWindows = []
