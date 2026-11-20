@@ -32,6 +32,12 @@ public enum SylvraColor {
     public static let surfaceElevated = dynamic(light: 0xFFFFFF, dark: 0x1C1236)
     /// Selected rows (inbox selection, file selection).
     public static let surfaceSelected = dynamic(light: 0xECE4FB, dark: 0x2A1B4E)
+    /// Panel edge handle at rest: white in light mode, a lighter violet that stands out from the dark surfaces.
+    public static let handleFill = dynamic(light: 0xFFFFFF, dark: 0x4A3388)
+    /// Panel edge handle under the pointer (brighter than at rest in both appearances).
+    public static let handleFillHover = dynamic(light: 0xEADFFF, dark: 0x6A4CB8)
+    /// Chevron of a hovered panel edge handle.
+    public static let handleChevronHover = dynamic(light: 0x6C48C6, dark: 0xF1ECFF)
 
     // MARK: Diff surface
 

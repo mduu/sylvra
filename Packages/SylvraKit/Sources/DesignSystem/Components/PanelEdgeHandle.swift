@@ -45,9 +45,9 @@ public struct PanelEdgeHandle: View {
 
     private var tab: some View {
         let fill: Color =
-            isProminent ? SylvraColor.brandPrimary : (isHovering ? SylvraColor.brandTint : SylvraColor.surfaceElevated)
-        let border: Color =
-            isProminent || isHovering ? SylvraColor.brandPrimary.opacity(0.45) : SylvraColor.codeHairline
+            isProminent ? SylvraColor.brandPrimary : (isHovering ? SylvraColor.handleFillHover : SylvraColor.handleFill)
+        // At rest a light brand edge: the hairline color nearly vanished on the dark code surface.
+        let border: Color = SylvraColor.brandPrimary.opacity(isProminent || isHovering ? 0.55 : 0.35)
         return
             shape
             .fill(fill)
@@ -62,7 +62,7 @@ public struct PanelEdgeHandle: View {
         let style: AnyShapeStyle =
             isProminent
             ? AnyShapeStyle(SylvraColor.surfacePrimary)
-            : (isHovering ? AnyShapeStyle(SylvraColor.brandPrimary) : AnyShapeStyle(.tertiary))
+            : (isHovering ? AnyShapeStyle(SylvraColor.handleChevronHover) : AnyShapeStyle(.secondary))
         return Image(systemName: symbol)
             .font(.system(size: 11, weight: .bold))
             .foregroundStyle(style)
