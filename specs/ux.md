@@ -26,6 +26,7 @@ We deviate **only with a clearly documented reason**. Every deviation is listed 
 | Multi-hue AI gradient | AI-generated content must be instantly recognizable and never confused with human content. |
 | Review shortcuts with modifiers (`⌘]`, `⌥⌘↓`, `⌥⌘V`) instead of single letters (`]`, `J`, `V`) | Single-letter menu shortcuts would fire while typing in the comment composer and the chat. |
 | *Compact* layout: inbox and pull request share one column with a `‹ Inbox` back button (drill-down) instead of a sidebar | On a laptop the diff needs the width, and while reviewing the other PRs should stay out of sight; the inbox is one click away and the same pattern already opens a repository inside the inbox. |
+| Own *About Sylvra* window instead of the standard About panel | The standard panel's plain credits text fell far behind the rest of the app; the window keeps its content (name, version, copyright, credits) and adds the license texts of bundled open-source software. |
 | Overlay scroll bars unless System Settings says "Always" (`ScrollerPreference`, this launch only) | With a mouse, "Automatically" shows legacy scroll bars that take width; they came and went with content height and window focus, so column content got narrower and wider and truncated text jumped. |
 
 ## 3. Visual language
@@ -317,6 +318,10 @@ stateDiagram-v2
 - **Activity indicator** in the toolbar whenever something runs in the background; its help names the jobs, a click opens a popover with all jobs (name with the pull request, progress; a job on a pull request opens it).
 - **macOS notification** when a job finishes while Sylvra is not focused, e.g. "AI review of #1234 finished — 2 major, 5 minor". Configurable per job type in settings.
 - **Replies**: new comments by others on a PR the user is involved in raise a notification; clicking it opens the PR. Open PRs reload their review threads every 60 s and only redraw when something changed.
+
+### 13.0 About
+
+*Sylvra → About Sylvra* opens Sylvra's own About window instead of the standard panel (deviation, §2: the standard panel's plain credits text fell far behind the rest of the app). Fixed size, no title bar, on a brand canvas like a splash (dark: deep violet with lavender glows; light: pale lavender with violet ink, violet labels instead of gold for contrast) with a violet glow behind the large app icon; the glows drift slowly (still with Reduce Motion). It shows the name, the tagline, the version as type alone (large, thin figures, the build number below), *View on GitHub* (`github.com/mduu/sylvra`) and *Check for Updates*. Below, *Open source* lists the software Sylvra ships with (today SwiftTerm, MIT) as cards: name, purpose, license chip; a click unfolds the full license text and the project link. The footer names the author (*Made by Marc Dürst*) above the copyright and a link to Sylvra's MIT License. *Help → Sylvra on GitHub* opens the project page. A new bundled dependency gets an entry in `Acknowledgement.all` (`FeatureUpdates`).
 
 ### 13.1 Updates
 

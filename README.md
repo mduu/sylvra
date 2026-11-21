@@ -184,3 +184,7 @@ Issues and pull requests are welcome. Since this is a personal tool, I'll priori
 ## License
 
 [MIT](LICENSE) © Marc Dürst
+
+## Acknowledgements
+
+Sylvra includes [SwiftTerm](https://github.com/migueldeicaza/SwiftTerm) (MIT License, © Miguel de Icaza and the xterm.js authors) for the terminal panel. The full license texts are in *Sylvra → About Sylvra*.

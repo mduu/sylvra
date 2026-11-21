@@ -53,6 +53,7 @@ struct SylvraApp: App {
         }
         .defaultSize(width: 1440, height: 900)
         .commands {
+            AboutCommands()
             UpdateCommands(model: environment.updates)
             ReviewCommands()
             TerminalCommands(terminal: environment.terminal, panel: environment.bottomPanel)
@@ -73,6 +74,9 @@ struct SylvraApp: App {
         .defaultSize(width: 1400, height: 900)
 
         DiagnosticLogWindow()
+        AboutWindow(
+            updates: environment.updates,
+            colorScheme: launchAppearance?.colorScheme ?? AppearanceSetting(rawValue: appearance)?.colorScheme)
 
         Settings {
             SettingsScreen {
