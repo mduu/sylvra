@@ -7,7 +7,7 @@ import SylvraCore
 /// Slots provided by the app (slices don't import each other): `summary` (pinned above the tabs, e.g. the AI
 /// summary), `overviewTop` (e.g. the change map), `files` (file navigator) and `conversation` (the comments on
 /// the pull request itself, with writing). Selecting a commit reviews it on its own (`selectCommit`, `nil` = all
-/// changes).
+/// changes). `openPullRequest` opens another layer of the pull request's stack (`nil` hides the stack bar).
 public struct PullRequestScreen<Files: View, OverviewTop: View, Summary: View, Conversation: View>: View {
     @Bindable private var model: PullRequestScreenModel
     private let pullRequest: PullRequestSummary?
@@ -18,12 +18,14 @@ public struct PullRequestScreen<Files: View, OverviewTop: View, Summary: View, C
     private let selectedCommitSHA: String?
     private let selectCommit: ((Commit?) -> Void)?
     private let showInCode: ((String, Int?) -> Void)?
+    private let openPullRequest: ((PullRequestSummary) -> Void)?
     @Environment(\.openURL) private var openURL
 
     public init(
         model: PullRequestScreenModel, pullRequest: PullRequestSummary?,
         selectedCommitSHA: String? = nil, selectCommit: ((Commit?) -> Void)? = nil,
         showInCode: ((String, Int?) -> Void)? = nil,
+        openPullRequest: ((PullRequestSummary) -> Void)? = nil,
         @ViewBuilder summary: () -> Summary,
         @ViewBuilder overviewTop: () -> OverviewTop,
         @ViewBuilder files: () -> Files,
@@ -36,6 +38,7 @@ public struct PullRequestScreen<Files: View, OverviewTop: View, Summary: View, C
         self.selectedCommitSHA = selectedCommitSHA
         self.selectCommit = selectCommit
         self.showInCode = showInCode
+        self.openPullRequest = openPullRequest
         self.overviewTop = overviewTop()
         self.files = files()
     }
@@ -62,6 +65,9 @@ public struct PullRequestScreen<Files: View, OverviewTop: View, Summary: View, C
         VStack(alignment: .leading, spacing: 0) {
             VStack(alignment: .leading, spacing: 12) {
                 PullRequestHeaderView(detail: detail) { open(detail.summary.url) }
+                if let stack = model.stack, let openPullRequest {
+                    StackBarView(status: stack, open: openPullRequest)
+                }
                 summary
                 // All tabs side by side; narrow columns get smaller text or symbols, never a menu.
                 SectionTabBar(items: PullRequestTabItem.items(for: detail).map(\.barItem), selection: $model.tab)

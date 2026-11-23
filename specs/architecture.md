@@ -181,6 +181,7 @@ Diff-specific models (`FileDiff`, `Hunk`, `DiffLine`) live in `FeatureDiff/Domai
   - pending review with inline comments and ```` ```suggestion ```` blocks (`addPullRequestReview`, `addPullRequestReviewThread`, `submitPullRequestReview`),
   - reply to threads, resolve / unresolve (`resolveReviewThread`, `unresolveReviewThread`), edit / delete own comments, reactions,
   - mark files as viewed (`markFileAsViewed` / `unmarkFileAsViewed`).
+- **Stacked pull requests**: GitHub's stack fields (`PullRequest.stack` / `stackEntry`, a preview API) are read in their own small queries, never inside the inbox or detail queries — if GitHub renames them or a GitHub Enterprise Server lacks them, only the stack goes missing. Pull requests that aren't in a GitHub stack get one derived from base and head branches (`BranchStackWalker`), so stacks made with other tools show too. Whether a layer misses commits of the one below comes from `Ref.compare` (`aheadBy`). Merging a whole stack (`merge-async`) and restacking stay on GitHub / the CLI (no Git client scope).
 - **Deep links**: every entity keeps its GitHub `url` (PR, commit, check run `detailsURL`, comment) so the UI can open it in the browser with one click.
 - **Avatars**: `avatarUrl` of users is loaded via a shared `AvatarCache` (memory + disk, `URLCache`), with initials as fallback.
 - Every write is an explicit user action. AI findings are never posted automatically.

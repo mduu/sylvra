@@ -32,6 +32,25 @@ public struct DemoPullRequestDetailLoader: PullRequestDetailLoading {
             ])
     }
 
+    /// "Add invoice export" is the bottom of a two-layer stack; the layer above misses two of its commits.
+    public func loadStack(for detail: PullRequestDetail) async throws -> StackStatus? {
+        let bottom = PullRequestID(owner: "acme", repository: "billing", number: 1234)
+        let top = PullRequestID(owner: "acme", repository: "billing", number: 1238)
+        guard detail.summary.id == bottom || detail.summary.id == top else { return nil }
+        var above = Self.detail(for: top).summary
+        above = PullRequestSummary(
+            id: top, title: "Email invoices as CSV attachments", author: above.author, url: above.url,
+            createdAt: above.createdAt, updatedAt: above.updatedAt, additions: 64, deletions: 9,
+            headRefName: "feature/invoice-email", baseRefName: "feature/invoice-export")
+        let stack = PullRequestStack(
+            source: .gitHub, trunk: "main",
+            entries: [
+                .init(summary: Self.detail(for: bottom).summary, state: .open), .init(summary: above, state: .open),
+            ]
+        )
+        return StackStatus(stack: stack, current: detail.summary.id, commitsBehindParent: 2)
+    }
+
     // swiftlint:disable:next function_body_length
     static func detail(for id: PullRequestID) -> PullRequestDetail {
         let lena = UserRef(login: "lkeller", name: "Lena Keller")

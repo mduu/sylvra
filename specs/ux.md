@@ -172,6 +172,8 @@ If GitHub reports `X-GitHub-SSO: partial-results`, the sidebar explains that the
 
 Title, author avatar and name, `head → base` refs (with fork owner), merge state chip, CI chip, review decision, age. Actions: *Open on GitHub*, *Copy link*, *Open in IDE*.
 
+**Stacks** (pull requests that build on each other): below the header a slim bar shows *Stack · 2 of 4* — a menu with all layers (top first like on GitHub, the base branch at the bottom; picking one opens it, also when the inbox doesn't list it) — and the layers below and above as `↓ #1233` / `#1235 ↑`. Beneath it, what the reviewer should know: *Builds on #1233, which isn't merged yet*, or in gold when the branch misses commits of the layer below (*#1233 has 3 commits this branch doesn't include yet: the diff doesn't show its latest state* — a restack is due). Stacks come from GitHub (`gh stack`, github.com) or, for any other tool, from the branches: the layer below is the only open pull request whose head is this one's base, the layer above the only one targeting this one's head; branches several pull requests target (`develop`, release branches) end the chain.
+
 ### 6.2 Tabs
 
 | Tab | Content |

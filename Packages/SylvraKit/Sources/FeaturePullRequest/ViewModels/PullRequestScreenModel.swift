@@ -1,5 +1,6 @@
 import Foundation
 import Observation
+import Platform
 import SylvraCore
 
 /// State of the PR column.
@@ -17,6 +18,8 @@ public final class PullRequestScreenModel {
 
     public private(set) var detail: PullRequestDetail?
     public private(set) var loadState: LoadState = .idle
+    /// The stack around the pull request (`nil`: none, or not loaded yet).
+    public private(set) var stack: StackStatus?
     public var tab: Tab = .overview
     /// Which section of the Comments tab is shown.
     public var discussionFilter: DiscussionFilter = .conversation
@@ -24,6 +27,7 @@ public final class PullRequestScreenModel {
     public var openedCheck: PullRequestDetail.CheckRun?
 
     private let loader: any PullRequestDetailLoading
+    private static let logger = SylvraLog.logger("pullRequest")
     /// Resolves or reopens a code thread on GitHub (wired by the app; `nil` hides *Resolve*). `false` on failure.
     @ObservationIgnored public var resolveThread: ((_ id: String, _ resolved: Bool) async -> Bool)?
 
@@ -62,6 +66,7 @@ public final class PullRequestScreenModel {
         }
         if detail?.summary.id != id {
             detail = nil
+            stack = nil
             loadState = .loading
         }
         do {
@@ -72,6 +77,21 @@ public final class PullRequestScreenModel {
         } catch {
             guard !Task.isCancelled else { return }
             loadState = .failed(String(describing: error))
+            return
+        }
+        await loadStack()
+    }
+
+    /// After the details, so the pull request shows without waiting for its neighbours.
+    private func loadStack() async {
+        guard let detail else { return }
+        do {
+            let loaded = try await loader.loadStack(for: detail)
+            guard !Task.isCancelled, self.detail?.summary.id == detail.summary.id else { return }
+            stack = loaded
+        } catch {
+            // Keeps what was shown: a failing refresh shouldn't make the stack flicker away.
+            Self.logger.error("Loading the stack failed: \(String(describing: error), privacy: .public)")
         }
     }
 }

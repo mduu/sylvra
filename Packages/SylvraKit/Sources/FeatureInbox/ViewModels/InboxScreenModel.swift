@@ -94,10 +94,19 @@ public final class InboxScreenModel {
         }
     }
 
+    /// Pull requests opened from elsewhere (another layer of a stack) that no section lists.
+    private var opened: [PullRequestID: PullRequestSummary] = [:]
+
     /// The latest summary of a PR in any section.
     public func summary(for id: PullRequestID) -> PullRequestSummary? {
         snapshot.sections.values.lazy.flatMap { $0 }.first { $0.id == id }
             ?? browser?.pullRequests.first { $0.id == id }
+            ?? opened[id]
+    }
+
+    /// Makes a pull request the inbox doesn't list selectable (e.g. the layer below in a stack).
+    public func remember(_ pullRequest: PullRequestSummary) {
+        opened[pullRequest.id] = pullRequest
     }
 
     public func refresh() async {

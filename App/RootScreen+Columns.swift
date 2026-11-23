@@ -129,6 +129,10 @@ extension RootScreen {
             selectedCommitSHA: environment.diff.selectedCommit?.sha,
             selectCommit: { commit in Task { await environment.diff.showCommit(commit) } },
             showInCode: { path, line in Task { await environment.diff.reveal(path, line: line) } },
+            openPullRequest: { pullRequest in
+                environment.inbox.remember(pullRequest)
+                selectedID = pullRequest.id
+            },
             summary: {
                 AISummaryPanel(model: environment.aiReview, pullRequestID: selection?.id) { path in
                     Task { await environment.diff.reveal(path) }
