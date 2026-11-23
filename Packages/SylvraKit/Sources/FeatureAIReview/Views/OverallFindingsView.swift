@@ -5,12 +5,18 @@ import SwiftUI
 /// too scattered.
 struct OverallFindingsView: View {
     let points: [OverallFinding]
+    /// Which pull request, for the copied text (`AIReviewClipboard.pullRequestLine`).
+    var pullRequest: String?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Label("Whole pull request", systemImage: "square.stack.3d.up")
-                .aiFont(.caption, weight: .semibold)
-                .foregroundStyle(.secondary)
+            HStack {
+                Label("Whole pull request", systemImage: "square.stack.3d.up")
+                    .aiFont(.caption, weight: .semibold)
+                    .foregroundStyle(.secondary)
+                Spacer(minLength: 4)
+                CopyButton("Copy for an agent", text: copyText)
+            }
             ForEach(points) { point in
                 VStack(alignment: .leading, spacing: 4) {
                     HStack(alignment: .firstTextBaseline, spacing: 6) {
@@ -33,7 +39,10 @@ struct OverallFindingsView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(AIAccent.cardBackground, in: RoundedRectangle(cornerRadius: 10))
         .overlay { RoundedRectangle(cornerRadius: 10).strokeBorder(AIAccent.border.opacity(0.6), lineWidth: 1) }
+        .copyMenu(text: copyText)
     }
+
+    private func copyText() -> String { AIReviewClipboard.overall(points, pullRequest: pullRequest) }
 }
 
 extension OverallFinding.Kind {
@@ -67,4 +76,18 @@ extension OverallFinding.Kind {
     ])
     .padding()
     .frame(width: 340)
+}
+
+/// Above a list: copies all of it for an agent (pure).
+struct CopyAllRow: View {
+    let title: LocalizedStringKey
+    let text: () -> String
+
+    var body: some View {
+        HStack(spacing: 4) {
+            Spacer()
+            Text(title).aiFont(.caption).foregroundStyle(.secondary)
+            CopyButton(title, text: text)
+        }
+    }
 }

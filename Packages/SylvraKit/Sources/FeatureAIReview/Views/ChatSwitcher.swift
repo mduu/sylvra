@@ -34,6 +34,11 @@ struct ChatSwitcher: View {
                         .foregroundStyle(.secondary)
                 }
                 Spacer(minLength: 4)
+                if let messages = active?.messages, !messages.isEmpty {
+                    CopyButton("Copy the whole chat for an agent") {
+                        AIReviewClipboard.chat(messages, pullRequest: AIReviewClipboard.pullRequestLine(pullRequestID))
+                    }
+                }
                 Button("New chat", systemImage: "square.and.pencil") {
                     withAnimation(.snappy) { model.newChat(for: pullRequestID) }
                 }

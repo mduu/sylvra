@@ -114,8 +114,15 @@ public struct FindingsInspectorScreen: View {
             if model.results[id] == nil {
                 noReviewYet(id, String(localized: "Patterns the AI review checks appear here after a review."))
             }
+            if let patterns = model.results[id]?.patterns, !patterns.isEmpty {
+                CopyAllRow(title: "Copy all patterns") {
+                    AIReviewClipboard.patterns(patterns, pullRequest: pullRequestLine)
+                }
+            }
             ForEach(model.results[id]?.patterns ?? []) { pattern in
-                PatternRowView(pattern: pattern, isSelected: model.selectedPatternID == pattern.id) { location in
+                PatternRowView(
+                    pattern: pattern, isSelected: model.selectedPatternID == pattern.id, pullRequest: pullRequestLine
+                ) { location in
                     model.selectedPatternID = pattern.id
                     model.selectedFindingID = nil
                     jumpToLocation(location.path, location.startLine)
@@ -133,8 +140,14 @@ public struct FindingsInspectorScreen: View {
         if model.results[id] == nil {
             noReviewYet(id, String(localized: "Findings appear here after an AI review."))
         }
+        if let result = model.results[id], !result.overall.isEmpty || !model.visibleFindings(for: id).isEmpty {
+            CopyAllRow(title: "Copy all findings") {
+                AIReviewClipboard.findings(
+                    model.visibleFindings(for: id), overall: result.overall, pullRequest: pullRequestLine)
+            }
+        }
         if let overall = model.results[id]?.overall, !overall.isEmpty {
-            OverallFindingsView(points: overall)
+            OverallFindingsView(points: overall, pullRequest: pullRequestLine)
         }
         ForEach(model.visibleFindings(for: id)) { finding in
             if model.selectedFindingID == finding.id {
@@ -144,12 +157,13 @@ public struct FindingsInspectorScreen: View {
                         // Unanchored findings have no diff line a GitHub comment could attach to.
                         turnIntoComment: finding.isAnchored
                             ? turnIntoComment.map { action in { action(finding) } } : nil,
-                        dismiss: { model.dismiss(finding) })
+                        dismiss: { model.dismiss(finding) }),
+                    pullRequest: pullRequestLine
                 )
                 .onTapGesture { model.selectedFindingID = nil }
                 .id(finding.id)
             } else {
-                FindingRowView(finding: finding, isSelected: false)
+                FindingRowView(finding: finding, isSelected: false, pullRequest: pullRequestLine)
                     .contentShape(Rectangle())
                     .onTapGesture {
                         model.selectedFindingID = finding.id
@@ -167,6 +181,11 @@ public struct FindingsInspectorScreen: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .overlay { RoundedRectangle(cornerRadius: 10).strokeBorder(.quaternary, style: .init(dash: [4])) }
         }
+    }
+
+    /// The pull request in copied text.
+    private var pullRequestLine: String? {
+        AIReviewClipboard.pullRequestLine(pullRequest?.id, title: pullRequest?.title)
     }
 
     /// Same look as the pull request column's tabs: symbols, counts, narrowing to symbols.

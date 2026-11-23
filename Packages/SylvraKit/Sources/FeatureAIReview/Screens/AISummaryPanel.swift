@@ -21,7 +21,8 @@ public struct AISummaryPanel: View {
         if let id = pullRequestID, let result = model.results[id], !result.summary.isEmpty {
             AISummaryCardView(
                 summary: result.summary, risk: result.risk, readingOrder: result.readingOrder, isExpanded: $isExpanded,
-                showsReadingOrder: $showsReadingOrder, openFile: openFile)
+                showsReadingOrder: $showsReadingOrder, openFile: openFile,
+                pullRequest: AIReviewClipboard.pullRequestLine(id))
         }
     }
 }
@@ -34,6 +35,8 @@ struct AISummaryCardView: View {
     @Binding var isExpanded: Bool
     @Binding var showsReadingOrder: Bool
     var openFile: (String) -> Void = { _ in }
+    /// Which pull request, for the copied text.
+    var pullRequest: String?
     @State private var contentHeight: CGFloat = 60
 
     static let maxExpandedHeight: CGFloat = 220
@@ -49,6 +52,7 @@ struct AISummaryCardView: View {
                         .help(risk.reasons.map { "· \($0)" }.joined(separator: "\n"))
                 }
                 Spacer()
+                CopyButton("Copy for an agent", text: copyText)
                 Button(isExpanded ? "Less" : "More") { withAnimation(.snappy) { isExpanded.toggle() } }
                     .buttonStyle(.link)
                     .aiFont(.caption)
@@ -95,6 +99,11 @@ struct AISummaryCardView: View {
         .padding(10)
         .background(AIAccent.lineGradient(opacity: 0.12), in: RoundedRectangle(cornerRadius: 10))
         .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(AIAccent.border.opacity(0.45)))
+        .copyMenu(text: copyText)
+    }
+
+    private func copyText() -> String {
+        AIReviewClipboard.summary(summary, risk: risk, readingOrder: readingOrder, pullRequest: pullRequest)
     }
 }
 

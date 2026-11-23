@@ -5,12 +5,16 @@ import SwiftUI
 struct FindingRowView: View {
     let finding: ReviewFinding
     let isSelected: Bool
+    /// Which pull request, for the copied text.
+    var pullRequest: String?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             HStack(alignment: .firstTextBaseline, spacing: 8) {
                 Circle().fill(finding.severity.color).frame(width: 8, height: 8)
                 Text(finding.title).aiFont(.callout, weight: .semibold).fixedSize(horizontal: false, vertical: true)
+                Spacer(minLength: 4)
+                CopyButton("Copy for an agent") { AIReviewClipboard.finding(finding, pullRequest: pullRequest) }
             }
             HStack(spacing: 4) {
                 Text(finding.location.description)
@@ -31,6 +35,7 @@ struct FindingRowView: View {
         .overlay {
             if isSelected { RoundedRectangle(cornerRadius: 10).strokeBorder(AIAccent.border, lineWidth: 1.2) }
         }
+        .copyMenu { AIReviewClipboard.finding(finding, pullRequest: pullRequest) }
     }
 }
 
@@ -38,10 +43,13 @@ struct FindingRowView: View {
 public struct FindingDetailView: View {
     let finding: ReviewFinding
     let actions: FindingActions
+    /// Which pull request, for the copied text.
+    let pullRequest: String?
 
-    public init(finding: ReviewFinding, actions: FindingActions) {
+    public init(finding: ReviewFinding, actions: FindingActions, pullRequest: String? = nil) {
         self.finding = finding
         self.actions = actions
+        self.pullRequest = pullRequest
     }
 
     public var body: some View {
@@ -54,6 +62,8 @@ public struct FindingDetailView: View {
                     .padding(.vertical, 2)
                     .background(finding.severity.color.opacity(0.15), in: Capsule())
                 Text(finding.title).aiFont(.callout, weight: .semibold)
+                Spacer(minLength: 4)
+                CopyButton("Copy for an agent") { AIReviewClipboard.finding(finding, pullRequest: pullRequest) }
             }
             FindingRiskLine(impact: finding.impact, likelihood: finding.likelihood)
             Text(finding.rationale).aiFont(.callout).fixedSize(horizontal: false, vertical: true).textSelection(
@@ -78,6 +88,7 @@ public struct FindingDetailView: View {
         .padding(12)
         .background(AIAccent.cardBackground, in: RoundedRectangle(cornerRadius: 12))
         .overlay { RoundedRectangle(cornerRadius: 12).strokeBorder(AIAccent.border, lineWidth: 1) }
+        .copyMenu { AIReviewClipboard.finding(finding, pullRequest: pullRequest) }
     }
 }
 
@@ -104,6 +115,8 @@ struct PatternRowView: View {
     let pattern: PatternFinding
     /// Its evidence is marked in the diff.
     var isSelected = false
+    /// Which pull request, for the copied text.
+    var pullRequest: String?
     /// Shows a piece of evidence in the diff; `nil` keeps the locations as plain text.
     var jump: ((CodeLocationText) -> Void)?
 
@@ -118,6 +131,7 @@ struct PatternRowView: View {
                     .padding(.horizontal, 7)
                     .padding(.vertical, 2)
                     .background(pattern.verdict.color.opacity(0.14), in: Capsule())
+                CopyButton("Copy for an agent") { AIReviewClipboard.pattern(pattern, pullRequest: pullRequest) }
             }
             if !pattern.rationale.isEmpty {
                 Text(pattern.rationale).aiFont(.caption).foregroundStyle(.secondary).fixedSize(
@@ -139,6 +153,7 @@ struct PatternRowView: View {
         // The whole row shows the first piece of evidence.
         .onTapGesture { if let first = pattern.evidence.first { jump?(first) } }
         .help(jump == nil || pattern.evidence.isEmpty ? "" : String(localized: "Show in the diff"))
+        .copyMenu { AIReviewClipboard.pattern(pattern, pullRequest: pullRequest) }
     }
 }
 

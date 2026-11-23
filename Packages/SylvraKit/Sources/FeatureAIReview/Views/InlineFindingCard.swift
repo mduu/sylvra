@@ -28,6 +28,7 @@ public struct InlineFindingCard: View {
                     .background(finding.severity.color.opacity(0.16), in: Capsule())
                 Text(finding.title).aiFont(size: 13.5, weight: .semibold)
                 Spacer(minLength: 0)
+                CopyButton("Copy for an agent") { AIReviewClipboard.finding(finding) }
                 Image(systemName: "sparkles").foregroundStyle(AIAccent.border)
             }
             Text(meta).aiFont(.caption).foregroundStyle(.secondary)
@@ -61,6 +62,7 @@ public struct InlineFindingCard: View {
         .padding(1.2)
         .background(Self.frameGradient, in: RoundedRectangle(cornerRadius: 12))
         .shadow(color: AIAccent.colors[0].opacity(0.25), radius: 14, y: 4)
+        .copyMenu { AIReviewClipboard.finding(finding) }
         // Keeps the lane's indent on the left and fills the diff width to the right, so long suggestion lines
         // have room.
         .frame(maxWidth: .infinity, alignment: .leading)

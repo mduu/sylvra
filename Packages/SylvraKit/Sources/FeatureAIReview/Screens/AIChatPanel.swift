@@ -186,13 +186,20 @@ struct ChatMessageView: View {
                 }
                 .foregroundStyle(message.role == .error ? AnyShapeStyle(.red) : AnyShapeStyle(.primary))
             }
-            if let useAsComment {
-                Button("Use as comment", systemImage: "text.bubble.badge.plus", action: useAsComment)
-                    .buttonStyle(.borderless)
-                    .aiFont(.caption)
-                    .help("Draft a short, factual review comment from this answer — you edit it before posting")
+            HStack(spacing: 8) {
+                CopyButton(message.role == .user ? "Copy question" : "Copy answer") {
+                    AIReviewClipboard.message(message)
+                }
+                if let useAsComment {
+                    Button("Use as comment", systemImage: "text.bubble.badge.plus", action: useAsComment)
+                        .buttonStyle(.borderless)
+                        .aiFont(.caption)
+                        .help(
+                            "Draft a short, factual review comment from this answer — you edit it before posting")
+                }
             }
         }
+        .copyMenu { AIReviewClipboard.message(message) }
     }
 
     private var background: AnyShapeStyle {
