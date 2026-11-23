@@ -6,6 +6,8 @@ struct ReviewProgressBar: View {
     let progress: ReviewProgress?
     let hasNewCommits: Bool
     let isShowingSinceReview: Bool
+    /// Files left out of the changes since the last review because only the rebase changed them.
+    var hiddenByRebase = 0
     var showSinceReview: () -> Void = {}
     var showAll: () -> Void = {}
     var refresh: () -> Void = {}
@@ -29,10 +31,36 @@ struct ReviewProgressBar: View {
                         Button("Show only these", action: showSinceReview)
                     }
                 }
+                if isShowingSinceReview, progress.isRewrittenSinceReview {
+                    rebaseNote
+                }
             }
         }
         .padding(.horizontal, 10)
         .padding(.top, 6)
+    }
+
+    /// After a rebase the comparison also contains what came in from below: say what was left out and what not.
+    private var rebaseNote: some View {
+        let text =
+            hiddenByRebase > 0
+            ? Text(
+                // swiftlint:disable:next line_length
+                "Rebased since your last review: \(hiddenByRebase) file(s) only the rebase changed are hidden. Files this pull request changes can still show changes from below."
+            )
+            : Text("Rebased since your last review: files can also show changes that came in from below.")
+        return HStack(alignment: .firstTextBaseline, spacing: 8) {
+            Image(systemName: "arrow.triangle.branch").foregroundStyle(SylvraColor.accentGold)
+            text.font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 6)
+        .background {
+            RoundedRectangle(cornerRadius: 9).fill(SylvraColor.surfaceElevated)
+                .overlay(RoundedRectangle(cornerRadius: 9).fill(SylvraColor.accentGold.opacity(0.1)))
+        }
+        .overlay(RoundedRectangle(cornerRadius: 9).strokeBorder(SylvraColor.accentGold.opacity(0.3)))
     }
 
     private func sinceText(_ progress: ReviewProgress) -> Text {
@@ -72,6 +100,11 @@ struct ReviewProgressBar: View {
             progress: ReviewProgress(
                 headSHA: "b", lastReviewedSHA: "a", lastReviewedAt: .now.addingTimeInterval(-3_600)),
             hasNewCommits: false, isShowingSinceReview: true)
+        ReviewProgressBar(
+            progress: ReviewProgress(
+                headSHA: "b", lastReviewedSHA: "a", lastReviewedAt: .now.addingTimeInterval(-3_600),
+                isRewrittenSinceReview: true),
+            hasNewCommits: false, isShowingSinceReview: true, hiddenByRebase: 12)
     }
     .frame(width: 640)
 }

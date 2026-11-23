@@ -94,6 +94,9 @@ public final class DiffScreenModel {
     public internal(set) var progress: ReviewProgress?
     /// Files changed between the last reviewed commit and head (scope `.sinceLastReview`).
     public internal(set) var sinceReviewFiles: [FileDiff]?
+    /// Files of the changes since the last review left out because only a rebase changed them
+    /// (see `SinceReviewFilter`).
+    public internal(set) var sinceReviewHiddenFiles = 0
     /// Someone pushed after the diff was loaded.
     public internal(set) var hasNewCommits = false
     /// How often to check for new pushes.
@@ -332,6 +335,7 @@ extension DiffScreenModel {
         selectedPath = nil
         progress = nil
         sinceReviewFiles = nil
+        sinceReviewHiddenFiles = 0
         revealedContext = [:]
         headLines = [:]
         selectedCommit = nil

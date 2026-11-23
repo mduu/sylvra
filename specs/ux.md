@@ -215,6 +215,7 @@ The diff must feel like the best diff one has ever used: fast, beautiful and ins
 - **Layout**: `Side by side` | `Inline` (⌘⌥1 / ⌘⌥2); remembered per pull request across AI reviews and launches (a pull request without a choice starts with the last one made); a pull request's choice is forgotten once it is merged or closed (checked at launch) or after a week without opening it
 - **Scope**: `Focused` (changed hunks + N context lines, N ∈ {3, 5, 10, custom}) | `Full file` (only the selected file, every line of its head version; choosing another file in the navigator, `[`/`]` or a jump shows that one; each file loads when first shown, with a *Loading…* badge over the diff, also while *Since my last review* loads)
 - **Range**: `All changes` | `Since my last review` | `Commit…` (commit-by-commit, with ◀ ▶ to step through commits; toolbar menu and Commits tab) | custom range (later)
+- **Since my last review after a rebase** (e.g. a restacked layer of a stack): when the branch was force-pushed after the reviewer's last review, comparing with the reviewed commit also shows what the rebase brought in from below. Files the pull request itself doesn't change are left out, and a gold note says how many and that files the pull request changes can still contain changes from below (separating those lines would need a `git range-diff`; not done yet).
 - Toggles: hide whitespace, wrap lines, show moved code.
 
 ### 7.2 Wow elements

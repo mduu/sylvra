@@ -80,6 +80,7 @@ public struct DiffScreen<LineAccessory: View>: View {
                     progress: model.progress,
                     hasNewCommits: model.hasNewCommits,
                     isShowingSinceReview: model.scope == .sinceLastReview,
+                    hiddenByRebase: model.sinceReviewHiddenFiles,
                     showSinceReview: { Task { await model.setScope(.sinceLastReview) } },
                     showAll: { Task { await model.setScope(.focused) } },
                     refresh: { Task { await refresh() } }

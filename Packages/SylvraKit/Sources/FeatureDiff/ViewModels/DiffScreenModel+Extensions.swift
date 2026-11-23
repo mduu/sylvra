@@ -29,7 +29,14 @@ extension DiffScreenModel {
         do {
             let loaded = try await loader.loadDiff(for: id, from: base, to: progress.headSHA)
             guard pullRequestID == id else { return }
-            sinceReviewFiles = loaded
+            if progress.isRewrittenSinceReview, let files = diff?.files {
+                let restricted = SinceReviewFilter.restrict(loaded, to: files)
+                sinceReviewFiles = restricted.files
+                sinceReviewHiddenFiles = restricted.hidden
+            } else {
+                sinceReviewFiles = loaded
+                sinceReviewHiddenFiles = 0
+            }
         } catch {
             sinceReviewFiles = []
             let reason = error.localizedDescription

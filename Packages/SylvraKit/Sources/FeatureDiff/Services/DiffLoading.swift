@@ -21,11 +21,24 @@ public struct ReviewProgress: Sendable, Equatable {
     /// Commit the reviewer's latest submitted review was made on; `nil` if they never reviewed.
     public var lastReviewedSHA: String?
     public var lastReviewedAt: Date?
+    /// The branch was force-pushed after the last review (rebased, e.g. a restacked layer): the reviewed commit
+    /// may no longer be in its history, so comparing with it also shows what the rebase brought in.
+    public var isRewrittenSinceReview: Bool
 
-    public init(headSHA: String, lastReviewedSHA: String? = nil, lastReviewedAt: Date? = nil) {
+    public init(
+        headSHA: String, lastReviewedSHA: String? = nil, lastReviewedAt: Date? = nil,
+        isRewrittenSinceReview: Bool = false
+    ) {
         self.headSHA = headSHA
         self.lastReviewedSHA = lastReviewedSHA
         self.lastReviewedAt = lastReviewedAt
+        self.isRewrittenSinceReview = isRewrittenSinceReview
+    }
+
+    /// Whether a force push at `date` came after the last review.
+    public static func isRewritten(forcePushedAt date: Date?, reviewedAt: Date?) -> Bool {
+        guard let date, let reviewedAt else { return false }
+        return date > reviewedAt
     }
 
     /// The PR has commits the reviewer hasn't reviewed yet.

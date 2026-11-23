@@ -63,6 +63,9 @@ extension GitHubDiffLoader {
                 pullRequest(number: $number) {
                   headRefOid
                   reviews(last: 50) { nodes { author { login } state submittedAt commit { oid } } }
+                  timelineItems(itemTypes: [HEAD_REF_FORCE_PUSHED_EVENT], last: 1) {
+                    nodes { ... on HeadRefForcePushedEvent { createdAt } }
+                  }
                 }
               }
             }
@@ -74,8 +77,11 @@ extension GitHubDiffLoader {
         let mine = pullRequest.reviews.nodes.compactMap(\.self).last {
             $0.author?.login == response.viewer.login && $0.state != "PENDING" && $0.commit != nil
         }
+        let forcePushedAt = pullRequest.timelineItems?.nodes.compactMap { $0?.createdAt }.max()
         return ReviewProgress(
-            headSHA: pullRequest.headRefOid, lastReviewedSHA: mine?.commit?.oid, lastReviewedAt: mine?.submittedAt)
+            headSHA: pullRequest.headRefOid, lastReviewedSHA: mine?.commit?.oid, lastReviewedAt: mine?.submittedAt,
+            isRewrittenSinceReview: ReviewProgress.isRewritten(
+                forcePushedAt: forcePushedAt, reviewedAt: mine?.submittedAt))
     }
 
     public func loadDiff(for id: PullRequestID, from base: String, to head: String) async throws -> [FileDiff] {
@@ -102,8 +108,11 @@ private struct ReviewProgressResponse: Decodable, Sendable {
     struct PullRequest: Decodable, Sendable {
         let headRefOid: String
         let reviews: Reviews
+        let timelineItems: ForcePushes?
     }
     struct Reviews: Decodable, Sendable { let nodes: [Review?] }
+    struct ForcePushes: Decodable, Sendable { let nodes: [ForcePush?] }
+    struct ForcePush: Decodable, Sendable { let createdAt: Date? }
     struct Review: Decodable, Sendable {
         let author: Author?
         let state: String
