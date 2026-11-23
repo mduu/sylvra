@@ -37,6 +37,12 @@ struct SylvraApp: App {
         defaults.setVolatileDomain(domain, forName: UserDefaults.argumentDomain)
     }
 
+    /// `sylvra`, the command line tool for local reviews, in the app bundle (release builds; see scripts/release.sh).
+    private static var commandLineTool: URL? {
+        let tool = Bundle.main.bundleURL.appending(path: "Contents/Helpers/sylvra")
+        return FileManager.default.isExecutableFile(atPath: tool.path) ? tool : nil
+    }
+
     var body: some Scene {
         // One main window: the feature models are shared, so a second window would show mixed state.
         Window("Sylvra", id: "main") {
@@ -83,7 +89,7 @@ struct SylvraApp: App {
 
         Settings {
             SettingsScreen {
-                AIReviewSettingsView(model: environment.aiReview)
+                AIReviewSettingsView(model: environment.aiReview, commandLineTool: Self.commandLineTool)
             } notifications: {
                 NotificationSettingsView(center: environment.activity)
             } terminal: {
