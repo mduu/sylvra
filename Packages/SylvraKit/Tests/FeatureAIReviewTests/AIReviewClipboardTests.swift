@@ -32,6 +32,15 @@ struct AIReviewClipboardTests {
                 """)
     }
 
+    @Test func aFindingSaysWhichModelsFoundIt() {
+        var found = finding
+        found.sources = [
+            AgentSource(provider: "Claude Code", model: "opus", effort: "high"),
+            AgentSource(provider: "Claude Code", model: "fable", effort: "high"),
+        ]
+        #expect(AIReviewClipboard.finding(found).contains("Likelihood: medium · Found by: fable + opus"))
+    }
+
     @Test func allFindingsStartWithTheWholePullRequest() {
         let overall = [
             OverallFinding(kind: .scattered, title: "Formats defined twice", rationale: "ExportFormat and CSVEncoder.")

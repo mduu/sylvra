@@ -94,6 +94,9 @@ public enum AIReviewClipboard {
         if !finding.category.isEmpty { facts.append("Category: \(finding.category)") }
         if let impact = finding.impact { facts.append("Impact: \(impact.rawValue)") }
         if let likelihood = finding.likelihood { facts.append("Likelihood: \(likelihood.rawValue)") }
+        // With several models, how many agreed is part of the finding's weight.
+        let models = Array(Set(finding.sources.map(\.model))).sorted()
+        if !models.isEmpty { facts.append("Found by: \(models.joined(separator: " + "))") }
         var parts = [
             "### \(finding.title)",
             "File: `\(finding.path)` \(range)" + (finding.isAnchored ? "" : " (not in the diff)"),
