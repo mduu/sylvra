@@ -38,6 +38,19 @@ public struct ReviewEngine: Sendable {
         public var history: [String]
         public var settings: ReviewSettings
         public var workingDirectory: URL?
+
+        public init(
+            files: [ReviewableFile], title: String, body: String, context: [ContextDocument] = [],
+            history: [String] = [], settings: ReviewSettings, workingDirectory: URL?
+        ) {
+            self.files = files
+            self.title = title
+            self.body = body
+            self.context = context
+            self.history = history
+            self.settings = settings
+            self.workingDirectory = workingDirectory
+        }
     }
 
     /// Jobs (shard × model) in the order they will run.

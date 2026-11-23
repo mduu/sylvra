@@ -58,11 +58,13 @@ public final class AIReviewModel {
     /// The pull request's head commit right now (wired by the app), to tell whether a review is outdated.
     public var currentHeadSHA: @MainActor (PullRequestID) -> String? = { _ in nil }
     public var defaultSettings: ReviewSettings {
-        didSet { save(defaultSettings, key: "aiReview.defaultSettings") }
+        didSet { save(defaultSettings, key: Self.defaultSettingsKey) }
     }
+    /// Where the default settings are stored (also read by the `sylvra` command line tool).
+    public nonisolated static let defaultSettingsKey = "aiReview.defaultSettings"
 
     public static let availableModels = ["opus", "fable", "sonnet", "haiku"]
-    public static let efforts = ["low", "medium", "high", "xhigh", "max"]
+    public nonisolated static let efforts = ["low", "medium", "high", "xhigh", "max"]
 
     private let engine: ReviewEngine
     private let files: FilesProvider
@@ -85,7 +87,7 @@ public final class AIReviewModel {
         self.workspace = workspace
         self.defaults = defaults
         defaultSettings =
-            Self.load(ReviewSettings.self, key: "aiReview.defaultSettings", from: defaults) ?? ReviewSettings()
+            Self.load(ReviewSettings.self, key: Self.defaultSettingsKey, from: defaults) ?? ReviewSettings()
         overrides = Self.load([String: ReviewSettings].self, key: "aiReview.overrides", from: defaults) ?? [:]
     }
 

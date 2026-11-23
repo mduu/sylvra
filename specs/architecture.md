@@ -78,7 +78,10 @@ sylvra/
 │   │   ├── FeatureCustomTools/ # User-defined commands for files / folders / PRs
 │   │   ├── FeatureActivity/    # Background jobs, activity indicator, completion notifications
 │   │   ├── FeatureUpdates/     # Self-update from GitHub Releases: check, download, verify, swap, relaunch
-│   │   └── FeatureSettings/    # Settings screens
+│   │   ├── FeatureSettings/    # Settings screens
+│   │   ├── LocalReview/        # Composition shared by the app and the CLI: diff → reviewable files, local
+│   │   │                       # reviews (git changes, settings, run, Markdown / JSON output), see §8.8
+│   │   └── SylvraCLI/          # `sylvra` executable (thin main; shipped in Sylvra.app/Contents/Helpers)
 │   └── Tests/                  # One test target per slice and shared module
 ├── scripts/                    # lint, format, release helpers
 ├── .github/workflows/          # PR validation (see §14)
@@ -327,6 +330,19 @@ Small PRs automatically use a single agent (threshold configurable).
 ### 8.7 Persistence of AI results
 
 Review runs and chat transcripts are stored locally, keyed by `(repo, pr, headSHA, range)`. After new pushes, findings from older runs are shown as **outdated**, with best-effort line re-mapping.
+
+### 8.8 Local reviews (`sylvra` command line tool)
+
+`sylvra review` runs the AI review of §8.1–8.5 on a local branch instead of a pull request, for the terminal and for coding agents (Claude Code through the `sylvra-review` skill).
+
+- **Composition**: the `LocalReview` library composes `FeatureDiff` and `FeatureAIReview` (like the app target); the app uses it too, for turning diffs into `ReviewableFile`s. `SylvraCLI` is a thin `main.swift` over it.
+- **What is reviewed**: `git diff <merge-base>` against the base branch (`--base`, else `origin/HEAD`, `origin/main`, `main`, `origin/master`, `master`), i.e. commits plus uncommitted changes, plus untracked files (`git ls-files --others --exclude-standard`, ≤ 512 KB, diffed with `--no-index`); `--committed` limits it to `base...HEAD`. Git runs with argument arrays, fixed `a/`/`b/` prefixes and no external diff tools; the repository is only read.
+- **Settings**: the app's default AI review settings (`aiReview.defaultSettings` in the `com.marcduerst.sylvra` defaults domain — the app isn't sandboxed), overridable with `--models`, `--effort`, `--agents`, `--language`. Several models review in parallel and are merged and consolidated exactly as in the app.
+- **Agents**: the same isolation as in the app (read-only tools, user settings only, no MCP); the repository is added with `--add-dir`. Child processes don't inherit the variables of a Claude Code session the tool was started from (`CLAUDECODE`, `CLAUDE_CODE_*`), so review agents are sessions of their own.
+- **Output**: Markdown on standard output (the format of *Copy for an agent*: summary, risk, reading order, whole-change points, findings most severe first, patterns, failed agents), or JSON (`--json`: base, branch, settings, Sylvra's `ReviewResult`); progress on standard error. Exit codes: 0 reviewed, 1 failed, 2 usage.
+- **Shipping**: `scripts/release.sh` builds the tool (`swift build -c release --product sylvra`), puts it in `Sylvra.app/Contents/Helpers/sylvra` (not `Contents/MacOS`: `sylvra` would replace `Sylvra` on a case-insensitive volume), signs it with the Developer ID and hardened runtime and re-signs the app keeping its entitlements. Development builds have no tool; the settings say so.
+- **Claude Code skill**: AI review settings → *Use from Claude Code* installs `~/.claude/skills/sylvra-review/SKILL.md` (`ClaudeSkillInstaller`), with the tool's absolute path (no `PATH` setup). The skill runs the review in the background (it takes minutes), presents summary, risk and findings, and treats findings as suggestions to verify before changing code. A skill for another copy of Sylvra (moved app) shows as outdated until reinstalled.
+- A future *Show in Sylvra* could open such a result in the app's diff and findings views; not built yet (the views expect a pull request).
 
 ## 9. IDE integration (`FeatureOpenInIDE`)
 

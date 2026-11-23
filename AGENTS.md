@@ -37,10 +37,12 @@ Packages/SylvraKit/Sources/
   Feature<Name>/              One slice per topic: Inbox, PullRequest, Diff, Review, AIReview,
                               OpenInIDE, Terminal, CustomTools, Activity, Settings
     Screens/ Views/ ViewModels/ Domain/ Services/ Adapters/
+  LocalReview/                Composition shared by the app and the `sylvra` CLI (may import slices)
+  SylvraCLI/                  The `sylvra` command line tool (thin main over LocalReview)
 ```
 
 Rules:
-- Feature slices **never import each other**. Compose them in the `App` target or via protocols in `SylvraCore`.
+- Feature slices **never import each other**. Compose them in the `App` target, in `LocalReview` (what the app and the CLI share) or via protocols in `SylvraCore`.
 - Put code into a shared module only if at least two slices really need it. When in doubt, keep it in the slice.
 - `SylvraCore` depends on nothing; `Platform` and `DesignSystem` depend only on `SylvraCore`.
 

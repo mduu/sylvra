@@ -23,11 +23,17 @@ public enum ExecutableLocator {
         return (wellKnown + inherited).filter { seen.insert($0).inserted }
     }
 
-    /// Environment for child processes: the inherited one with an extended `PATH`.
+    /// Environment for child processes: the inherited one with an extended `PATH`, without the variables of a
+    /// Claude Code session Sylvra was started from (the `sylvra` command line tool run by Claude Code): review
+    /// agents are sessions of their own, not part of the caller's. `CLAUDE_CONFIG_DIR` stays (the user's setup).
     public static var environment: [String: String] {
-        var environment = ProcessInfo.processInfo.environment
+        var environment = ProcessInfo.processInfo.environment.filter { !isCallerSessionVariable($0.key) }
         environment["PATH"] = searchDirectories.joined(separator: ":")
         return environment
+    }
+
+    static func isCallerSessionVariable(_ name: String) -> Bool {
+        name == "CLAUDECODE" || name == "CLAUDE_PID" || name == "CLAUDE_EFFORT" || name.hasPrefix("CLAUDE_CODE_")
     }
 
     /// Returns the URL of the first executable named `name`, or `nil`.

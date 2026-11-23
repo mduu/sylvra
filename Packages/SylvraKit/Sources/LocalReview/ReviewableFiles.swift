@@ -1,9 +1,10 @@
 import FeatureAIReview
 import FeatureDiff
 
-/// Bridges the diff slice to the AI review slice (composition root only).
-nonisolated enum ReviewableFiles {
-    static func make(from files: [FileDiff]) -> [ReviewableFile] {
+/// Bridges the diff slice to the AI review slice: parsed diff files become the files an AI review reads (used by
+/// the app and the `sylvra` command line tool).
+public enum ReviewableFiles {
+    public static func make(from files: [FileDiff]) -> [ReviewableFile] {
         files.filter { !$0.isBinary }.map { file in
             var changed = Set<Int>()
             var visible = Set<Int>()

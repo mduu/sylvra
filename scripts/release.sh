@@ -41,6 +41,19 @@ VERSION=$(/usr/libexec/PlistBuddy -c "Print CFBundleShortVersionString" "$APP/Co
 BUILD=$(/usr/libexec/PlistBuddy -c "Print CFBundleVersion" "$APP/Contents/Info.plist")
 DMG="$OUT/Sylvra-$VERSION.dmg"
 
+# The `sylvra` command line tool (local AI reviews, used by the Claude Code skill) ships in Contents/Helpers —
+# not Contents/MacOS, where `sylvra` would replace the app's `Sylvra` binary on a case-insensitive volume.
+# It is signed like the app (Developer ID, hardened runtime); the app is re-signed to seal it, keeping its
+# entitlements, flags and designated requirement.
+echo "▸ Adding the command line tool…"
+swift build --package-path Packages/SylvraKit -c release --product sylvra --arch arm64 -q
+TOOL="$(swift build --package-path Packages/SylvraKit -c release --product sylvra --arch arm64 --show-bin-path)/sylvra"
+mkdir -p "$APP/Contents/Helpers"
+cp "$TOOL" "$APP/Contents/Helpers/sylvra"
+codesign --force --sign "Developer ID Application" --options runtime --timestamp "$APP/Contents/Helpers/sylvra"
+codesign --force --sign "Developer ID Application" --options runtime --timestamp \
+  --preserve-metadata=entitlements,requirements,flags "$APP"
+
 codesign --verify --deep --strict "$APP"
 echo "▸ Signed: $(codesign -dvv "$APP" 2>&1 | grep '^Authority=' | head -1)"
 

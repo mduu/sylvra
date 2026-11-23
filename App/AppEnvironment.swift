@@ -9,6 +9,7 @@ import FeatureReview
 import FeatureTerminal
 import FeatureUpdates
 import Foundation
+import LocalReview
 import Platform
 import SylvraCore
 
