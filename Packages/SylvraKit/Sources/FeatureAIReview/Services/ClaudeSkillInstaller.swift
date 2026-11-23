@@ -7,7 +7,7 @@ public struct ClaudeSkillInstaller: Sendable {
     public enum Status: Equatable, Sendable {
         case notInstalled
         case installed
-        /// Installed for a Sylvra at another path (moved or another copy): reinstalling points it here.
+        /// An older skill, or one for a Sylvra at another path (moved or another copy): reinstalling updates it.
         case outdated
     }
 
@@ -42,8 +42,10 @@ public struct ClaudeSkillInstaller: Sendable {
         try FileManager.default.removeItem(at: skillFile.deletingLastPathComponent())
     }
 
-    /// The skill: when to use the review, how to run it (in the background, it takes minutes) and how to treat
-    /// its findings (suggestions to verify, not orders).
+    // swiftlint:disable function_body_length
+    /// The skill: when to use the review, how to run it (in the background, it takes minutes), how to show its
+    /// progress and how to treat its findings (suggestions to verify, not orders). One Markdown document;
+    /// splitting it up would only make it harder to read.
     public static func skill(commandLineTool path: String) -> String {
         """
         ---
@@ -64,11 +66,31 @@ public struct ClaudeSkillInstaller: Sendable {
         ## Run it
 
         Run from the repository with the Bash tool **in the background** (`run_in_background: true`) — a review \
-        takes a few minutes, longer with several models. Wait for the completion notification; don't poll.
+        takes a few minutes, longer with several models. Write the result to a file, so the command's output \
+        holds only the progress:
 
         ```bash
-        "\(path)" review
+        "\(path)" review -o "${TMPDIR:-/tmp}/sylvra-review.md"
         ```
+
+        ## Show the progress
+
+        The command prints one short line per step, for example:
+
+        ```
+        Reviewing 12 file(s) against origin/main with opus + fable (effort high)…
+        [1/4 · 1:12] ✓ Core · Opus
+        … 1 of 4 agents done, 3 running · 1:31
+        Done in 2:41: 7 findings (2 major, 5 minor), merge risk medium
+        ```
+
+        - If you have a tool that streams a background command's output line by line (such as Monitor), follow \
+        the review with it and pass each `[n/m …] ✓` or `✗` line on to the user as one short sentence \
+        ("Opus is done, 1 of 4 agents"). Skip the `▸` and `…` lines unless the user asks; never more than one \
+        line per update.
+        - Otherwise don't poll: wait for the completion notification. If the user asks how far the review is, \
+        read the last lines of the command's output and answer with them.
+        - When it is done, read the result file and continue below.
 
         Options (only when the user asks for them; the defaults are the user's Sylvra settings):
 
@@ -79,8 +101,9 @@ public struct ClaudeSkillInstaller: Sendable {
         say it
         - `--json` — Sylvra's structured result instead of Markdown; `-o <file>` writes it to a file
 
-        The result (Markdown) is on standard output, progress on standard error. Exit code 1 means the review \
-        failed (for example Claude Code isn't signed in); show the message. `"\(path)" help` lists everything.
+        Without `-o` the result (Markdown) goes to standard output; progress always goes to standard error. Exit \
+        code 1 means the review failed (for example Claude Code isn't signed in); show the message. \
+        `"\(path)" help` lists everything.
 
         ## Use the result
 
@@ -91,4 +114,5 @@ public struct ClaudeSkillInstaller: Sendable {
         you verified, then offer to review again.
         """
     }
+    // swiftlint:enable function_body_length
 }

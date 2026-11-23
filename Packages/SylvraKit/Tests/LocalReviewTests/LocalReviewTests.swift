@@ -138,7 +138,7 @@ struct LocalChangesTests {
 struct LocalReviewRunnerTests {
     @Test func reviewsTheBranchWithEveryModelAndRendersTheResult() async throws {
         let repository = try await ScratchRepository.make()
-        let runner = LocalReviewRunner(provider: DemoAgentProvider(delay: .zero)) {
+        let runner = LocalReviewRunner(provider: DemoAgentProvider(delay: .zero), heartbeat: .seconds(60)) {
             ReviewSettings(models: ["opus", "fable"], effort: "high", maxParallelAgents: 1)
         }
         var lines: [String] = []
@@ -147,11 +147,13 @@ struct LocalReviewRunnerTests {
         #expect(report.settings.models == ["opus", "fable"])
         #expect(report.result != nil)
         #expect(report.failures.isEmpty)
-        // A line when each model's agent finishes, then the step that combines their findings.
-        let finished = lines.filter { $0.hasPrefix("  ✓") }
-        #expect(finished.contains { $0.localizedCaseInsensitiveContains("opus") })
-        #expect(finished.contains { $0.localizedCaseInsensitiveContains("fable") })
+        // A line when each model's agent finishes (counted), then the step that combines their findings, then
+        // the closing line.
+        let finished = lines.filter { $0.contains("] ✓ ") }
+        #expect(finished.contains { $0.hasPrefix("[1/2 · ") && $0.localizedCaseInsensitiveContains("opus") })
+        #expect(finished.contains { $0.hasPrefix("[2/2 · ") && $0.localizedCaseInsensitiveContains("fable") })
         #expect(finished.last?.contains("Combining") == true)
+        #expect(lines.last?.hasPrefix("Done in 0:0") == true)
 
         let markdown = LocalReviewOutput.markdown(report)
         #expect(markdown.hasPrefix("# Sylvra AI review: feature/discount against main"))
@@ -188,5 +190,56 @@ enum ExecutableLocatorProbe {
         setenv(name, "1", 1)
         defer { unsetenv(name) }
         return ExecutableLocator.environment[name] == nil
+    }
+}
+
+/// Progress lines a person or a coding agent can follow.
+@MainActor
+struct LocalReviewProgressTests {
+    final class Clock {
+        var now = Date(timeIntervalSince1970: 0)
+    }
+
+    @Test func countsAgentsAndTimeButNotTheCombiningStep() {
+        let clock = Clock()
+        var lines: [String] = []
+        let progress = LocalReviewProgress(report: { lines.append($0) }, now: { clock.now })
+        progress.update(.init(id: "0#opus", title: "Core · Opus", state: .queued))
+        progress.update(.init(id: "0#fable", title: "Core · Fable", state: .queued))
+        progress.update(.init(id: "0#opus", title: "Core · Opus", state: .running))
+        progress.update(.init(id: "0#fable", title: "Core · Fable", state: .running))
+        clock.now += 31
+        progress.heartbeat()
+        clock.now += 41
+        progress.update(.init(id: "0#opus", title: "Core · Opus", state: .done))
+        progress.update(.init(id: "0#fable", title: "Core · Fable", state: .failed("timed out")))
+        progress.update(.init(id: "consolidate", title: "Combining the models' findings", state: .running))
+        progress.heartbeat()
+        #expect(
+            lines == [
+                "[0/2 · 0:00] ▸ Core · Opus",
+                "[0/2 · 0:00] ▸ Core · Fable",
+                "… 0 of 2 agents done, 2 running · 0:31",
+                "[1/2 · 1:12] ✓ Core · Opus",
+                "[2/2 · 1:12] ✗ Core · Fable: timed out",
+                "[2/2 · 1:12] ▸ Combining the models' findings",
+            ])
+        #expect(progress.failures == ["Core · Fable: timed out"])
+        #expect(!progress.allFailed)
+    }
+
+    @Test func theClosingLineSumsUpTheFindings() {
+        var result = ReviewResult(risk: RiskAssessment(level: .medium))
+        result.findings = [
+            ReviewFinding(
+                path: "a", startLine: 1, endLine: 1, severity: .major, category: "", title: "", rationale: ""),
+            ReviewFinding(
+                path: "b", startLine: 1, endLine: 1, severity: .minor, category: "", title: "", rationale: ""),
+            ReviewFinding(
+                path: "c", startLine: 1, endLine: 1, severity: .minor, category: "", title: "", rationale: ""),
+        ]
+        #expect(LocalReviewProgress.outcome(result) == "3 findings (1 major, 2 minor), merge risk medium")
+        #expect(LocalReviewProgress.outcome(ReviewResult()) == "no findings")
+        #expect(LocalReviewProgress.duration(161.7) == "2:41")
     }
 }

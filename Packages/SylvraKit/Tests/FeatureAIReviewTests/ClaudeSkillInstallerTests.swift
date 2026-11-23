@@ -34,7 +34,8 @@ struct ClaudeSkillInstallerTests {
     @Test func theSkillRunsTheToolInTheBackgroundAndVerifiesFindings() {
         let skill = ClaudeSkillInstaller.skill(commandLineTool: "/Applications/Sylvra.app/Contents/Helpers/sylvra")
         #expect(skill.hasPrefix("---\nname: sylvra-review\ndescription: "))
-        #expect(skill.contains("\"/Applications/Sylvra.app/Contents/Helpers/sylvra\" review"))
+        #expect(skill.contains("\"/Applications/Sylvra.app/Contents/Helpers/sylvra\" review -o "))
+        #expect(skill.contains("## Show the progress"))
         #expect(skill.contains("run_in_background"))
         #expect(skill.contains("Check each one against the code before you act on it"))
     }

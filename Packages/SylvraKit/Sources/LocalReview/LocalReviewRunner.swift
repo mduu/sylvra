@@ -12,16 +12,20 @@ public struct LocalReviewRunner: Sendable {
     private let engine: ReviewEngine
     private let defaults: @Sendable () -> ReviewSettings
     private let runner: any ProcessRunning
+    private let heartbeat: Duration
 
     /// - Parameters:
     ///   - defaults: Sylvra's AI review settings (the app's, unless a test passes others).
+    ///   - heartbeat: how often a progress line says the agents are still running.
     public init(
         provider: any AgentProvider = ClaudeCodeProvider(), runner: any ProcessRunning = SystemProcessRunner(),
+        heartbeat: Duration = .seconds(30),
         defaults: @escaping @Sendable () -> ReviewSettings = { LocalReviewRunner.appSettings() }
     ) {
         engine = ReviewEngine(provider: provider)
         self.defaults = defaults
         self.runner = runner
+        self.heartbeat = heartbeat
     }
 
     /// The AI review settings saved by the Sylvra app (its defaults when it never saved any).
@@ -65,11 +69,21 @@ public struct LocalReviewRunner: Sendable {
             files: files, title: options.title ?? Self.title(for: changes),
             body: options.description ?? Self.body(for: changes), context: context, settings: settings,
             workingDirectory: changes.root)
-        let tracker = ProgressTracker(report: report)
-        var result = await engine.run(input) { progress in tracker.update(progress) }
+        let progress = LocalReviewProgress(report: report)
+        let interval = heartbeat
+        let beat = Task { @MainActor in
+            while !Task.isCancelled {
+                try? await Task.sleep(for: interval)
+                guard !Task.isCancelled else { return }
+                progress.heartbeat()
+            }
+        }
+        var result = await engine.run(input) { update in progress.update(update) }
+        beat.cancel()
         result.reviewedAt = .now
-        let failures = await tracker.failures
-        if await tracker.allFailed { throw RunError.allAgentsFailed(failures) }
+        let failures = progress.failures
+        if progress.allFailed { throw RunError.allAgentsFailed(failures) }
+        progress.finish(result)
         return LocalReviewReport(
             changes: changes, settings: settings, fileCount: files.count, result: result, failures: failures)
     }
@@ -88,33 +102,6 @@ public struct LocalReviewRunner: Sendable {
             parts.append("Includes uncommitted changes and new files not yet committed (work in progress).")
         }
         return parts.joined(separator: "\n\n")
-    }
-}
-
-/// Turns the engine's progress into one line per change of an agent's state.
-@MainActor
-private final class ProgressTracker {
-    private let report: @MainActor @Sendable (String) -> Void
-    private var states: [String: ReviewEngine.Progress.State] = [:]
-    private(set) var failures: [String] = []
-
-    init(report: @escaping @MainActor @Sendable (String) -> Void) {
-        self.report = report
-    }
-
-    var allFailed: Bool { !states.isEmpty && failures.count == states.count }
-
-    func update(_ progress: ReviewEngine.Progress) {
-        guard states[progress.id] != progress.state else { return }
-        states[progress.id] = progress.state
-        switch progress.state {
-        case .queued: break
-        case .running: report("  ▸ \(progress.title)")
-        case .done: report("  ✓ \(progress.title)")
-        case .failed(let message):
-            failures.append("\(progress.title): \(message)")
-            report("  ✗ \(progress.title): \(message)")
-        }
     }
 }
 

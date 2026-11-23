@@ -10,6 +10,12 @@ public struct ReviewEngine: Sendable {
         public let id: String
         public let title: String
         public var state: State
+
+        public init(id: String, title: String, state: State) {
+            self.id = id
+            self.title = title
+            self.state = state
+        }
     }
 
     private let provider: any AgentProvider

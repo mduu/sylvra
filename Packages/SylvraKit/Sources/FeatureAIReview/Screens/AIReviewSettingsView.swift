@@ -71,7 +71,7 @@ public struct AIReviewSettingsView: View {
                 LabeledContent("Claude Code skill") {
                     HStack(spacing: 8) {
                         Text(skillStatusText).foregroundStyle(.secondary)
-                        Button(skillStatus == .installed ? "Reinstall" : "Install") { installSkill(tool) }
+                        Button(installTitle) { installSkill(tool) }
                         if skillStatus != .notInstalled {
                             Button("Remove") { removeSkill(tool) }
                         }
@@ -97,11 +97,19 @@ public struct AIReviewSettingsView: View {
         }
     }
 
+    private var installTitle: LocalizedStringKey {
+        switch skillStatus {
+        case .notInstalled: "Install"
+        case .installed: "Reinstall"
+        case .outdated: "Update"
+        }
+    }
+
     private var skillStatusText: String {
         switch skillStatus {
         case .notInstalled: String(localized: "Not installed")
         case .installed: String(localized: "Installed")
-        case .outdated: String(localized: "Installed for another copy of Sylvra")
+        case .outdated: String(localized: "Out of date: click Update")
         }
     }
 
