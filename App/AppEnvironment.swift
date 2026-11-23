@@ -17,7 +17,8 @@ import SylvraCore
 /// Launch arguments (used for demos and screenshots):
 /// - `--demo`: fixture data instead of GitHub
 /// - `--select=owner/repo#number`: select that PR once the inbox is loaded
-/// - `--tab=overview|commits|checks`: initial tab of the PR column
+/// - `--tab=overview|commits|checks`: initial tab of the PR column; `--ai-tab=findings|patterns|chat` of the AI
+///   inspector
 /// - `--layout=inline`: inline instead of side-by-side diff
 /// - `--scope=fullFile`: start the diff with full files
 /// - `--focus`: hide the inbox sidebar; `--no-inspector`: hide the AI inspector
@@ -30,6 +31,7 @@ import SylvraCore
 /// - `--ask=question`: ask the AI chat this question once a PR is selected (screenshots)
 /// - `--window-layout=wide|compact|focus|…`: window layout for this launch (see `WindowLayout`)
 /// - `--expand-reading-order`: the AI summary's reading order starts expanded
+/// - `--select-finding=n`: show finding n (1-based) of the stored AI review in the diff
 /// - `--update=available|downloading|…` (demo): show that step of the update card (see `DemoUpdates`)
 @MainActor
 final class AppEnvironment {
@@ -45,6 +47,8 @@ final class AppEnvironment {
     let initialCommit: Int?
     /// Screenshots: open the report of the first failing check (`--open-check`).
     let opensFailingCheck: Bool
+    /// Screenshots: show this finding (1-based) of the stored AI review in the diff (`--select-finding=2`).
+    let initialFinding: Int?
     let gitHub: GitHubClient
     let inbox: InboxScreenModel
     let pullRequest: PullRequestScreenModel
@@ -78,6 +82,7 @@ final class AppEnvironment {
         initialQuestion = Self.value(of: "--ask", in: arguments)
         initialCommit = Self.value(of: "--commit", in: arguments).flatMap(Int.init)
         opensFailingCheck = arguments.contains("--open-check")
+        initialFinding = Self.value(of: "--select-finding", in: arguments).flatMap(Int.init)
         gitHub = GitHubClient(tokenProvider: GitHubCLITokenProvider())
         let inboxLoader: any InboxLoading = isDemo ? DemoInboxLoader() : GitHubInboxLoader(client: gitHub)
         inbox = Self.makeInbox(loader: inboxLoader, gitHub: gitHub, isDemo: isDemo, arguments: arguments)
@@ -134,6 +139,9 @@ final class AppEnvironment {
         if Self.value(of: "--layout", in: arguments) == "inline" { diff.layout = .inline }
         if let scope = Self.value(of: "--scope", in: arguments).flatMap(DiffScreenModel.Scope.init(rawValue:)) {
             diff.scope = scope
+        }
+        if let tab = Self.value(of: "--ai-tab", in: arguments).flatMap(AIReviewModel.Tab.init(rawValue:)) {
+            aiReview.tab = tab
         }
         if let tab = Self.value(of: "--tab", in: arguments).flatMap(PullRequestScreenModel.Tab.init(rawValue:)) {
             pullRequest.tab = tab

@@ -80,7 +80,8 @@ struct RootModelBridges: View {
                     environment.activity.finish("checkout", message: nil)
                 }
             }
-            .onChange(of: environment.inbox.snapshot) {
+            // Initial too: an inbox restored from the cache is there before this view observes it.
+            .onChange(of: environment.inbox.snapshot, initial: true) {
                 guard selectedID == nil, let wanted = environment.initialSelection else { return }
                 selectedID =
                     environment.inbox.snapshot.sections.values.joined().first { $0.id.description == wanted }?.id

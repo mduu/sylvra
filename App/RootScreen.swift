@@ -90,6 +90,17 @@ struct RootScreen: View {
                 }
             }
             .task(id: selection?.id) {
+                // Screenshots: a stored finding in the diff, once the diff has loaded.
+                guard role == .main, let number = environment.initialFinding, let id = selection?.id else { return }
+                for _ in 0..<100 where environment.diff.diff == nil {
+                    try? await Task.sleep(for: .milliseconds(100))
+                }
+                let findings = environment.aiReview.findings(for: id)
+                guard findings.indices.contains(number - 1) else { return }
+                environment.aiReview.selectedFindingID = findings[number - 1].id
+                jump(to: findings[number - 1])
+            }
+            .task(id: selection?.id) {
                 guard role == .main, let question = environment.initialQuestion, let id = selection?.id else { return }
                 environment.aiReview.tab = .chat
                 await environment.chat.send(question, for: id)
