@@ -54,6 +54,19 @@ public enum AIReviewClipboard {
         return joined(parts)
     }
 
+    /// What the reviewers say about the author's hints, every agent's answer with its model.
+    public static func hints(_ hints: [HintAnswer]) -> String {
+        joined(
+            ["## Reviewer hints"]
+                + hints.map { hint in
+                    let answers =
+                        hint.answers.isEmpty
+                        ? ["- No reviewer answered this point."]
+                        : hint.answers.map { "- **\($0.model.capitalized):** \($0.text)" }
+                    return (["### \(hint.hint)"] + answers).joined(separator: "\n")
+                })
+    }
+
     public static func pattern(_ pattern: PatternFinding, pullRequest: String? = nil) -> String {
         joined(header(nil, pullRequest) + [patternBody(pattern)])
     }

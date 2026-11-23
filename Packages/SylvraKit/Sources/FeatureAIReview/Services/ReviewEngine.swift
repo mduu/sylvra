@@ -44,11 +44,14 @@ public struct ReviewEngine: Sendable {
         public var history: [String]
         public var settings: ReviewSettings
         public var workingDirectory: URL?
+        /// Points the author asks the reviewers to pay particular attention to.
+        public var hints: [String]
 
         public init(
             files: [ReviewableFile], title: String, body: String, context: [ContextDocument] = [],
-            history: [String] = [], settings: ReviewSettings, workingDirectory: URL?
+            history: [String] = [], settings: ReviewSettings, workingDirectory: URL?, hints: [String] = []
         ) {
+            self.hints = hints
             self.files = files
             self.title = title
             self.body = body
@@ -89,6 +92,7 @@ public struct ReviewEngine: Sendable {
                         history: history, model: job.model, effort: settings.effort, language: settings.agentLanguage,
                         workingDirectory: workingDirectory)
                     request.otherFiles = Self.otherFiles(files, outside: job.shard)
+                    request.hints = input.hints
                     do {
                         let output = try await provider.review(request)
                         await progress(Progress(id: job.id, title: label, state: .done))
@@ -105,7 +109,8 @@ public struct ReviewEngine: Sendable {
                 startNext()
             }
         }
-        let merged = ReviewMerger.merge(outputs, files: files)
+        var merged = ReviewMerger.merge(outputs, files: files)
+        merged.hints = ReviewMerger.hintAnswers(input.hints, outputs: outputs)
         // Several models phrase the same problem differently: one more call groups what the merger missed.
         guard Set(outputs.map(\.1.model)).count > 1, FindingConsolidator.isWorthwhile(merged) else { return merged }
         let step = Progress(

@@ -92,6 +92,16 @@ public struct ClaudeSkillInstaller: Sendable {
         read the last lines of the command's output and answer with them.
         - When it is done, read the result file and continue below.
 
+        **Hints**: when the user names something the review should pay particular attention to ("achte auf …", \
+        "check especially …"), pass each point as `--hint "…"` — short, one point per hint. The review still \
+        covers everything; the hints get extra attention and an answer each. Add a hint of your own only for \
+        something you are unsure about in a change you made, and tell the user which hints you passed.
+
+        ```bash
+        "\(path)" review -o "${TMPDIR:-/tmp}/sylvra-review.md" --hint "thread safety of the cache" \
+          --hint "the migration must stay backwards compatible"
+        ```
+
         Options (only when the user asks for them; the defaults are the user's Sylvra settings):
 
         - `--base <branch>` — compare with another branch (default: `origin/HEAD`, `main` or `master`)
@@ -107,7 +117,8 @@ public struct ClaudeSkillInstaller: Sendable {
 
         ## Use the result
 
-        1. Give the user the summary and the merge risk, then the findings, most severe first — short.
+        1. Give the user the summary and the merge risk, then what the reviewers say about each hint (section \
+        *Reviewer hints*, if you passed any), then the findings, most severe first — short.
         2. The findings are suggestions from AI reviewers. Check each one against the code before you act on it, \
         and say which you agree with and which not, and why.
         3. Don't change code because of the review unless the user asks. When asked to fix, fix only the findings \

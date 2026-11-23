@@ -120,6 +120,28 @@ public struct OverallFinding: Identifiable, Hashable, Sendable, Codable {
     public let rationale: String
 }
 
+/// What the reviewers say about one of the author's hints (a point to pay particular attention to).
+public struct HintAnswer: Hashable, Sendable, Codable {
+    public struct Answer: Hashable, Sendable, Codable {
+        public let model: String
+        public let text: String
+
+        public init(model: String, text: String) {
+            self.model = model
+            self.text = text
+        }
+    }
+
+    public let hint: String
+    /// One per agent that answered (models, and shards of a large change).
+    public var answers: [Answer]
+
+    public init(hint: String, answers: [Answer] = []) {
+        self.hint = hint
+        self.answers = answers
+    }
+}
+
 /// Merged result of a review run.
 public struct ReviewResult: Hashable, Sendable, Codable {
     public var summary: String
@@ -136,6 +158,8 @@ public struct ReviewResult: Hashable, Sendable, Codable {
     public var reviewedAt: Date?
     /// How risky merging the pull request is (`nil` for reviews from before risk ratings).
     public var risk: RiskAssessment?
+    /// Answers to the author's hints, in the order given (empty without hints).
+    public var hints: [HintAnswer] = []
 
     public init(
         summary: String = "", findings: [ReviewFinding] = [], patterns: [PatternFinding] = [], history: [String] = [],
@@ -150,7 +174,7 @@ public struct ReviewResult: Hashable, Sendable, Codable {
     }
 
     private enum CodingKeys: String, CodingKey {
-        case summary, findings, patterns, overall, history, readingOrder, headSHA, reviewedAt, risk
+        case summary, findings, patterns, overall, history, readingOrder, headSHA, reviewedAt, risk, hints
     }
 
     // Results cached before reading orders (or head commits) were recorded decode without them.
@@ -165,6 +189,7 @@ public struct ReviewResult: Hashable, Sendable, Codable {
         headSHA = try container.decodeIfPresent(String.self, forKey: .headSHA)
         reviewedAt = try container.decodeIfPresent(Date.self, forKey: .reviewedAt)
         risk = try container.decodeIfPresent(RiskAssessment.self, forKey: .risk)
+        hints = try container.decodeIfPresent([HintAnswer].self, forKey: .hints) ?? []
     }
 }
 

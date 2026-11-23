@@ -29,6 +29,7 @@ public enum LocalReviewOutput {
             parts.append(
                 AIReviewClipboard.summary(result.summary, risk: result.risk, readingOrder: result.readingOrder))
         }
+        if !result.hints.isEmpty { parts.append(AIReviewClipboard.hints(result.hints)) }
         if result.findings.isEmpty, result.overall.isEmpty {
             parts.append("## AI review findings\n\nNo findings.")
         } else {
@@ -77,4 +78,5 @@ public enum LocalReviewOutput {
         let result: ReviewResult?
         let failures: [String]
     }
+
 }

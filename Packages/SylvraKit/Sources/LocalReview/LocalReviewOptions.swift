@@ -14,6 +14,8 @@ public struct LocalReviewOptions: Equatable, Sendable {
     public var committedOnly = false
     public var title: String?
     public var description: String?
+    /// Points the reviewers should pay particular attention to, on top of the usual review.
+    public var hints: [String] = []
     public var format: Format = .markdown
     /// Writes the result to this file instead of standard output.
     public var output: URL?
@@ -94,6 +96,12 @@ public enum LocalReviewCommand: Equatable, Sendable {
             case "--committed": options.committedOnly = true
             case "--title": options.title = try value(for: option)
             case "--description": options.description = try value(for: option)
+            case "--hint":
+                let hint = try value(for: option).trimmingCharacters(in: .whitespacesAndNewlines)
+                guard !hint.isEmpty else {
+                    throw ParseError.invalidValue(option: option, value: hint, expected: "a short text")
+                }
+                options.hints.append(hint)
             case "--directory", "-C":
                 options.directory =
                     URL(
@@ -153,6 +161,8 @@ public enum LocalReviewCommand: Equatable, Sendable {
           -C, --directory <path>      Repository to review (default: the current folder)
           --title <text>              What the change is about (default: the branch name)
           --description <text>        More context for the reviewers (default: the commit messages)
+          --hint <text>               A point the reviewers should pay particular attention to, on top of the
+                                      usual review; repeat for several (each gets an answer in the result)
 
         HOW (defaults: Sylvra's AI review settings)
           --models <a,b>              Models reviewing in parallel, merged into one result (e.g. opus,fable)

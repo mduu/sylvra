@@ -107,3 +107,65 @@ struct AIReviewClipboardTests {
                 """)
     }
 }
+
+/// The author's hints: an addition to the review, answered by every agent.
+struct ReviewHintTests {
+    let shard = ShardPlanner.Shard(name: "Whole PR", files: [])
+
+    @Test func thePromptAsksForAttentionWithoutLimitingTheReview() {
+        var request = ReviewRequest(
+            pullRequestTitle: "Cache", pullRequestBody: "", shard: shard, repositoryContext: [], history: [],
+            model: "opus", effort: "high", language: "English", workingDirectory: nil)
+        #expect(!request.prompt.contains("## Reviewer hints"))
+        request.hints = ["thread safety of the cache", "keep the migration backwards compatible"]
+        let prompt = request.prompt
+        #expect(prompt.contains("## Reviewer hints"))
+        #expect(prompt.contains("Review the whole change as usual"))
+        #expect(prompt.contains("1. thread safety of the cache\n2. keep the migration backwards compatible"))
+        #expect(ReviewRequest.outputSchema.contains("\"hints\":{\"type\":\"array\""))
+    }
+
+    @Test func everyAgentsAnswerIsKeptPerHint() throws {
+        func output(_ json: String) throws -> AgentReviewOutput {
+            try JSONDecoder().decode(AgentReviewOutput.self, from: Data(json.utf8))
+        }
+        let opus = try output(
+            """
+            {"summary":"","findings":[],"hints":[{"hint":"Thread safety  of the cache","answer":"The lock covers it."}]}
+            """)
+        // Fable rephrased both hints but answered both: matched by position.
+        let fable = try output(
+            """
+            {"summary":"","findings":[],"hints":[{"hint":"cache threads","answer":"A race in evict()."},
+            {"hint":"migration","answer":"Not touched here."}]}
+            """)
+        let answers = ReviewMerger.hintAnswers(
+            ["thread safety of the cache", "the migration stays backwards compatible"],
+            outputs: [
+                (opus, AgentSource(provider: "Claude Code", model: "opus", effort: "high")),
+                (fable, AgentSource(provider: "Claude Code", model: "fable", effort: "high")),
+            ])
+        #expect(answers.map(\.hint) == ["thread safety of the cache", "the migration stays backwards compatible"])
+        #expect(answers[0].answers.map(\.model) == ["opus", "fable"])
+        #expect(answers[1].answers == [HintAnswer.Answer(model: "fable", text: "Not touched here.")])
+        #expect(
+            ReviewMerger.hintAnswers([], outputs: [(opus, AgentSource(provider: "", model: "", effort: ""))]).isEmpty)
+    }
+
+    @Test func copiedHintsNameTheModelsAndTheUnanswered() {
+        let text = AIReviewClipboard.hints([
+            HintAnswer(hint: "thread safety", answers: [.init(model: "opus", text: "The lock covers it.")]),
+            HintAnswer(hint: "migration"),
+        ])
+        #expect(
+            text == """
+                ## Reviewer hints
+
+                ### thread safety
+                - **Opus:** The lock covers it.
+
+                ### migration
+                - No reviewer answered this point.
+                """)
+    }
+}

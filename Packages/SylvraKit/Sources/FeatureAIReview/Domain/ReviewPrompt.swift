@@ -14,6 +14,8 @@ public struct ReviewRequest: Sendable {
     public let workingDirectory: URL?
     /// The pull request's files outside this shard (`path (+added −removed)`), to judge the change as a whole.
     public var otherFiles: [String] = []
+    /// Points the author asks the reviewers to pay particular attention to (on top of the usual review).
+    public var hints: [String] = []
 
     public init(
         pullRequestTitle: String, pullRequestBody: String, shard: ShardPlanner.Shard,
@@ -75,6 +77,7 @@ public struct ReviewRequest: Sendable {
             suggestions unchanged.
             """)
         parts.append("## Pull request\n\nTitle: \(pullRequestTitle)\n\n\(pullRequestBody.prefix(4000))")
+        if !hints.isEmpty { parts.append(Self.hintsSection(hints)) }
         if !repositoryContext.isEmpty {
             let documents = repositoryContext.map { "### \($0.path)\n\n\($0.content)" }.joined(separator: "\n\n")
             parts.append("## Repository guidelines (AGENTS.md, CLAUDE.md, specs, …)\n\n\(documents)")
@@ -93,6 +96,19 @@ public struct ReviewRequest: Sendable {
             parts.append("You may read other files of the repository (read-only) when you need more context.")
         }
         return parts.joined(separator: "\n\n")
+    }
+
+    /// The author's hints: an addition to the review, not a limit on it.
+    static func hintsSection(_ hints: [String]) -> String {
+        """
+        ## Reviewer hints
+
+        Review the whole change as usual — these points don't limit what you look at. In addition, the author \
+        asks you to pay particular attention to them. Report problems you find about them as normal findings. \
+        In `hints`, answer every point in one or two sentences in the review language: what you checked in this \
+        shard and what you found, or that this shard doesn't touch it. Copy each `hint` exactly as written here.
+
+        """ + hints.enumerated().map { "\($0.offset + 1). \($0.element)" }.joined(separator: "\n")
     }
 
     /// JSON schema of the structured output.
@@ -121,7 +137,9 @@ public struct ReviewRequest: Sendable {
         "properties":{"path":{"type":"string"},"startLine":{"type":"integer"},"endLine":{"type":"integer"}}}}}}},\
         "readingOrder":{"type":"array","items":{"type":"object","required":["path","reason"],"properties":{\
         "path":{"type":"string"},"reason":{"type":"string"},"risky":{"type":"boolean"}}}},\
-        "history":{"type":"array","items":{"type":"string"}}}}
+        "history":{"type":"array","items":{"type":"string"}},\
+        "hints":{"type":"array","items":{"type":"object","required":["hint","answer"],"properties":{\
+        "hint":{"type":"string"},"answer":{"type":"string"}}}}}}
         """
 }
 
@@ -177,6 +195,12 @@ public struct AgentReviewOutput: Decodable, Sendable {
         let rationale: String?
     }
 
+    /// An agent's answer to one of the author's hints.
+    public struct Hint: Decodable, Sendable {
+        let hint: String
+        let answer: String
+    }
+
     public struct Step: Decodable, Sendable {
         let path: String
         let reason: String?
@@ -190,4 +214,5 @@ public struct AgentReviewOutput: Decodable, Sendable {
     let overall: [Overall]?
     let patterns: [Pattern]?
     let history: [String]?
+    let hints: [Hint]?
 }

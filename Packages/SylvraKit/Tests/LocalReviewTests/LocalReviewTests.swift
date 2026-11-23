@@ -13,6 +13,7 @@ struct LocalReviewCommandTests {
             [
                 "review", "--base", "origin/develop", "--models=Opus, fable", "--effort", "xhigh", "--agents", "4",
                 "--language", "German", "--json", "-o", "out/review.json", "--committed", "-q",
+                "--hint", "thread safety", "--hint=the migration",
             ], currentDirectory: here)
         guard case .review(let options) = command else {
             Issue.record("expected a review")
@@ -27,6 +28,7 @@ struct LocalReviewCommandTests {
         #expect(options.output?.path == "/work/repo/out/review.json")
         #expect(options.committedOnly)
         #expect(options.isQuiet)
+        #expect(options.hints == ["thread safety", "the migration"])
     }
 
     @Test func sylvrasSettingsAreTheDefaults() throws {

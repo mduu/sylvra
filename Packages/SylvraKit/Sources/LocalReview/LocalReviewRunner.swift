@@ -62,13 +62,14 @@ public struct LocalReviewRunner: Sendable {
         }
         await report(
             "Reviewing \(files.count) file(s) against \(changes.base) with "
-                + "\(settings.models.joined(separator: " + ")) (effort \(settings.effort))…")
+                + "\(settings.models.joined(separator: " + ")) (effort \(settings.effort))"
+                + (options.hints.isEmpty ? "" : ", \(options.hints.count) hint(s)") + "…")
         let root = changes.root
         let context = await Task.detached { RepoContextDiscovery().documents(in: root) }.value
         let input = ReviewEngine.Input(
             files: files, title: options.title ?? Self.title(for: changes),
             body: options.description ?? Self.body(for: changes), context: context, settings: settings,
-            workingDirectory: changes.root)
+            workingDirectory: changes.root, hints: options.hints)
         let progress = LocalReviewProgress(report: report)
         let interval = heartbeat
         let beat = Task { @MainActor in

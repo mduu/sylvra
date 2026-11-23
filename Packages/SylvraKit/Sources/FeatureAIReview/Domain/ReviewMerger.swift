@@ -3,6 +3,29 @@ import SylvraCore
 
 /// Validates agent output against the diff and merges shards / models (see specs/architecture.md §8.4–8.5).
 public enum ReviewMerger {
+    /// Every agent's answer to each of the author's hints, in the hints' order. Answers are matched by the hint's
+    /// wording; when an agent rephrased its hints but answered all of them, by position.
+    public static func hintAnswers(_ hints: [String], outputs: [(AgentReviewOutput, AgentSource)]) -> [HintAnswer] {
+        guard !hints.isEmpty else { return [] }
+        func normalized(_ text: String) -> String {
+            text.lowercased().split(whereSeparator: \.isWhitespace).joined(separator: " ")
+        }
+        let keys = hints.map(normalized)
+        var answers = hints.map { HintAnswer(hint: $0) }
+        for (output, source) in outputs {
+            let given = output.hints ?? []
+            for (position, raw) in given.enumerated() {
+                let text = raw.answer.trimmingCharacters(in: .whitespacesAndNewlines)
+                guard !text.isEmpty else { continue }
+                let index =
+                    keys.firstIndex(of: normalized(raw.hint)) ?? (given.count == hints.count ? position : nil)
+                guard let index else { continue }
+                answers[index].answers.append(HintAnswer.Answer(model: source.model, text: text))
+            }
+        }
+        return answers
+    }
+
     public static func merge(_ outputs: [(AgentReviewOutput, AgentSource)], files: [ReviewableFile]) -> ReviewResult {
         let byPath = Dictionary(files.map { ($0.path, $0) }, uniquingKeysWith: { first, _ in first })
         var findings: [ReviewFinding] = []

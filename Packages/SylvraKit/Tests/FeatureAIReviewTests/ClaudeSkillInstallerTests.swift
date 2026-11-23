@@ -36,6 +36,7 @@ struct ClaudeSkillInstallerTests {
         #expect(skill.hasPrefix("---\nname: sylvra-review\ndescription: "))
         #expect(skill.contains("\"/Applications/Sylvra.app/Contents/Helpers/sylvra\" review -o "))
         #expect(skill.contains("## Show the progress"))
+        #expect(skill.contains("--hint \"thread safety of the cache\""))
         #expect(skill.contains("run_in_background"))
         #expect(skill.contains("Check each one against the code before you act on it"))
     }
