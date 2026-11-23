@@ -65,9 +65,9 @@ sylvra/
 │   ├── Sources/
 │   │   ├── SylvraCore/         # Domain models + protocols shared across slices (no UI, no I/O)
 │   │   ├── Platform/           # Shared infrastructure: GitHubClient, GitRunner, ProcessRunner, Keychain,
-│   │   │                       # Persistence (SQLite), AvatarCache, Logging, Notifications
+│   │   │                       # Persistence (SQLite), Logging, Notifications
 │   │   ├── DesignSystem/       # Color tokens (from the app icon), typography, materials, animations,
-│   │   │                       # AI highlight styles, reusable components (Avatar, Badge, CopyableSHA…)
+│   │   │                       # AI highlight styles, reusable components (Avatar + AvatarCache, Badge, CopyableSHA…)
 │   │   ├── FeatureInbox/       # PR inbox: sections, filters, polling
 │   │   ├── FeaturePullRequest/ # PR details: overview, description, commits, checks, merge status, conversation
 │   │   ├── FeatureDiff/        # Diff engine (parse, intra-line, moved code) + diff screens and rendering
@@ -183,7 +183,7 @@ Diff-specific models (`FileDiff`, `Hunk`, `DiffLine`) live in `FeatureDiff/Domai
   - mark files as viewed (`markFileAsViewed` / `unmarkFileAsViewed`).
 - **Stacked pull requests**: GitHub's stack fields (`PullRequest.stack` / `stackEntry`, a preview API) are read in their own small queries, never inside the inbox or detail queries — if GitHub renames them or a GitHub Enterprise Server lacks them, only the stack goes missing. Pull requests that aren't in a GitHub stack get one derived from base and head branches (`BranchStackWalker`), so stacks made with other tools show too. Whether a layer misses commits of the one below comes from `Ref.compare` (`aheadBy`). Merging a whole stack (`merge-async`) and restacking stay on GitHub / the CLI (no Git client scope).
 - **Deep links**: every entity keeps its GitHub `url` (PR, commit, check run `detailsURL`, comment) so the UI can open it in the browser with one click.
-- **Avatars**: `avatarUrl` of users is loaded via a shared `AvatarCache` (memory + disk, `URLCache`), with initials as fallback.
+- **Avatars**: `avatarUrl` of users is loaded via the shared `AvatarCache` (`DesignSystem`, next to `AvatarView`): decoded once at 128 px, kept in memory for the session and on disk (Caches/Avatars) for a week; an avatar seen before draws in the same frame, an old one is kept when offline. Initials as fallback.
 - Every write is an explicit user action. AI findings are never posted automatically.
 
 ## 6. Local Git integration (`Platform/GitRunner`)

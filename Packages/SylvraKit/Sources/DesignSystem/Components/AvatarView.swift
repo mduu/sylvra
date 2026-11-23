@@ -1,10 +1,14 @@
+import AppKit
 import SwiftUI
 import SylvraCore
 
-/// Circular user avatar with initials as fallback.
+/// Circular user avatar with initials as fallback. Avatars come from `AvatarCache`: one seen before draws in the
+/// same frame, without loading or decoding it again.
 public struct AvatarView: View {
     private let user: UserRef
     private let size: CGFloat
+    /// The image loaded by this view, with its URL (a reused row may still hold the previous user's).
+    @State private var loaded: (url: URL, image: NSImage)?
 
     public init(_ user: UserRef, size: CGFloat = 24) {
         self.user = user
@@ -12,9 +16,9 @@ public struct AvatarView: View {
     }
 
     public var body: some View {
-        AsyncImage(url: user.avatarURL) { phase in
-            if let image = phase.image {
-                image.resizable().scaledToFill()
+        Group {
+            if let image {
+                Image(nsImage: image).resizable().interpolation(.high).scaledToFill()
             } else {
                 initials
             }
@@ -23,6 +27,15 @@ public struct AvatarView: View {
         .clipShape(Circle())
         .overlay(Circle().strokeBorder(.primary.opacity(0.08)))
         .accessibilityLabel(Text(user.displayName))
+        .task(id: user.avatarURL) {
+            guard let url = user.avatarURL, AvatarCache.shared.cachedImage(for: url) == nil else { return }
+            if let image = await AvatarCache.shared.image(for: url) { loaded = (url, image) }
+        }
+    }
+
+    private var image: NSImage? {
+        guard let url = user.avatarURL else { return nil }
+        return AvatarCache.shared.cachedImage(for: url) ?? (loaded?.url == url ? loaded?.image : nil)
     }
 
     private var initials: some View {
