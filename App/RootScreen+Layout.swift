@@ -117,15 +117,14 @@ extension WindowLayoutModifier {
         }
     }
 
-    /// Focus: the inbox floats in from the left, its handle on the panel's edge.
+    /// Focus: the inbox floats in from the left, its handle inside on the panel's trailing edge.
     @ViewBuilder
     fileprivate func floatingInbox(_ layout: WindowLayout) -> some View {
         if layout.floatsInbox, root.isInboxFloating, root.role == .main {
-            // The handle rides on the panel's edge (the panel's padding is the negative spacing).
-            HStack(spacing: -8) {
-                FloatingPanel(edge: .leading, width: 300, isPresented: root.$isInboxFloating) {
-                    InboxScreen(model: root.environment.inbox, selection: root.selectionBinding)
-                }
+            // The handle sits inside the panel on its trailing edge, like the AI handle in the floating inspector.
+            FloatingPanel(edge: .leading, width: 300, isPresented: root.$isInboxFloating) {
+                InboxScreen(model: root.environment.inbox, selection: root.selectionBinding)
+            } handle: {
                 root.inboxHandle
             }
             .transition(.move(edge: .leading).combined(with: .opacity))

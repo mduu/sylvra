@@ -89,6 +89,7 @@ extension RootScreen {
     var inboxColumn: some View {
         InboxScreen(model: environment.inbox, selection: selectionBinding)
             // The inbox is toggled with the handle on its edge (⌘0), in every layout.
+            .panelHandle(.trailing, isVisible: showsHandleInInbox) { inboxHandle }
             .toolbar(removing: .sidebarToggle)
             .rememberedColumn(.inbox, ideal: inboxWidth)
             .navigationSplitViewColumnWidth(

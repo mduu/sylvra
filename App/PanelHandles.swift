@@ -36,10 +36,11 @@ extension RootScreen {
     /// The window can show the AI panel (in the two-window layout it lives in the review window).
     var hasAIPanel: Bool { !(role == .main && layout == .twoWindows) }
 
-    /// On the leading edge of the column right of the inbox (or of the floating inbox).
+    /// Open: inside the inbox on its trailing edge (like the AI handle inside the AI panel). Closed: on the
+    /// leading edge of the column the inbox would push aside.
     var inboxHandle: some View {
         PanelEdgeHandle(
-            attachedTo: .leading, pointsTo: isInboxShown ? .leading : .trailing,
+            attachedTo: isInboxShown ? .trailing : .leading, pointsTo: isInboxShown ? .leading : .trailing,
             help: isInboxShown ? "Hide the inbox (⌘0)" : "Show the inbox (⌘0)",
             // A closed inbox is easy to lose; the brand color makes its way back stand out.
             isProminent: !isInboxShown, action: toggleInbox)
@@ -56,10 +57,16 @@ extension RootScreen {
         }
     }
 
-    /// Where the closed inbox handle sits: the pull request column, or the diff in the focus layout.
+    /// Where the closed inbox handle sits: the pull request column, or the diff in the focus layout. The open
+    /// inbox carries its handle itself (`showsHandleInInbox`, the floating inbox).
     func showsInboxHandle(onReviewColumn: Bool) -> Bool {
-        guard role == .main, !layout.stacksInbox, !(layout.floatsInbox && isInboxFloating) else { return false }
+        guard role == .main, !layout.stacksInbox, !isInboxShown else { return false }
         return onReviewColumn == (layout == .focus)
+    }
+
+    /// The docked inbox column is open: its handle sits inside it.
+    var showsHandleInInbox: Bool {
+        role == .main && !layout.stacksInbox && !layout.floatsInbox && isInboxShown
     }
 }
 
