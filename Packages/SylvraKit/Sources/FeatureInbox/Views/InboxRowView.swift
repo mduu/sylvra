@@ -34,6 +34,7 @@ struct InboxRowView: View {
                     Text(verbatim: "+\(pullRequest.additions) −\(pullRequest.deletions)")
                         .monospacedDigit()
                     CheckStateBadge(pullRequest.checkState)
+                    if let stack = pullRequest.stack { StackBadge(stack: stack) }
                     if let comments = pullRequest.commentCount, comments > 0 {
                         HStack(spacing: 2) {
                             Image(systemName: "bubble.left")
@@ -74,6 +75,28 @@ struct InboxRowView: View {
                 .foregroundStyle(SylvraColor.brandPrimary)
                 .lineLimit(1)
         }
+    }
+}
+
+/// The layer of a stack: `2/4`, or only the symbol when the stack is derived from the listed pull requests.
+struct StackBadge: View {
+    let stack: StackMembership
+
+    var body: some View {
+        HStack(spacing: 2) {
+            Image(systemName: "square.stack.3d.up")
+            if let size = stack.size {
+                Text(verbatim: "\(stack.position)/\(size)").monospacedDigit()
+            }
+        }
+        .help(help)
+    }
+
+    private var help: String {
+        if let size = stack.size {
+            return String(localized: "Layer \(stack.position) of \(size) in a stack")
+        }
+        return String(localized: "Layer \(stack.position) of a stack: builds on the pull request above it")
     }
 }
 

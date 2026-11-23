@@ -167,7 +167,7 @@ struct InboxScreenModelTests {
 
         await model.addRepository(InboxRepository(owner: "acme", name: "identity"))
         #expect(model.snapshot.pullRequests(in: .myTeams).map(\.id.repository) == ["identity"])
-        #expect(model.snapshot.pullRequests(in: .requestedFromMe).count == 2)
+        #expect(model.snapshot.pullRequests(in: .requestedFromMe).count == 3)
         #expect(model.snapshot.pullRequests(in: .involved).isEmpty)
         #expect(!model.suggestedRepositories.contains(InboxRepository(owner: "acme", name: "identity")))
 
@@ -325,7 +325,7 @@ struct RepositoryBrowserTests {
         let openFlags = groups[2].pullRequests.map(\.isWaitingOnOthers)
         #expect(!waitingFlags.contains(false))
         #expect(!openFlags.contains(true))
-        #expect(groups[0].pullRequests.map(\.id.number) == [1234])
+        #expect(groups[0].pullRequests.map(\.id.number) == [1234, 1238])
         #expect(groups[1].pullRequests.allSatisfy { $0.author.login == "mduu" })
         #expect(model.summary(for: groups[2].pullRequests[0].id) != nil)
         model.closeRepository()

@@ -83,14 +83,15 @@ public final class InboxScreenModel {
         }
     }
 
-    /// Sections with the PRs matching the current search.
+    /// Sections with the PRs matching the current search; the layers of a stack stay together.
     /// Empty sections are hidden to keep the sidebar calm.
     public var visibleSections: [(section: InboxSection, pullRequests: [PullRequestSummary])] {
         InboxSection.allCases.compactMap { section in
             let pullRequests = snapshot.pullRequests(in: section).filter {
                 matchesSearch($0) && activeFilter.matches($0)
             }
-            return pullRequests.isEmpty ? nil : (section, Self.waitingLast(pullRequests, in: section))
+            guard !pullRequests.isEmpty else { return nil }
+            return (section, InboxStacks.grouped(Self.waitingLast(pullRequests, in: section)))
         }
     }
 

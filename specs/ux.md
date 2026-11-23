@@ -165,6 +165,7 @@ If GitHub reports `X-GitHub-SSO: partial-results`, the sidebar explains that the
 - Status dot: unread / updated since my last review / reviewed.
 - Badges only for meaningful states: draft, conflicts, CI failing, blocked, *AI-authored*, *changes since my review*.
 - Search (title, number, author, branch) and filter chips (see above).
+- **Stacks**: the layers of a stack stay together in a section, bottom first, where the first of them would be; each row shows `⧉ 2/4`. GitHub's stacks come from a separate small query (the inbox still loads if it fails); for other stacks the listed pull requests are linked by their branches (base = another one's head, same author, one candidate on each branch) and the badge shows only the symbol, since layers outside the inbox are unknown.
 
 ## 6. PR column
 

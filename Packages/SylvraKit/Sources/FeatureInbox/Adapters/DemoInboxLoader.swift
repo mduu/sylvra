@@ -12,8 +12,16 @@ public struct DemoInboxLoader: InboxLoading {
                 scope.contains(owner: $0.id.owner, name: $0.id.repository)
             }
         }
-        return InboxSnapshot(sections: sections, viewerLogin: "mduu")
+        return InboxSnapshot(sections: InboxStacks.annotate(sections, native: Self.stacks), viewerLogin: "mduu")
     }
+
+    /// "Add invoice export" and "Email invoices as CSV attachments" form a GitHub stack.
+    static let stacks: [PullRequestID: StackMembership] = [
+        PullRequestID(owner: "acme", repository: "billing", number: 1234): StackMembership(
+            id: "github:demo", position: 1, size: 2),
+        PullRequestID(owner: "acme", repository: "billing", number: 1238): StackMembership(
+            id: "github:demo", position: 2, size: 2),
+    ]
 
     public static let sections: [InboxSection: [PullRequestSummary]] = [
         .requestedFromMe: [
@@ -25,6 +33,9 @@ public struct DemoInboxLoader: InboxLoading {
                 "Retry failed webhooks with exponential backoff and move permanent failures to a dead-letter queue",
                 "jmeier", "Jonas Meier", hoursAgo: 5, 64, 12,
                 .pending),
+            pr(
+                "billing", 1238, "Email invoices as CSV attachments", "lkeller", "Lena Keller", hoursAgo: 6, 64, 9,
+                .success),
         ],
         .myTeams: [
             pr("identity", 412, "Migrate auth to passkeys", "srossi", "Sara Rossi", hoursAgo: 26, 930, 610, .failure),

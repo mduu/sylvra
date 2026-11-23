@@ -65,6 +65,8 @@ public struct PullRequestSummary: Identifiable, Hashable, Sendable, Codable {
     public let viewerActivity: ViewerActivity?
     /// Conversation comments plus code threads (`nil`: unknown).
     public let commentCount: Int?
+    /// The stack the pull request is a layer of (`nil`: none or unknown).
+    public var stack: StackMembership?
 
     public init(
         id: PullRequestID,
@@ -119,6 +121,22 @@ public struct PullRequestSummary: Identifiable, Hashable, Sendable, Codable {
 
     /// T-shirt size of the change, as shown in the inbox.
     public var size: ChangeSize { ChangeSize(changedLines: changedLines) }
+}
+
+/// A pull request's place in a stack of pull requests that build on each other.
+public struct StackMembership: Hashable, Sendable, Codable {
+    /// Same for all layers of one stack.
+    public var id: String
+    /// 1 = the bottom layer (next to the base branch).
+    public var position: Int
+    /// Layers in total; `nil` when only some are known (a stack derived from the listed pull requests).
+    public var size: Int?
+
+    public init(id: String, position: Int, size: Int? = nil) {
+        self.id = id
+        self.position = position
+        self.size = size
+    }
 }
 
 /// Rough size of a change.

@@ -21,7 +21,7 @@ public struct GitHubInboxLoader: InboxLoading {
         let now = Date.now
         // In parallel with the sections (asked after them, it added a round trip to every refresh).
         async let viewer = try? client.viewer()
-        let sections = try await withThrowingTaskGroup(of: (InboxSection, [PullRequestSummary]).self) { group in
+        let loaded = try await withThrowingTaskGroup(of: LoadedSection.self) { group in
             for section in InboxSection.allCases {
                 let searches = scope.searchQueries(for: section, now: now)
                 group.addTask {
@@ -29,16 +29,63 @@ public struct GitHubInboxLoader: InboxLoading {
                         Self.query(searchCount: searches.count, pageSize: pageSize),
                         variables: Self.variables(searches),
                         as: [String: SearchResult].self)
-                    return (section, Self.merge(response, limit: pageSize))
+                    return LoadedSection(
+                        section: section, pullRequests: Self.merge(response, limit: pageSize),
+                        nodeIDs: Self.nodeIDs(in: response))
                 }
             }
-            var sections: [InboxSection: [PullRequestSummary]] = [:]
-            for try await (section, pullRequests) in group { sections[section] = pullRequests }
-            return sections
+            var loaded: [LoadedSection] = []
+            for try await result in group { loaded.append(result) }
+            return loaded
         }
+        var sections: [InboxSection: [PullRequestSummary]] = [:]
+        var nodeIDs: [String: PullRequestID] = [:]
+        for result in loaded {
+            sections[result.section] = result.pullRequests
+            nodeIDs.merge(result.nodeIDs) { first, _ in first }
+        }
+        let native = await stackMemberships(nodeIDs)
         let isRestricted = await !client.ssoRestrictedOrganizations.isEmpty
         let login = await viewer?.login
-        return InboxSnapshot(sections: sections, isRestrictedBySSO: isRestricted ? true : nil, viewerLogin: login)
+        return InboxSnapshot(
+            sections: InboxStacks.annotate(sections, native: native), isRestrictedBySSO: isRestricted ? true : nil,
+            viewerLogin: login)
+    }
+
+    /// GitHub's stacks of the listed pull requests, in their own query: the stack fields are a preview API, and
+    /// should GitHub change them (or a GitHub Enterprise Server lack them) the inbox must still load. Empty then.
+    private func stackMemberships(_ nodeIDs: [String: PullRequestID]) async -> [PullRequestID: StackMembership] {
+        var result: [PullRequestID: StackMembership] = [:]
+        let ids = nodeIDs.keys.sorted()
+        for start in stride(from: 0, to: ids.count, by: 100) {
+            let chunk = Array(ids[start..<min(start + 100, ids.count)])
+            guard
+                let response = try? await client.graphQL(
+                    Self.stackQuery, variables: ["ids": .array(chunk.map { .string($0) })], as: StackNodes.self)
+            else { return result }
+            for node in response.nodes.compactMap({ $0 }) {
+                guard let id = node.id.flatMap({ nodeIDs[$0] }), let stack = node.stack,
+                    let position = node.stackEntry?.position
+                else { continue }
+                result[id] = StackMembership(id: "github:\(stack.id)", position: position, size: stack.size)
+            }
+        }
+        return result
+    }
+
+    static let stackQuery = """
+        query($ids: [ID!]!) {
+          nodes(ids: $ids) { ... on PullRequest { id stack { id size } stackEntry { position } } }
+        }
+        """
+
+    /// GitHub node IDs of the found pull requests.
+    fileprivate static func nodeIDs(in response: [String: SearchResult]) -> [String: PullRequestID] {
+        var result: [String: PullRequestID] = [:]
+        for node in response.values.flatMap({ $0.nodes.compactMap { $0 } }) {
+            if let nodeID = node.id, let summary = node.summary { result[nodeID] = summary.id }
+        }
+        return result
     }
 
     /// One aliased search per query (`s0`, `s1` …); search texts are passed as variables.
@@ -109,11 +156,32 @@ private struct SearchResult: Decodable, Sendable {
     let nodes: [PullRequestNode?]
 }
 
+/// One section's pull requests and their GitHub node IDs (for the stack query).
+private struct LoadedSection: Sendable {
+    let section: InboxSection
+    let pullRequests: [PullRequestSummary]
+    let nodeIDs: [String: PullRequestID]
+}
+
+private struct StackNodes: Decodable, Sendable {
+    let nodes: [Node?]
+    struct Node: Decodable, Sendable {
+        let id: String?
+        let stack: Stack?
+        let stackEntry: Entry?
+    }
+    struct Stack: Decodable, Sendable {
+        let id: String
+        let size: Int
+    }
+    struct Entry: Decodable, Sendable { let position: Int }
+}
+
 /// GraphQL fragment + decoding for a pull request list item.
 struct PullRequestNode: Decodable, Sendable {
     static let fragment = """
         fragment PR on PullRequest {
-          number title url isDraft createdAt updatedAt additions deletions
+          id number title url isDraft createdAt updatedAt additions deletions
           headRefName baseRefName reviewDecision mergeable
           repository { name owner { login } }
           author { __typename login avatarUrl ... on User { name } }
@@ -125,6 +193,8 @@ struct PullRequestNode: Decodable, Sendable {
         }
         """
 
+    /// GitHub node ID.
+    let id: String?
     let number: Int?
     let title: String?
     let url: URL?

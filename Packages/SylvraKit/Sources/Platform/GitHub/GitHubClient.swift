@@ -322,6 +322,7 @@ public enum GraphQLValue: Encodable, Sendable, Equatable {
     case string(String)
     case int(Int)
     case bool(Bool)
+    case array([GraphQLValue])
     case null
 
     public func encode(to encoder: any Encoder) throws {
@@ -330,6 +331,7 @@ public enum GraphQLValue: Encodable, Sendable, Equatable {
         case .string(let value): try container.encode(value)
         case .int(let value): try container.encode(value)
         case .bool(let value): try container.encode(value)
+        case .array(let values): try container.encode(values)
         case .null: try container.encodeNil()
         }
     }
