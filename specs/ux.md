@@ -326,7 +326,7 @@ stateDiagram-v2
 
 ### 13.0 About
 
-*Sylvra → About Sylvra* opens Sylvra's own About window instead of the standard panel (deviation, §2: the standard panel's plain credits text fell far behind the rest of the app). Fixed size, no title bar, on a brand canvas like a splash (dark: deep violet with lavender glows; light: pale lavender with violet ink, violet labels instead of gold for contrast) with a violet glow behind the large app icon; the glows drift slowly (still with Reduce Motion). It shows the name, the tagline, the version as type alone (large, thin figures, the build number below), *View on GitHub* (`github.com/mduu/sylvra`) and *Check for Updates*. Below, *Open source* lists the software Sylvra ships with (today SwiftTerm, MIT) as cards: name, purpose, license chip; a click unfolds the full license text and the project link. The footer names the author (*Made by Marc Dürst*) above the copyright and a link to Sylvra's MIT License. *Help → Sylvra on GitHub* opens the project page. A new bundled dependency gets an entry in `Acknowledgement.all` (`FeatureUpdates`).
+*Sylvra → About Sylvra* opens Sylvra's own About window instead of the standard panel (deviation, §2: the standard panel's plain credits text fell far behind the rest of the app). Fixed size, no title bar, on a brand canvas like a splash (dark: deep violet with lavender glows; light: pale lavender with violet ink, violet labels instead of gold for contrast) with a violet glow behind the large app icon; the glows drift slowly (still with Reduce Motion). It shows the name, the tagline, the version as type alone (large, thin figures, the build number below), *View on GitHub* (`github.com/mduu/sylvra`) and *Check for Updates*. Below, *Open source* lists the software Sylvra ships with (today SwiftTerm, MIT) as cards: name, purpose, license chip; a click unfolds the full license text and the project link. The footer names the author (*Made by Marc Dürst*) above the copyright and a link to Sylvra's MIT License. *Help → Sylvra on GitHub* opens the project page. The About window and the review window of the two-window layout are not listed in the Window menu (`commandsRemoved`): About is in the Sylvra menu, the review window is opened by its layout and the toolbar's *Review window* button. A new bundled dependency gets an entry in `Acknowledgement.all` (`FeatureUpdates`).
 
 ### 13.1 Updates
 
@@ -364,7 +364,7 @@ Sylvra updates itself from the GitHub Releases of `mduu/sylvra` (no Sparkle, no 
 | Quick open (PR or file) | `⌘P` |
 | Command palette | `⌘K` |
 | Find in diff | `⌘F` or `/` |
-| Keyboard shortcuts overview | `?` or `⌘/` |
+| Keyboard shortcuts overview (Help menu) | `?` or `⌘/` |
 
 Built single-key shortcuts (active whenever no text is being edited — composer, chat, search and the terminal keep their keys): `j`/`k` next/previous file, `n`/`p` next/previous change, `.`/`,` next/previous AI finding, `v` toggle viewed, `i` AI inspector, `/` find, `?` shortcuts. Reactions on comments post to GitHub immediately on click (an explicit action, like on github.com).
 

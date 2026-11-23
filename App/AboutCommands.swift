@@ -50,5 +50,7 @@ struct AboutWindow: Scene {
         .windowBackgroundDragBehavior(.enabled)
         .defaultPosition(.center)
         .restorationBehavior(.disabled)
+        // Opened from the Sylvra menu (About Sylvra), not listed again in the Window menu.
+        .commandsRemoved()
     }
 }

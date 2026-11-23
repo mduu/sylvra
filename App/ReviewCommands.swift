@@ -24,7 +24,7 @@ extension FocusedValues {
     @Entry var reviewActions: ReviewActions?
 }
 
-/// The "Review" menu with the keyboard shortcuts of the review workflow.
+/// The "Review" menu with the keyboard shortcuts of the review workflow, and their overview in the Help menu.
 struct ReviewCommands: Commands {
     @FocusedValue(\.reviewActions) private var actions
 
@@ -51,7 +51,9 @@ struct ReviewCommands: Commands {
             Button("Toggle Inbox") { actions?.toggleInbox() }.keyboardShortcut("0", modifiers: .command)
             Button("Toggle AI Inspector") { actions?.toggleInspector() }.keyboardShortcut(
                 "i", modifiers: [.command, .option])
-            Divider()
+        }
+        // An overview of the shortcuts is help, as in other Mac apps.
+        CommandGroup(after: .help) {
             Button("Keyboard Shortcuts") { actions?.showShortcuts() }.keyboardShortcut("/", modifiers: .command)
         }
     }

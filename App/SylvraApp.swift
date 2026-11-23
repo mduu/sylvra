@@ -72,6 +72,9 @@ struct SylvraApp: App {
                 .environment(\.aiTextScale, AITextSize(rawValue: aiTextSize)?.scale ?? 1)
         }
         .defaultSize(width: 1400, height: 900)
+        // Only the two-window layout opens it (and its toolbar button); a Window menu item opened it in every
+        // layout, where it made no sense.
+        .commandsRemoved()
 
         DiagnosticLogWindow()
         AboutWindow(
