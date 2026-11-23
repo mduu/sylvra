@@ -121,7 +121,7 @@ To try it without a GitHub account, start it with sample data: `open -a Sylvra -
 - **Log window** (Help → Show Log, `⌥⌘L`) with the errors of the current run, ready to copy.
 
 ### 7. Fits the screen you're on
-- **Window layouts** (`⌃⌘0`–`⌃⌘4`): *Automatic*, *Wide* (all columns), *Compact* for laptops (inbox and AI float in on demand), *Focus* (only the diff), *Two windows* for two screens.
+- **Window layouts** (`⌃⌘0`–`⌃⌘4`): *Automatic*, *Wide* (all columns), *Compact* for laptops (inbox and AI float in on demand), *Focus* (pull request, diff and AI; the inbox floats in on demand), *Two windows* for two screens.
 - Collapse the inbox and the AI panel with their edge handles; window layout, column widths and window frames are remembered per screen setup (laptop, 34", 49", two 27"…).
 - Light, dark or automatic appearance.
 

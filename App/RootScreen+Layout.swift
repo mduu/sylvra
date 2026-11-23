@@ -86,9 +86,6 @@ private struct WindowLayoutModifier: ViewModifier {
                     root.isInboxListed = false
                 }
             }
-            .onChange(of: root.columnVisibility) { _, visibility in
-                keepsSidebarHidden(visibility)
-            }
             .onChange(of: root.displays.setup) {
                 // The columns are rebuilt for the new screens: they start with the layout's columns again.
                 Task { @MainActor in root.columnVisibility = root.layout.columnVisibility }
@@ -102,21 +99,6 @@ private struct WindowLayoutModifier: ViewModifier {
 }
 
 extension WindowLayoutModifier {
-    /// Focus floats the inbox, never as the split view's sidebar: a sidebar shown anyway (*View → Show
-    /// Sidebar*) would list it twice. It goes away again and the inbox floats in instead. (Compact has no
-    /// inbox sidebar at all.)
-    fileprivate func keepsSidebarHidden(_ visibility: NavigationSplitViewVisibility) {
-        let layout = root.layout
-        guard root.role == .main, layout.floatsInbox, visibility == .all else { return }
-        // After the current update: the split view is changing its columns right now.
-        Task { @MainActor in
-            withAnimation(.snappy) {
-                root.columnVisibility = layout.columnVisibility
-                root.isInboxFloating = true
-            }
-        }
-    }
-
     /// Focus: the inbox floats in from the left, its handle inside on the panel's trailing edge.
     @ViewBuilder
     fileprivate func floatingInbox(_ layout: WindowLayout) -> some View {
@@ -147,12 +129,13 @@ extension WindowLayoutModifier {
         }
     }
 
-    /// Files (focus) or review window (two windows); the layout menu is in `mainToolbar`. The inbox and the
-    /// AI panel are toggled with the handles on their edges (`PanelHandles`).
+    /// Files (the review window, which has no pull request column) or the review window button (two windows);
+    /// the layout menu is in `mainToolbar`. The inbox and the AI panel are toggled with the handles on their
+    /// edges (`PanelHandles`).
     @ToolbarContentBuilder
     fileprivate func layoutToolbar(_ layout: WindowLayout) -> some ToolbarContent {
         ToolbarItem(placement: .navigation) {
-            if layout == .focus {
+            if root.role == .review {
                 FocusFilesButton(model: root.environment.diff)
             } else if layout == .twoWindows {
                 Button {

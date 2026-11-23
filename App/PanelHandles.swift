@@ -57,11 +57,10 @@ extension RootScreen {
         }
     }
 
-    /// Where the closed inbox handle sits: the pull request column, or the diff in the focus layout. The open
-    /// inbox carries its handle itself (`showsHandleInInbox`, the floating inbox).
-    func showsInboxHandle(onReviewColumn: Bool) -> Bool {
-        guard role == .main, !layout.stacksInbox, !isInboxShown else { return false }
-        return onReviewColumn == (layout == .focus)
+    /// Where the closed inbox handle sits: the pull request column's leading edge (every layout shows it in the
+    /// main window). The open inbox carries its handle itself (`showsHandleInInbox`, the floating inbox).
+    var showsInboxHandle: Bool {
+        role == .main && !layout.stacksInbox && !isInboxShown
     }
 
     /// The docked inbox column is open: its handle sits inside it.

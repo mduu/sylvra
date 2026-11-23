@@ -54,14 +54,16 @@ extension RootScreen {
                 inboxColumn
             } detail: {
                 pullRequestScreen
-                    .panelHandle(.leading, isVisible: showsInboxHandle(onReviewColumn: false)) { inboxHandle }
+                    .panelHandle(.leading, isVisible: showsInboxHandle) { inboxHandle }
                     .stableColumn()
             }
-        } else if layout.stacksInbox {
-            // Compact: the inbox lives in the pull request column, so there is no inbox sidebar that could
-            // appear next to it (the inbox was listed twice).
+        } else if layout.stacksInbox || layout.floatsInbox {
+            // Compact and focus have no inbox column: compact lists the inbox in the pull request column, focus
+            // floats it in on demand. A hidden inbox sidebar didn't stay hidden (window restoration showed it
+            // again), and the inbox was there twice.
             NavigationSplitView(columnVisibility: $columnVisibility) {
                 pullRequestColumn
+                    .panelHandle(.leading, isVisible: showsInboxHandle) { inboxHandle }
                     .toolbar(removing: .sidebarToggle)
                     .rememberedColumn(.pullRequest, ideal: pullRequestWidth)
                     .navigationSplitViewColumnWidth(
@@ -75,7 +77,7 @@ extension RootScreen {
                 inboxColumn
             } content: {
                 pullRequestColumn
-                    .panelHandle(.leading, isVisible: showsInboxHandle(onReviewColumn: false)) { inboxHandle }
+                    .panelHandle(.leading, isVisible: showsInboxHandle) { inboxHandle }
                     .rememberedColumn(.pullRequest, ideal: pullRequestWidth)
                     .navigationSplitViewColumnWidth(
                         min: ColumnLayout.Column.pullRequest.range.lowerBound, ideal: pullRequestWidth,
@@ -185,7 +187,6 @@ extension RootScreen {
             .animation(.snappy, value: floatingInspectorInset)
             .closesFloatingPanel(inspectorBinding, isEnabled: !layout.docksInspector && isInspectorPresented)
         }
-        .panelHandle(.leading, isVisible: showsInboxHandle(onReviewColumn: true)) { inboxHandle }
         .panelHandle(.trailing, isVisible: hasAIPanel && !isInspectorPresented) { aiHandle }
         .terminalPanel(environment, selection: selection, isEnabled: hostsBottomPanel)
         .stableColumn()

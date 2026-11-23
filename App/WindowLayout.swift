@@ -8,7 +8,7 @@ enum WindowLayout: String, CaseIterable, Identifiable {
     case wide
     /// Pull request · diff; the inbox replaces the pull request in its column, the inspector floats (laptops).
     case compact
-    /// Only the diff, with the inspector as a sidebar; files in a popover.
+    /// Pull request, diff and the inspector as a sidebar; the inbox floats in on demand.
     case focus
     /// Inbox and pull request in this window, diff and AI in a second one (two screens).
     case twoWindows
@@ -78,7 +78,7 @@ enum WindowLayout: String, CaseIterable, Identifiable {
         case .automatic: "Compact on narrow windows, wide otherwise"
         case .wide: "Inbox, pull request, diff and AI side by side"
         case .compact: "Inbox or pull request next to the diff; AI floats on demand"
-        case .focus: "Only the diff and the AI sidebar"
+        case .focus: "Pull request, diff and AI; the inbox floats in on demand"
         case .twoWindows: "Inbox and pull request here, diff and AI in a second window"
         }
     }
@@ -107,9 +107,8 @@ enum WindowLayout: String, CaseIterable, Identifiable {
     /// Which split view columns are visible.
     var columnVisibility: NavigationSplitViewVisibility {
         switch self {
-        // Compact has two columns (pull request or inbox, diff): both show with `.all`.
-        case .automatic, .wide, .twoWindows, .compact: .all
-        case .focus: .detailOnly
+        // Compact and focus have two columns (pull request or inbox, diff): both show with `.all`.
+        case .automatic, .wide, .twoWindows, .compact, .focus: .all
         }
     }
 

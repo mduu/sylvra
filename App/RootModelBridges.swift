@@ -35,7 +35,7 @@ struct RootModelBridges: View {
             }
             .onChange(of: environment.diff.navigatorRevealToken) {
                 // A click on a file header in the diff shows the file in the Files tab of the PR column.
-                guard role == .main, layout != .focus else { return }
+                guard role == .main else { return }
                 withAnimation(.snappy) {
                     environment.pullRequest.tab = .files
                     root.isInboxListed = false
