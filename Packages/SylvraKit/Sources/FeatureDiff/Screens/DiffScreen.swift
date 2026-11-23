@@ -150,6 +150,10 @@ public struct DiffScreen<LineAccessory: View>: View {
                     .id(renderMode)
                     .animation(.snappy, value: model.revealedContext)
                     .coordinateSpace(.named(DiffTextSelectionController.coordinateSpace))
+                    // One hover handler for all rows (see `DiffTextSelectionController.hover(at:)`).
+                    .onContinuousHover(
+                        coordinateSpace: .named(DiffTextSelectionController.coordinateSpace), perform: trackHover
+                    )
                     // On the whole diff, not on a row: the lazy stack drops rows scrolled out while dragging.
                     .simultaneousGesture(
                         DragGesture(
@@ -172,6 +176,7 @@ public struct DiffScreen<LineAccessory: View>: View {
                     textSelection.visibleRect = geometry.visibleRect
                 }
                 .onChange(of: renderMode) {
+                    textSelection.resetHover()
                     textSelection.clear()
                     guard let path = model.selectedPath else { return }
                     Task { @MainActor in proxy.scrollTo(path, anchor: .top) }
@@ -331,5 +336,15 @@ extension DiffScreen {
             expand: expand,
             isExpanding: model.expandingPaths.contains(file.path)
         )
+    }
+}
+
+extension DiffScreen {
+    /// The pointer over the diff, for the gutter buttons of the row under it.
+    fileprivate func trackHover(_ phase: HoverPhase) {
+        switch phase {
+        case .active(let location): textSelection.hover(at: location)
+        case .ended: textSelection.hover(at: nil)
+        }
     }
 }

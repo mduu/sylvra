@@ -43,7 +43,18 @@ final class DiffTextSelectionController {
     /// The drag started outside code (gutter, thread, header): it selects nothing.
     @ObservationIgnored private var ignoresDrag = false
     /// Visible part of the diff in content coordinates (set by the screen while scrolling).
-    @ObservationIgnored var visibleRect: CGRect = .zero
+    @ObservationIgnored var visibleRect: CGRect = .zero {
+        // The diff moves under a resting pointer: the hovered row changes with it.
+        didSet {
+            if let point = hoverPoint, visibleRect.minY != oldValue.minY {
+                hover(at: CGPoint(x: point.x, y: point.y + visibleRect.minY - oldValue.minY))
+            }
+        }
+    }
+    /// One per row lane, so only the lane the pointer leaves and the one it enters redraw.
+    @ObservationIgnored private var hoverFlags: [RowKey: HoverFlag] = [:]
+    @ObservationIgnored private var hovered: RowKey?
+    @ObservationIgnored private var hoverPoint: CGPoint?
     /// Scrolls the diff by a distance (set by the screen); positive is down.
     @ObservationIgnored var scrollBy: ((CGFloat) -> Void)?
     /// Where the pointer is while dragging: x in content coordinates, y in the visible part (stays put while
@@ -66,6 +77,42 @@ final class DiffTextSelectionController {
 
     func unregister(_ key: RowKey) {
         rows[key] = nil
+    }
+
+    // MARK: Hover
+
+    /// Whether a row lane is under the pointer (its gutter shows the comment and IDE buttons).
+    @MainActor @Observable
+    final class HoverFlag {
+        var isHovered = false
+    }
+
+    /// The hover state of a lane; rows read it in their body.
+    func hoverFlag(for key: RowKey) -> HoverFlag {
+        if let flag = hoverFlags[key] { return flag }
+        let flag = HoverFlag()
+        hoverFlags[key] = flag
+        return flag
+    }
+
+    /// The pointer moved over the diff (content coordinates; `nil`: it left). One hover handler for the whole
+    /// diff instead of one per row: hit-testing hundreds of row hover areas on every mouse move cost up to
+    /// half a CPU core while the pointer crossed a large diff.
+    func hover(at point: CGPoint?) {
+        hoverPoint = point
+        let key = point.flatMap { point in
+            DiffHoverLane.lane(at: point, in: rows.map { (key: $0.key, frame: $0.value.frame) })
+        }
+        guard key != hovered else { return }
+        if let hovered { hoverFlags[hovered]?.isHovered = false }
+        hovered = key
+        if let key { hoverFlag(for: key).isHovered = true }
+    }
+
+    /// Rows are built from scratch (another layout, scope or commit): their hover states go with them.
+    func resetHover() {
+        hoverFlags = [:]
+        hovered = nil
     }
 
     /// A drag on the diff (content coordinates): starts a selection in the code under `start`, or moves its end

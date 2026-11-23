@@ -25,12 +25,13 @@ struct InlineLineView: View {
     var openInIDE: GutterIDEAction?
     /// The row's place for mouse selection (`nil`: not selectable).
     var selectionKey: DiffTextSelectionController.RowKey?
-    @State private var isHovered = false
+    @Environment(\.diffTextSelection) private var selection
 
     var body: some View {
         HStack(spacing: 0) {
             HStack(spacing: 0) {
-                LineGutterButtons(isHovered: isHovered, comment: commentAction, openInIDE: openInIDE)
+                LineGutterButtons(
+                    isHovered: selection.isHovered(selectionKey), comment: commentAction, openInIDE: openInIDE)
                 LineNumber(line.oldNumber, kind: line.kind)
                 LineNumber(line.newNumber, kind: line.kind)
             }
@@ -55,7 +56,6 @@ struct InlineLineView: View {
         .font(codeFont)
         .frame(height: diffRowHeight)
         .background(SylvraColor.codeSurface)
-        .onHover { isHovered = $0 }
     }
 
     private var commentAction: ((Bool) -> Void)? {
@@ -113,13 +113,13 @@ private struct SideBySideHalf: View {
     let onComment: CommentRequest?
     let openInIDE: GutterIDEAction?
     let selectionKey: DiffTextSelectionController.RowKey?
-    @State private var isHovered = false
+    @Environment(\.diffTextSelection) private var selection
 
     var body: some View {
         HStack(spacing: 0) {
             HStack(spacing: 0) {
                 LineGutterButtons(
-                    isHovered: isHovered && line != nil, comment: commentAction,
+                    isHovered: line != nil && selection.isHovered(selectionKey), comment: commentAction,
                     openInIDE: line == nil ? nil : openInIDE)
                 LineNumber(number, kind: line?.kind ?? .context)
             }
@@ -144,12 +144,20 @@ private struct SideBySideHalf: View {
         }
         .frame(maxWidth: .infinity)
         .background(SylvraColor.codeSurface)
-        .onHover { isHovered = $0 }
     }
 
     private var commentAction: ((Bool) -> Void)? {
         guard let onComment, let number, line != nil else { return nil }
         return { onComment(side, number, $0) }
+    }
+}
+
+extension DiffTextSelectionController? {
+    /// Whether the pointer is over this row lane (the diff tracks the pointer once, not every row).
+    @MainActor
+    func isHovered(_ key: DiffTextSelectionController.RowKey?) -> Bool {
+        guard let self, let key else { return false }
+        return self.hoverFlag(for: key).isHovered
     }
 }
 
