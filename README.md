@@ -35,6 +35,7 @@ Sylvra is **not a Git client** and not a code generator. It helps you understand
    gh auth login
    ```
 4. Optional, for the AI review and chat: install [Claude Code](https://docs.claude.com/en/docs/claude-code) and log in.
+5. Optional, to review your local changes from Claude Code: *Settings → AI Review → Use from Claude Code → Install* (see [Review local changes](#8-review-local-changes-from-the-terminal-or-claude-code)).
 
 Sylvra keeps itself up to date: it looks for new releases at launch and every few hours and installs them with one click (*Sylvra → Check for Updates…*).
 
@@ -47,6 +48,7 @@ To try it without a GitHub account, start it with sample data: `open -a Sylvra -
 - **Your repositories** below the inbox, with their number of open PRs. Open one to browse *all* its open PRs (waiting for you, yours, the rest), searched on GitHub and loaded while you scroll — usable even for a monolith with hundreds of open PRs.
 - **Filters**: hide bots (Renovate, Dependabot …), specific authors or other people's drafts; quick chips for author, *needs review*, *CI failing* and small PRs. Right-click a PR to hide its author.
 - **Why you're involved**: where you were @-mentioned (description, comments, code comments with file and line), and what is new since your last comment or review (commits, comments, reviews).
+- **Stacked pull requests** stay together: the layers of a stack sit next to each other, bottom first, with their position (`2/4`). Works with GitHub's stacks (`gh stack`) and with stacks made by other tools, recognized by their branches.
 - **Waiting on others**: PRs where you acted last are dimmed and grouped, until someone answers. New replies to you show up as *New activity* and as a macOS notification; a click opens the PR.
 - Search field and section counts; the last loaded PRs stay available offline.
 - Works with large organizations: you choose the repositories, searches stay small, GitHub timeouts are retried and SSO restrictions are explained.
@@ -60,7 +62,8 @@ To try it without a GitHub account, start it with sample data: `open -a Sylvra -
 - **The PR conversation, like on GitHub** (Comments tab): write comments with preview, tone check and writing help, react with emoji, quote-reply, edit and delete your own; updates every minute. Comments render as full Markdown, including what bots post. Code threads are listed separately and jump to their line.
 - **Repository and `#number` in the title** open the repository and the pull request on GitHub.
 - **AI summary and reading order** pinned above the tabs, visible during the whole review. The diff sorts itself by the reading order.
-- **Since my last review**: only what changed since you last reviewed, and new pushes load by themselves (while you write a comment, a banner offers to refresh).
+- **Stacks at a glance**: a bar under the PR title shows *Stack · 2 of 4*, opens the layers below and above with one click (also when your inbox doesn't list them), and says when the layer below isn't merged yet or has commits this branch doesn't include — a restack is due.
+- **Since my last review**: only what changed since you last reviewed, and new pushes load by themselves (while you write a comment, a banner offers to refresh). After a rebase (a restacked layer), files only the rebase touched are left out, and a note says so.
 - **Commit by commit**: select a commit and review only its changes; step through with `⌥]` / `⌥[`.
 - **Failing checks explained**: click a check to read what it reported (summary, annotations with file and line) without leaving the app.
 
@@ -76,7 +79,7 @@ To try it without a GitHub account, start it with sample data: `open -a Sylvra -
 - Side by side with a ribbon between old and new, or inline; changed hunks or the selected file in full.
 - **Files as a folder tree** with viewed state synced with GitHub. Marking a file *Viewed* collapses it and scrolls straight to the next file still to review.
 - Syntax highlighting, intra-line changes, reveal hidden context step by step (+20 / all), long lines scroll sideways.
-- Select and copy code across lines, or ask the AI about the selection.
+- Select code across lines (outlined like in an editor) and copy it with `⌘C`, or ask the AI about the selection.
 - Review threads and AI findings inline under the lines they belong to, with emoji reactions; the change ribbon keeps running through them.
 - Keyboard first: `j`/`k` files, `n`/`p` changes, `v` viewed, `⌘F` find, `⌘K` command palette, `?` for all shortcuts.
 
@@ -88,6 +91,7 @@ To try it without a GitHub account, start it with sample data: `open -a Sylvra -
 - **Risk**: the review rates the PR as a whole (low / medium / high, with reasons) and every finding by impact and likelihood.
 - **Patterns**: which conventions the change follows, violates or introduces.
 - **Discuss code privately**: ask Claude about selected lines, a finding or a review thread (*Ask AI*) in a private chat. Each topic gets its own chat, earlier chats stay selectable, and you choose model and effort per question. Answers are formatted (headings, lists, code, tables), code references are clickable, and a suggested reply can go straight into the thread.
+- **Copy for an agent**: the summary, every finding, pattern and chat answer — or all of them at once — copy as Markdown made for pasting into Claude Code: full paths and lines, severity, impact, likelihood, which models found it, suggestions as code blocks.
 - **Adjustable AI text size** for chat, findings and summary.
 - The AI agents run **read-only** and **never post anything**. A finding becomes a comment only when you turn it into one.
 
@@ -125,16 +129,35 @@ To try it without a GitHub account, start it with sample data: `open -a Sylvra -
   <picture><source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/closeup-compact-dark.png"><img src="docs/screenshots/closeup-compact.png" alt="Compact layout for laptops: pull request and a wide diff" width="90%"></picture>
 </p>
 
+### 8. Review local changes from the terminal or Claude Code
+The same multi-model AI review works without a pull request, on the branch you're working on — for example as a second opinion on what your local Claude Code just wrote, before you push.
+
+- **`sylvra review`** reviews what your branch adds to its base branch: commits, uncommitted changes and new files. Several models in parallel, findings merged and consolidated, with summary, merge risk, reading order, findings rated by impact and likelihood, and patterns.
+- **Your Sylvra settings** (models, effort, agents, language) are the defaults; override them per run.
+- **Markdown for agents** (or `--json`), progress on standard error. The agents only read the repository; nothing is changed, committed or posted.
+- **Claude Code skill** `sylvra-review`: *Settings → AI Review → Use from Claude Code → Install* puts it in `~/.claude/skills/sylvra-review`. Then ask Claude Code for a Sylvra review (or type `/sylvra-review`): it runs the review in the background, presents the findings and checks each one against the code before changing anything.
+
+```bash
+SYLVRA=/Applications/Sylvra.app/Contents/Helpers/sylvra
+$SYLVRA review                                   # your Sylvra settings
+$SYLVRA review --models opus,fable --effort high # override models and effort
+$SYLVRA review --base develop --committed        # another base branch, only committed changes
+$SYLVRA review --json -o review.json             # structured result in a file
+$SYLVRA help
+```
+
+The tool ships inside the app (release builds); a review takes a few minutes, longer with several models.
+
 ## Principles
 
 1. **You review, the AI assists.** AI content is always marked as such and is never posted on its own.
 2. **Comments stay factual.** Sylvra nudges towards short, neutral, constructive wording.
 3. **Your working copy is yours.** PR checkouts go into separate worktrees; nothing is stashed or changed silently.
-4. **No backend, no telemetry.** GitHub tokens stay in the macOS Keychain. Code reaches an AI model only through your own Claude Code, and only when you start a review or chat.
+4. **No backend, no telemetry.** GitHub tokens stay in the macOS Keychain. Code reaches an AI model only through your own Claude Code, and only when you start a review or chat (or run `sylvra review`).
 
 ## Status
 
-A personal project, used and developed for my own daily reviews (version 0.6). Expect rough edges — feedback is welcome as an [issue](https://github.com/mduu/sylvra/issues).
+A personal project, used and developed for my own daily reviews (version 0.7). Expect rough edges — feedback is welcome as an [issue](https://github.com/mduu/sylvra/issues).
 
 To install it, see [Install](#install); to build it yourself, read on.
 
@@ -164,6 +187,7 @@ For development:
 scripts/test.sh            # package tests + app build
 scripts/lint.sh            # SwiftLint + swift format
 scripts/screenshot.sh      # screenshots of the running app (demo data)
+swift run --package-path Packages/SylvraKit sylvra review -C <repo>   # the CLI without a release build
 ```
 
 ## Documentation
