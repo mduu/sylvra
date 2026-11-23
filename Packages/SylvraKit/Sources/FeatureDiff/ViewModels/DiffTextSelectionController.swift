@@ -192,6 +192,13 @@ final class DiffTextSelectionController {
         selection = nil
     }
 
+    /// ⌘C: copies the selection (`false` without one, so the key goes on to other views).
+    func copySelection() -> Bool {
+        guard let selection, !selection.isEmpty, let copy else { return false }
+        copy(selection)
+        return true
+    }
+
     private func position(at point: CGPoint, in key: RowKey, horizontalOffset: CGFloat) -> DiffTextPosition? {
         guard let info = rows[key] else { return nil }
         let column = Int(((point.x - info.frame.minX + horizontalOffset) / Self.characterWidth).rounded())

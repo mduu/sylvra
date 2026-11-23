@@ -25,6 +25,8 @@ struct InlineLineView: View {
     var openInIDE: GutterIDEAction?
     /// The row's place for mouse selection (`nil`: not selectable).
     var selectionKey: DiffTextSelectionController.RowKey?
+    /// The last row of its hunk (the selection's outline closes there).
+    var isLastInHunk = false
     @Environment(\.diffTextSelection) private var selection
 
     var body: some View {
@@ -46,7 +48,7 @@ struct InlineLineView: View {
                     .fontWeight(.semibold)
                 ScrollingCodeText(
                     text: line.attributedText(language: language), length: line.text.count,
-                    selectionKey: selectionKey
+                    selectionKey: selectionKey, isLastInHunk: isLastInHunk
                 )
                 .opacity(line.kind == .context ? contextOpacity : 1)
             }
@@ -85,16 +87,18 @@ struct SideBySideRowView: View {
     var openInIDE: (CodeLocation.Side) -> GutterIDEAction? = { _ in nil }
     /// File, hunk and row for mouse selection (`nil`: not selectable); each half is its own lane.
     var selectionPlace: DiffTextSelectionController.RowPlace?
+    /// The last row of its hunk (the selection's outline closes there).
+    var isLastInHunk = false
 
     var body: some View {
         HStack(spacing: 0) {
             SideBySideHalf(
                 line: row.left, number: row.left?.oldNumber, side: .left, onComment: onComment,
-                openInIDE: openInIDE(.left), selectionKey: key(.left))
+                openInIDE: openInIDE(.left), selectionKey: key(.left), isLastInHunk: isLastInHunk)
             ConnectorRibbonView(segment: connector, rowHeight: diffRowHeight).frame(width: connectorWidth)
             SideBySideHalf(
                 line: row.right, number: row.right?.newNumber, side: .right, onComment: onComment,
-                openInIDE: openInIDE(.right), selectionKey: key(.right))
+                openInIDE: openInIDE(.right), selectionKey: key(.right), isLastInHunk: isLastInHunk)
         }
         .font(codeFont)
         .frame(height: diffRowHeight)
@@ -113,6 +117,7 @@ private struct SideBySideHalf: View {
     let onComment: CommentRequest?
     let openInIDE: GutterIDEAction?
     let selectionKey: DiffTextSelectionController.RowKey?
+    let isLastInHunk: Bool
     @Environment(\.diffTextSelection) private var selection
 
     var body: some View {
@@ -131,7 +136,7 @@ private struct SideBySideHalf: View {
                     ChangeBar(kind: line.kind)
                     ScrollingCodeText(
                         text: line.attributedText(language: language), length: line.text.count,
-                        selectionKey: selectionKey
+                        selectionKey: selectionKey, isLastInHunk: isLastInHunk
                     )
                     .opacity(line.kind == .context ? contextOpacity : 1)
                     .padding(.leading, 8)

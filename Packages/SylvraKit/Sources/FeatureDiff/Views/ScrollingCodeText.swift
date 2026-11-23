@@ -9,6 +9,8 @@ struct ScrollingCodeText: View {
     /// Characters in the line (columns a selection can reach).
     let length: Int
     let selectionKey: DiffTextSelectionController.RowKey?
+    /// The last row of its hunk: the hunk header below breaks the selection's shape.
+    var isLastInHunk = false
     @Environment(\.diffHorizontalOffset) private var offset
     @Environment(\.diffTextSelection) private var selection
 
@@ -17,7 +19,8 @@ struct ScrollingCodeText: View {
             .lineLimit(1)
             .fixedSize(horizontal: true, vertical: false)
             .offset(x: -offset)
-            .frame(minWidth: 0, maxWidth: .infinity, alignment: .leading)
+            // Full row height: the selection's rows join without gaps.
+            .frame(minWidth: 0, maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
             .background(alignment: .leading) { highlight }
             .overlay(alignment: .leading) { actions }
             .clipped()
@@ -31,18 +34,54 @@ struct ScrollingCodeText: View {
         return (current, columns)
     }
 
-    /// The selected columns; a line selected to its end includes one cell for the line break.
-    @ViewBuilder private var highlight: some View {
-        if let columns = selected?.columns {
-            let width = DiffTextSelectionController.characterWidth
+    /// This row's part of the selection: a translucent fill with the outline's edges (a line selected past its
+    /// end runs to the right edge, like in an editor).
+    private var outline: DiffSelectionOutline? {
+        guard let selected, let key = selectionKey else { return nil }
+        let current = selected.selection
+        func clamped(_ columns: Range<Int>?) -> Range<Int>? {
+            guard let columns else { return nil }
             let lower = min(columns.lowerBound, length)
-            let upper = columns.upperBound == Int.max ? length + 1 : min(columns.upperBound, length)
-            if upper > lower {
-                DiffColors.textSelection
-                    .frame(width: CGFloat(upper - lower) * width)
-                    .offset(x: CGFloat(lower) * width - offset)
-                    .allowsHitTesting(false)
+            let upper = columns.upperBound == Int.max ? Int.max : min(columns.upperBound, length)
+            return upper > lower ? lower..<upper : nil
+        }
+        guard let row = clamped(selected.columns) else { return nil }
+        // Neighbours in the same hunk; their own lengths don't matter for full rows (to the right edge).
+        let above = key.row > 0 ? current.columns(hunk: key.hunk, row: key.row - 1) : nil
+        let below = isLastInHunk ? nil : current.columns(hunk: key.hunk, row: key.row + 1)
+        return DiffSelectionOutline(row: row, above: above, below: below)
+    }
+
+    @ViewBuilder private var highlight: some View {
+        if let outline {
+            let width = DiffTextSelectionController.characterWidth
+            let offset = offset
+            Canvas { context, size in
+                func x(_ column: Int) -> CGFloat {
+                    column == Int.max ? size.width + 2 : CGFloat(column) * width - offset
+                }
+                let fill = CGRect(
+                    x: x(outline.fill.lowerBound), y: 0,
+                    width: x(outline.fill.upperBound) - x(outline.fill.lowerBound), height: size.height)
+                context.fill(Path(fill), with: .color(DiffColors.selectionFill))
+                var border = Path()
+                border.move(to: CGPoint(x: fill.minX + 0.5, y: 0))
+                border.addLine(to: CGPoint(x: fill.minX + 0.5, y: size.height))
+                if outline.closesRight {
+                    border.move(to: CGPoint(x: fill.maxX - 0.5, y: 0))
+                    border.addLine(to: CGPoint(x: fill.maxX - 0.5, y: size.height))
+                }
+                for range in outline.top {
+                    border.move(to: CGPoint(x: x(range.lowerBound), y: 0.5))
+                    border.addLine(to: CGPoint(x: x(range.upperBound), y: 0.5))
+                }
+                for range in outline.bottom {
+                    border.move(to: CGPoint(x: x(range.lowerBound), y: size.height - 0.5))
+                    border.addLine(to: CGPoint(x: x(range.upperBound), y: size.height - 0.5))
+                }
+                context.stroke(border, with: .color(DiffColors.selectionBorder), lineWidth: 1)
             }
+            .allowsHitTesting(false)
         }
     }
 

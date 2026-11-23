@@ -192,6 +192,7 @@ public struct DiffScreen<LineAccessory: View>: View {
                     if model.isLoadingScope { DiffLoadingBadge().padding(10) }
                 }
                 .horizontalWheelScrolling { model.scrollHorizontally(by: $0, diffWidth: diffWidth.value) }
+                .diffCopyShortcut { textSelection.copySelection() }
                 .overlay(alignment: .bottom) { DiffHorizontalIndicator(model: model, width: diffWidth) }
                 .modifier(DiffHorizontalOffsetEnvironment(model: model, width: diffWidth))
                 .environment(\.diffIsWide, diffIsWide)

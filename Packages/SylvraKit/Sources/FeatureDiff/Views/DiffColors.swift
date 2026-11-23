@@ -7,8 +7,9 @@ enum DiffColors {
     static var added: Color { SylvraColor.diffAdded }
     static var removed: Color { SylvraColor.diffRemoved }
     static let emptyBackground = Color.secondary.opacity(0.04)
-    /// Code selected with the mouse: the system's text selection color, like in an editor.
-    static let textSelection = Color(nsColor: .selectedTextBackgroundColor)
+    /// Code selected with the mouse: a translucent brand tint, outlined (`DiffSelectionOutline`).
+    static var selectionFill: Color { SylvraColor.brandPrimary.opacity(0.2) }
+    static var selectionBorder: Color { SylvraColor.brandPrimary.opacity(0.85) }
 
     static func accent(_ kind: DiffLine.Kind) -> Color? {
         switch kind {

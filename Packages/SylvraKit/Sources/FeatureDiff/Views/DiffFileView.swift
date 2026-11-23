@@ -34,8 +34,10 @@ struct DiffFileBodyView<Accessory: View>: View {
     }
 
     var body: some View {
+        let rows = identifiedRows
+        let lastRows = Self.lastRows(rows)
         // No own stack: the rows are built lazily by the diff's LazyVStack, even for 10k-line files.
-        ForEach(identifiedRows, id: \.id) { entry in
+        ForEach(rows, id: \.id) { entry in
             Group {
                 switch entry.row {
                 case .header(let index, let hunk):
@@ -48,7 +50,8 @@ struct DiffFileBodyView<Accessory: View>: View {
                     VStack(spacing: 0) {
                         InlineLineView(
                             line: line, onComment: onComment, openInIDE: ideAction(line, in: hunks[hunkIndex]),
-                            selectionKey: .init(path: path, lane: .inline, hunk: hunkIndex, row: rowIndex)
+                            selectionKey: .init(path: path, lane: .inline, hunk: hunkIndex, row: rowIndex),
+                            isLastInHunk: rowIndex == hunks[hunkIndex].lines.count - 1
                         )
                         .selectsFinding(
                             line.kind == .removed ? nil : line.newNumber.flatMap(highlight)?.findingID,
@@ -73,7 +76,8 @@ struct DiffFileBodyView<Accessory: View>: View {
                         SideBySideRowView(
                             row: row, connector: connector, onComment: onComment,
                             openInIDE: { ideAction($0 == .left ? row.left : row.right, in: hunks[hunkIndex]) },
-                            selectionPlace: .init(path: path, hunk: hunkIndex, row: rowIndex)
+                            selectionPlace: .init(path: path, hunk: hunkIndex, row: rowIndex),
+                            isLastInHunk: rowIndex == lastRows[hunkIndex]
                         )
                         .selectsFinding(row.right?.newNumber.flatMap(highlight)?.findingID, using: selectFinding)
                         .contextMenu {
@@ -103,6 +107,15 @@ struct DiffFileBodyView<Accessory: View>: View {
             .id(entry.id)
         }
         .environment(\.syntaxLanguage, SyntaxHighlighter.Language(path: path))
+    }
+
+    /// The last side-by-side row of each hunk (where a selection's outline closes above the next header).
+    static func lastRows(_ rows: [(id: String, row: DiffRow)]) -> [Int: Int] {
+        var last: [Int: Int] = [:]
+        for entry in rows {
+            if case .sideBySide(let hunk, let row, _, _, _) = entry.row { last[hunk] = max(last[hunk] ?? 0, row) }
+        }
+        return last
     }
 
     /// Find in diff: matching rows get a gold tint, the current match a stronger edge.
