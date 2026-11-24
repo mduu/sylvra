@@ -45,6 +45,7 @@ To try it without a GitHub account, start it with sample data: `open -a Sylvra -
 
 ### 1. Find what needs you
 - **Inbox** of PRs that need you: review requests to you and your teams, PRs you're involved in, your own PRs, recently closed.
+- **Your to-do list** on top of the inbox: put pull requests on it from the context menu, drag them into your order, check them off when done.
 - **Your repositories** below the inbox, with their number of open PRs. Open one to browse *all* its open PRs (waiting for you, yours, the rest), searched on GitHub and loaded while you scroll — usable even for a monolith with hundreds of open PRs.
 - **Filters**: hide bots (Renovate, Dependabot …), specific authors or other people's drafts; quick chips for author, *needs review*, *CI failing* and small PRs. Right-click a PR to hide its author.
 - **Why you're involved**: where you were @-mentioned (description, comments, code comments with file and line), and what is new since your last comment or review (commits, comments, reviews).

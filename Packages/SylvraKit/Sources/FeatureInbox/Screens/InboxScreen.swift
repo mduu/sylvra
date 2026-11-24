@@ -4,8 +4,10 @@ import SylvraCore
 
 /// The inbox sidebar (container): owns loading and periodic refresh.
 public struct InboxScreen: View {
-    @Bindable private var model: InboxScreenModel
+    @Bindable var model: InboxScreenModel
     @Binding private var selection: PullRequestID?
+    /// To-dos just checked off: they stay a moment, checked, before they leave the list.
+    @State var completing: Set<PullRequestID> = []
 
     /// Selection is the PR's ID, so it survives refreshes that change the summary (CI state, timestamps).
     public init(model: InboxScreenModel, selection: Binding<PullRequestID?>) {
@@ -72,8 +74,16 @@ public struct InboxScreen: View {
         }
     }
 
-    @ViewBuilder private func rowMenu(_ pullRequest: PullRequestSummary) -> some View {
+    @ViewBuilder func rowMenu(_ pullRequest: PullRequestSummary) -> some View {
         let login = pullRequest.author.login
+        if model.isTodo(pullRequest.id) {
+            Button("Remove from To-Do", systemImage: "minus.circle") { removeTodo(pullRequest.id) }
+        } else {
+            Button("Add to To-Do", systemImage: "checklist") {
+                withAnimation(.snappy) { model.addTodo(pullRequest) }
+            }
+        }
+        Divider()
         Button("Show only PRs by \(login)", systemImage: "person") { model.showOnly(author: login) }
         Button("Hide PRs by \(login)", systemImage: "eye.slash") { model.updatePreferences { $0.hideAuthor(login) } }
         if let url = pullRequest.url {
@@ -108,9 +118,11 @@ public struct InboxScreen: View {
     /// Open work first, then the repositories, then what was closed recently (history at the bottom).
     @ViewBuilder private var inboxContent: some View {
         let sections = model.visibleSections
+        let todos = model.visibleTodos
+        if !todos.isEmpty { todoSection(todos) }
         ForEach(sections.filter { $0.section != .recentlyClosed }, id: \.section, content: sectionView)
         if model.repositoryLoader != nil {
-            if model.loadState == .loaded, sections.isEmpty {
+            if model.loadState == .loaded, sections.isEmpty, todos.isEmpty {
                 Section {
                     Label("Nothing waiting for you. Enjoy the quiet.", systemImage: "leaf")
                         .foregroundStyle(.secondary)
@@ -139,7 +151,7 @@ public struct InboxScreen: View {
         }
     }
 
-    private func expansion(_ section: String) -> Binding<Bool> {
+    func expansion(_ section: String) -> Binding<Bool> {
         Binding(get: { model.isExpanded(section) }, set: { model.setExpanded(section, $0) })
     }
 

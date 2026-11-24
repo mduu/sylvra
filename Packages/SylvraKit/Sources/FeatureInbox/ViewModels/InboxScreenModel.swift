@@ -46,6 +46,10 @@ public final class InboxScreenModel {
     static let scopeKey = "inbox.scope"
     static let filterKey = "inbox.filter"
     static let collapsedKey = "inbox.collapsedSections"
+    static let todosKey = "inbox.todos"
+
+    /// Pull requests the reviewer put on their to-do list, in their order (persisted).
+    public internal(set) var todos = InboxTodoList()
 
     /// Sidebar sections the user collapsed (section raw values and `repositories`; persisted).
     public private(set) var collapsedSections: Set<String> = []
@@ -77,6 +81,9 @@ public final class InboxScreenModel {
             defaults?.data(forKey: Self.filterKey).flatMap {
                 try? JSONDecoder().decode(InboxFilterPreferences.self, from: $0)
             } ?? InboxFilterPreferences()
+        todos =
+            defaults?.data(forKey: Self.todosKey).flatMap { try? JSONDecoder().decode(InboxTodoList.self, from: $0) }
+            ?? InboxTodoList()
         if let cached = cache?.load(InboxSnapshot.self, key: "inbox") {
             snapshot = cached
             loadState = .loaded
@@ -84,11 +91,11 @@ public final class InboxScreenModel {
     }
 
     /// Sections with the PRs matching the current search; the layers of a stack stay together.
-    /// Empty sections are hidden to keep the sidebar calm.
+    /// Empty sections are hidden to keep the sidebar calm. Pull requests on the to-do list are listed there only.
     public var visibleSections: [(section: InboxSection, pullRequests: [PullRequestSummary])] {
         InboxSection.allCases.compactMap { section in
             let pullRequests = snapshot.pullRequests(in: section).filter {
-                matchesSearch($0) && activeFilter.matches($0)
+                !todos.contains($0.id) && matchesSearch($0) && activeFilter.matches($0)
             }
             guard !pullRequests.isEmpty else { return nil }
             return (section, InboxStacks.grouped(Self.waitingLast(pullRequests, in: section)))
@@ -100,9 +107,19 @@ public final class InboxScreenModel {
 
     /// The latest summary of a PR in any section.
     public func summary(for id: PullRequestID) -> PullRequestSummary? {
-        snapshot.sections.values.lazy.flatMap { $0 }.first { $0.id == id }
-            ?? browser?.pullRequests.first { $0.id == id }
+        latestSummary(for: id)
             ?? opened[id]
+            ?? todos.entries.first { $0.id == id }
+    }
+
+    /// The freshest loaded summary: open sections before *Recently closed*, then the browsed repository.
+    func latestSummary(for id: PullRequestID) -> PullRequestSummary? {
+        InboxSection.allCases.lazy.flatMap { self.snapshot.pullRequests(in: $0) }.first { $0.id == id }
+            ?? browser?.pullRequests.first { $0.id == id }
+    }
+
+    func saveTodos() {
+        if let data = try? JSONEncoder().encode(todos) { defaults?.set(data, forKey: Self.todosKey) }
     }
 
     /// Makes a pull request the inbox doesn't list selectable (e.g. the layer below in a stack).
@@ -119,6 +136,8 @@ public final class InboxScreenModel {
             let previous = snapshot
             // Unchanged results leave the list alone (no re-render while the reviewer scrolls).
             if !loaded.hasSameContent(as: previous) { snapshot = loaded }
+            // The to-do list remembers the latest summaries for pull requests no section finds any more.
+            if todos.update(with: latestSummary(for:)) { saveTodos() }
             if loadState != .loaded { loadState = .loaded }
             cache?.saveInBackground(loaded, key: "inbox")
             let active = loaded.newActivity(comparedTo: previous)
@@ -286,7 +305,7 @@ public final class InboxScreenModel {
         }
     }
 
-    private func matchesSearch(_ pullRequest: PullRequestSummary) -> Bool {
+    func matchesSearch(_ pullRequest: PullRequestSummary) -> Bool {
         let query = searchText.trimmingCharacters(in: .whitespaces)
         guard !query.isEmpty else { return true }
         return [pullRequest.title, pullRequest.id.description, pullRequest.author.login, pullRequest.headRefName]
