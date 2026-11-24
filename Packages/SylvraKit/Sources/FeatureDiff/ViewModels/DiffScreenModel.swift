@@ -38,6 +38,8 @@ public final class DiffScreenModel {
     public var selectedPath: String?
     /// Files the reviewer expanded although they are collapsed by default (viewed / noise).
     public private(set) var expandedPaths: Set<String> = []
+    /// Files the reviewer collapsed although they are open by default.
+    public private(set) var collapsedPaths: Set<String> = []
     /// Head versions of files shown in full (scope `.fullFile`), loaded when a file is shown.
     public internal(set) var fullFileHunks: [String: Hunk] = [:]
     /// Files whose head version is loading for `.fullFile`.
@@ -132,10 +134,12 @@ public final class DiffScreenModel {
 
     public func isViewed(_ path: String) -> Bool { diff?.viewedPaths.contains(path) ?? false }
 
-    /// Viewed files and noise are collapsed unless the reviewer opens them.
+    /// Viewed files and noise are collapsed unless the reviewer opens them; any other file stays open until the
+    /// reviewer collapses it.
     public func isCollapsed(_ file: FileDiff) -> Bool {
         // A file shown in full is shown on its own: the reviewer chose it.
         if isShowingSingleFile { return false }
+        if collapsedPaths.contains(file.path) { return true }
         return (isViewed(file.path) || file.kind.isNoise || file.isBinary) && !expandedPaths.contains(file.path)
     }
 
@@ -222,8 +226,16 @@ public final class DiffScreenModel {
             ]
     }
 
+    /// The chevron on a file header: opens a collapsed file, collapses an open one.
     public func toggleExpanded(_ path: String) {
-        if expandedPaths.contains(path) { expandedPaths.remove(path) } else { expandedPaths.insert(path) }
+        let isCollapsed = files.first { $0.path == path }.map(isCollapsed) ?? !expandedPaths.contains(path)
+        if isCollapsed {
+            collapsedPaths.remove(path)
+            expandedPaths.insert(path)
+        } else {
+            expandedPaths.remove(path)
+            collapsedPaths.insert(path)
+        }
     }
 
     /// Hunks to show for a file in the current scope (with context the reviewer revealed).
@@ -288,7 +300,9 @@ public final class DiffScreenModel {
         guard var diff else { return }
         let viewed = !diff.viewedPaths.contains(path)
         if viewed { diff.viewedPaths.insert(path) } else { diff.viewedPaths.remove(path) }
+        // Viewed collapses, unviewed opens again.
         expandedPaths.remove(path)
+        collapsedPaths.remove(path)
         self.diff = diff
         guard let nodeID = diff.nodeID else { return }
         let pullRequest = pullRequestID
@@ -331,6 +345,7 @@ extension DiffScreenModel {
     fileprivate func resetForNewPullRequest(_ id: PullRequestID) {
         diff = nil
         expandedPaths = []
+        collapsedPaths = []
         fullFileHunks = [:]
         selectedPath = nil
         progress = nil

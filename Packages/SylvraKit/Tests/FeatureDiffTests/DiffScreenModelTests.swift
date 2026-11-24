@@ -30,6 +30,23 @@ struct DiffScreenModelTests {
         #expect(model.orderedFiles.last?.path == "Package.resolved")
         model.toggleExpanded(viewed.path)
         #expect(!model.isCollapsed(viewed))
+        model.toggleExpanded(viewed.path)
+        #expect(model.isCollapsed(viewed))
+    }
+
+    /// Regression: the chevron couldn't collapse a file that is open by default.
+    @Test func collapsesAndReopensAnOpenFile() async throws {
+        let model = DiffScreenModel(loader: DemoDiffLoader())
+        await model.load(id, headSHA: "head")
+        let file = try #require(model.files.first { !model.isCollapsed($0) })
+        model.toggleExpanded(file.path)
+        #expect(model.isCollapsed(file))
+        model.toggleExpanded(file.path)
+        #expect(!model.isCollapsed(file))
+        // Jumping to a line opens the file again.
+        model.toggleExpanded(file.path)
+        model.focus(path: file.path, line: 1)
+        #expect(!model.isCollapsed(file))
     }
 
     @Test func togglesViewedState() async {

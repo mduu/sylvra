@@ -15,6 +15,7 @@ extension DiffScreenModel {
         hasher.combine(scope.rawValue)
         hasher.combine(selectedCommit?.sha)
         hasher.combine(expandedPaths)
+        hasher.combine(collapsedPaths)
         hasher.combine(fullFileHunks.keys.sorted())
         hasher.combine(revealedContext)
         let key = hasher.finalize()
