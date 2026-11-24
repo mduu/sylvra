@@ -71,8 +71,23 @@ public struct ReviewRequest: Sendable {
             `reasons` naming what could break and for whom. For every finding, rate `impact` (how bad it is if it \
             happens) and `likelihood` (how likely it happens in practice), each low, medium or high.
 
-            Write summary, titles, rationales, risk reasons, reading-order reasons, overall points and pattern \
-            explanations in \
+            Judge whether this change can be merged as it is (`mergeability`), independent of its risk — a risky \
+            change can be excellent: `level` excellent (clean, well tested, nothing to change), good (only minor \
+            points), acceptable (works, but should be improved; fine to merge with follow-ups) or notMergeable \
+            (must not be merged as is: bugs, security problems, missing essential tests or a wrong approach), and \
+            one to three short `reasons`; for notMergeable name the blockers.
+
+            Rate the signs of unreviewed, low-effort code (`slop`), whoever or whatever wrote it — do not guess \
+            whether an AI wrote it. This tells the reviewer how much careful human review is worth before the author \
+            cleans up. Typical signs: comments that restate the code, verbose docs, speculative abstractions, \
+            defensive checks for impossible cases, dead or duplicated code, made-up or misused APIs, code that \
+            ignores the repository's conventions, tests that test nothing (mocks testing mocks, assertions that \
+            always pass), a description that doesn't match the diff, unrelated changes. `level` none, some or many, \
+            and `signs`: only clear ones, each with a short `title`, a `rationale` and one to three places on lines \
+            of the diff as `evidence`. An empty list with none is fine.
+
+            Write summary, titles, rationales, risk and mergeability reasons, slop signs, reading-order reasons, \
+            overall points and pattern explanations in \
             \(language). Keep code, identifiers and \
             suggestions unchanged.
             """)
@@ -113,10 +128,19 @@ public struct ReviewRequest: Sendable {
 
     /// JSON schema of the structured output.
     public static let outputSchema = """
-        {"type":"object","required":["summary","risk","findings","overall","patterns"],"properties":{\
+        {"type":"object","required":["summary","risk","mergeability","slop","findings","overall","patterns"],"properties":{\
         "summary":{"type":"string"},\
         "risk":{"type":"object","required":["level","reasons"],"properties":{\
         "level":{"type":"string","enum":["low","medium","high"]},"reasons":{"type":"array","items":{"type":"string"}}}},\
+        "mergeability":{"type":"object","required":["level","reasons"],"properties":{\
+        "level":{"type":"string","enum":["excellent","good","acceptable","notMergeable"]},\
+        "reasons":{"type":"array","items":{"type":"string"}}}},\
+        "slop":{"type":"object","required":["level","signs"],"properties":{\
+        "level":{"type":"string","enum":["none","some","many"]},\
+        "signs":{"type":"array","items":{"type":"object","required":["title","rationale","evidence"],"properties":{\
+        "title":{"type":"string"},"rationale":{"type":"string"},"evidence":{"type":"array","items":{"type":"object",\
+        "required":["path","startLine","endLine"],\
+        "properties":{"path":{"type":"string"},"startLine":{"type":"integer"},"endLine":{"type":"integer"}}}}}}}}},\
         "findings":{"type":"array","items":{"type":"object",\
         "required":["path","startLine","endLine","severity","category","title","rationale","confidence","impact",\
         "likelihood"],"properties":{\
@@ -177,6 +201,22 @@ public struct AgentReviewOutput: Decodable, Sendable {
         let reasons: [String]?
     }
 
+    public struct MergeVerdict: Decodable, Sendable {
+        let level: Mergeability
+        let reasons: [String]?
+    }
+
+    public struct Slop: Decodable, Sendable {
+        let level: SlopLevel
+        let signs: [Sign]?
+    }
+
+    public struct Sign: Decodable, Sendable {
+        let title: String
+        let rationale: String?
+        let evidence: [Evidence]?
+    }
+
     public struct Pattern: Decodable, Sendable {
         let name: String
         let verdict: PatternFinding.Verdict
@@ -211,6 +251,8 @@ public struct AgentReviewOutput: Decodable, Sendable {
 
     let summary: String
     let risk: Risk?
+    let mergeability: MergeVerdict?
+    let slop: Slop?
     let readingOrder: [Step]?
     let findings: [Finding]
     let overall: [Overall]?

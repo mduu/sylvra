@@ -20,9 +20,22 @@ public struct AISummaryPanel: View {
     public var body: some View {
         if let id = pullRequestID, let result = model.results[id], !result.summary.isEmpty {
             AISummaryCardView(
-                summary: result.summary, risk: result.risk, readingOrder: result.readingOrder, isExpanded: $isExpanded,
-                showsReadingOrder: $showsReadingOrder, openFile: openFile,
-                pullRequest: AIReviewClipboard.pullRequestLine(id))
+                summary: result.summary, risk: result.risk, mergeability: result.mergeability, slop: result.slop,
+                readingOrder: result.readingOrder, isExpanded: $isExpanded, showsReadingOrder: $showsReadingOrder,
+                openFile: openFile, pullRequest: AIReviewClipboard.pullRequestLine(id),
+                copyFindings: copyFindings(for: result, id: id))
+        }
+    }
+
+    /// Sending the findings back is offered when the review advises against reviewing in depth first.
+    private func copyFindings(for result: ReviewResult, id: PullRequestID) -> (() -> String)? {
+        let worthSendingBack =
+            result.slop.map { $0.level != .none } == true || result.mergeability?.level == .notMergeable
+        let findings = model.visibleFindings(for: id)
+        guard worthSendingBack, !findings.isEmpty || !result.overall.isEmpty else { return nil }
+        return {
+            AIReviewClipboard.findings(
+                findings, overall: result.overall, pullRequest: AIReviewClipboard.pullRequestLine(id))
         }
     }
 }
@@ -31,12 +44,16 @@ public struct AISummaryPanel: View {
 struct AISummaryCardView: View {
     let summary: String
     var risk: RiskAssessment?
+    var mergeability: MergeabilityAssessment?
+    var slop: SlopAssessment?
     let readingOrder: [ReadingStep]
     @Binding var isExpanded: Bool
     @Binding var showsReadingOrder: Bool
     var openFile: (String) -> Void = { _ in }
     /// Which pull request, for the copied text.
     var pullRequest: String?
+    /// Copies the findings to send back to the author; `nil` hides it.
+    var copyFindings: (() -> String)?
     @State private var contentHeight: CGFloat = 60
 
     static let maxExpandedHeight: CGFloat = 220
@@ -47,15 +64,14 @@ struct AISummaryCardView: View {
                 Label("AI summary", systemImage: "sparkles")
                     .aiFont(.caption, weight: .semibold)
                     .foregroundStyle(AIAccent.border)
-                if let risk {
-                    RiskBadge(level: risk.level)
-                        .help(risk.reasons.map { "· \($0)" }.joined(separator: "\n"))
-                }
                 Spacer()
                 CopyButton("Copy for an agent", text: copyText)
                 Button(isExpanded ? "Less" : "More") { withAnimation(.snappy) { isExpanded.toggle() } }
                     .buttonStyle(.link)
                     .aiFont(.caption)
+            }
+            if risk != nil || mergeability != nil || slop != nil {
+                badges
             }
             // Expanded content scrolls inside the card (at most `maxExpandedHeight`): the card sits in the PR
             // column's pinned area, which must stay small and must not depend on the text's length.
@@ -67,14 +83,15 @@ struct AISummaryCardView: View {
                         .textSelection(.enabled)
                         .fixedSize(horizontal: false, vertical: true)
                     if isExpanded, let risk, !risk.reasons.isEmpty {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("Why \(risk.level.title.lowercased()) risk").aiFont(.caption, weight: .semibold)
-                            ForEach(risk.reasons, id: \.self) { reason in
-                                Text(verbatim: "· \(reason)").aiFont(.caption).fixedSize(
-                                    horizontal: false, vertical: true)
-                            }
-                        }
-                        .foregroundStyle(.secondary)
+                        reasons(String(localized: "Why \(risk.level.title.lowercased()) risk"), risk.reasons)
+                    }
+                    if isExpanded, let mergeability, !mergeability.reasons.isEmpty {
+                        reasons(
+                            String(localized: "Why \(mergeability.level.title.lowercased())"), mergeability.reasons)
+                    }
+                    if isExpanded, let slop {
+                        SlopSignsView(
+                            slop: slop, openLocation: { openFile($0.path) }, copyFindings: copyFindings)
                     }
                     if !readingOrder.isEmpty {
                         DisclosureGroup(isExpanded: $showsReadingOrder) {
@@ -102,8 +119,42 @@ struct AISummaryCardView: View {
         .copyMenu(text: copyText)
     }
 
+    /// Merge verdict, risk and slop; the reasons in the tooltips (and below when expanded).
+    private var badges: some View {
+        HStack(spacing: 6) {
+            if let mergeability {
+                MergeabilityBadge(level: mergeability.level)
+                    .help(tooltip("Whether it can be merged as it is", mergeability.reasons))
+            }
+            if let risk {
+                RiskBadge(level: risk.level)
+                    .help(tooltip("How risky merging this pull request is", risk.reasons))
+            }
+            if let slop {
+                SlopBadge(level: slop.level)
+                    .help(tooltip(slop.level.advice, slop.signs.map(\.title)))
+            }
+        }
+    }
+
+    private func tooltip(_ title: String, _ lines: [String]) -> String {
+        ([title] + lines.map { "· \($0)" }).joined(separator: "\n")
+    }
+
+    private func reasons(_ title: String, _ reasons: [String]) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(title).aiFont(.caption, weight: .semibold)
+            ForEach(reasons, id: \.self) { reason in
+                Text(verbatim: "· \(reason)").aiFont(.caption).fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .foregroundStyle(.secondary)
+    }
+
     private func copyText() -> String {
-        AIReviewClipboard.summary(summary, risk: risk, readingOrder: readingOrder, pullRequest: pullRequest)
+        AIReviewClipboard.summary(
+            summary, risk: risk, mergeability: mergeability, slop: slop, readingOrder: readingOrder,
+            pullRequest: pullRequest)
     }
 }
 
@@ -114,6 +165,10 @@ struct AISummaryCardView: View {
         summary: "Adds CSV export next to JSON and changes how invoice totals are rounded (per line instead of "
             + "once). The rounding change affects every invoice total; the export is additive.",
         risk: RiskAssessment(level: .medium, reasons: ["Invoice totals change for existing customers"]),
+        mergeability: MergeabilityAssessment(level: .acceptable, reasons: ["Rounding change lacks tests"]),
+        slop: SlopAssessment(
+            level: .some,
+            signs: [SlopSign(title: "Comments restate the code", rationale: "The exporter comments every line.")]),
         readingOrder: [ReadingStep(path: "Sources/Billing/InvoiceService.swift", reason: "Core change", isRisky: true)],
         isExpanded: $isExpanded, showsReadingOrder: $showsOrder
     )

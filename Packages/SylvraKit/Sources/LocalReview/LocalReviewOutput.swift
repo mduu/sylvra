@@ -25,9 +25,11 @@ public enum LocalReviewOutput {
             parts.append("No changes to review against \(changes.base).")
             return parts.joined(separator: "\n\n") + "\n"
         }
-        if !result.summary.isEmpty || result.risk != nil {
+        if !result.summary.isEmpty || result.risk != nil || result.mergeability != nil {
             parts.append(
-                AIReviewClipboard.summary(result.summary, risk: result.risk, readingOrder: result.readingOrder))
+                AIReviewClipboard.summary(
+                    result.summary, risk: result.risk, mergeability: result.mergeability, slop: result.slop,
+                    readingOrder: result.readingOrder))
         }
         if !result.hints.isEmpty { parts.append(AIReviewClipboard.hints(result.hints)) }
         if result.findings.isEmpty, result.overall.isEmpty {

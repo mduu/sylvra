@@ -87,6 +87,8 @@ final class LocalReviewProgress {
         }
         if !bySeverity.isEmpty { text += " (\(bySeverity.joined(separator: ", ")))" }
         if let risk = result.risk { text += ", merge risk \(risk.level.rawValue)" }
+        if let mergeability = result.mergeability { text += ", \(mergeability.level.label)" }
+        if let slop = result.slop, slop.level != .none { text += ", slop \(slop.level.rawValue)" }
         return text
     }
 

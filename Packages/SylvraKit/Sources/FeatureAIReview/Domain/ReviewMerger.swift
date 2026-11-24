@@ -35,11 +35,15 @@ public enum ReviewMerger {
         var history: [String] = []
         var readingOrder: [ReadingStep] = []
         var risks: [AgentReviewOutput.Risk] = []
+        var verdicts: [AgentReviewOutput.MergeVerdict] = []
+        var slops: [AgentReviewOutput.Slop] = []
 
         for (output, source) in outputs {
             // Models that say the same thing don't repeat it.
             if !summaries.contains(output.summary) { summaries.append(output.summary) }
             if let risk = output.risk { risks.append(risk) }
+            if let verdict = output.mergeability { verdicts.append(verdict) }
+            if let slop = output.slop { slops.append(slop) }
             history += output.history ?? []
             // Shards cover different files: keep each agent's order, first mention wins; only files of the PR.
             for step in output.readingOrder ?? [] where byPath[step.path] != nil {
@@ -67,6 +71,8 @@ public enum ReviewMerger {
             summary: summaries.filter { !$0.isEmpty }.joined(separator: "\n\n"), findings: findings, patterns: patterns,
             history: Array(Set(history)).sorted(), readingOrder: readingOrder, risk: overallRisk(risks))
         result.overall = overall
+        result.mergeability = overallMergeability(verdicts)
+        result.slop = overallSlop(slops, files: byPath)
         return result
     }
 
@@ -121,6 +127,38 @@ public enum ReviewMerger {
             }
         }
         return RiskAssessment(level: level, reasons: Array(reasons.prefix(4)))
+    }
+
+    /// The lowest verdict of all shards and models (a blocker anywhere blocks the whole change); its reasons
+    /// first, at most four, without repeats.
+    static func overallMergeability(_ verdicts: [AgentReviewOutput.MergeVerdict]) -> MergeabilityAssessment? {
+        guard let level = verdicts.map(\.level).min() else { return nil }
+        var reasons: [String] = []
+        for verdict in verdicts.sorted(by: { $0.level < $1.level }) {
+            for reason in verdict.reasons ?? [] where !reason.isEmpty && !reasons.contains(reason) {
+                reasons.append(reason)
+            }
+        }
+        return MergeabilityAssessment(level: level, reasons: Array(reasons.prefix(4)))
+    }
+
+    /// The highest slop level of all shards and models; signs named in other words by another agent are merged
+    /// (more evidence), evidence only in files of the pull request, at most eight signs.
+    static func overallSlop(_ slops: [AgentReviewOutput.Slop], files: [String: ReviewableFile]) -> SlopAssessment? {
+        guard let level = slops.map(\.level).max() else { return nil }
+        var signs: [SlopSign] = []
+        for raw in slops.sorted(by: { $0.level > $1.level }).flatMap({ $0.signs ?? [] }) {
+            let evidence = (raw.evidence ?? []).compactMap { evidence -> CodeLocationText? in
+                guard let path = evidence.path, files[path] != nil, let start = evidence.startLine else { return nil }
+                return CodeLocationText(path: path, startLine: start, endLine: evidence.endLine ?? start)
+            }
+            if let index = signs.firstIndex(where: { overlap(stems($0.title), stems(raw.title)) >= 0.6 }) {
+                signs[index].evidence += evidence.filter { !signs[index].evidence.contains($0) }
+            } else {
+                signs.append(SlopSign(title: raw.title, rationale: raw.rationale ?? "", evidence: evidence))
+            }
+        }
+        return SlopAssessment(level: level, signs: Array(signs.prefix(8)))
     }
 
     private static func higher(_ lhs: RiskLevel?, _ rhs: RiskLevel?) -> RiskLevel? {

@@ -13,14 +13,21 @@ public enum AIReviewClipboard {
     }
 
     public static func summary(
-        _ summary: String, risk: RiskAssessment?, readingOrder: [ReadingStep], pullRequest: String? = nil
+        _ summary: String, risk: RiskAssessment?, mergeability: MergeabilityAssessment? = nil,
+        slop: SlopAssessment? = nil, readingOrder: [ReadingStep], pullRequest: String? = nil
     ) -> String {
         var parts = header("AI summary", pullRequest)
         parts.append(summary.trimmingCharacters(in: .whitespacesAndNewlines))
+        if let mergeability {
+            parts.append(
+                (["Mergeability: \(mergeability.level.label)"] + mergeability.reasons.map { "- \($0)" })
+                    .joined(separator: "\n"))
+        }
         if let risk {
             parts.append(
                 (["Merge risk: \(risk.level.rawValue)"] + risk.reasons.map { "- \($0)" }).joined(separator: "\n"))
         }
+        if let slop { parts.append(slopBody(slop)) }
         if !readingOrder.isEmpty {
             let steps = readingOrder.enumerated().map { index, step in
                 let risky = step.isRisky ? " (risky)" : ""
@@ -122,6 +129,19 @@ public enum AIReviewClipboard {
         return parts.filter { !$0.isEmpty }.joined(separator: "\n")
     }
 
+    private static func slopBody(_ slop: SlopAssessment) -> String {
+        var lines = ["Signs of unreviewed code (slop): \(slop.level.rawValue)"]
+        for sign in slop.signs {
+            var line = "- \(sign.title)"
+            if !sign.rationale.isEmpty { line += " — \(sign.rationale)" }
+            if !sign.evidence.isEmpty {
+                line += " (" + sign.evidence.map { "`\($0.path)` \(range($0))" }.joined(separator: ", ") + ")"
+            }
+            lines.append(line)
+        }
+        return lines.joined(separator: "\n")
+    }
+
     private static func patternBody(_ pattern: PatternFinding) -> String {
         var lines = ["### \(pattern.name) — \(pattern.verdict.rawValue)"]
         if !pattern.rationale.isEmpty { lines.append(pattern.rationale) }
@@ -159,6 +179,18 @@ public enum AIReviewClipboard {
             "xml": "xml", "md": "markdown",
         ]
         return languages[(path as NSString).pathExtension.lowercased()] ?? ""
+    }
+}
+
+extension Mergeability {
+    /// English label for copied text and the command line tool.
+    public var label: String {
+        switch self {
+        case .excellent: "excellent"
+        case .good: "good"
+        case .acceptable: "acceptable"
+        case .notMergeable: "not mergeable"
+        }
     }
 }
 

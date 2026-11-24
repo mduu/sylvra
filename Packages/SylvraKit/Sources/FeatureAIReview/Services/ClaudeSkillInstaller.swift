@@ -51,7 +51,8 @@ public struct ClaudeSkillInstaller: Sendable {
         ---
         name: \(skillName)
         description: Review the current branch's local changes (commits, uncommitted and new files) with \
-        Sylvra's multi-model AI review — summary, merge risk, findings rated by impact and likelihood, patterns. \
+        Sylvra's multi-model AI review — summary, merge verdict and risk, findings rated by impact and likelihood, \
+        patterns. \
         Use when the user asks for a Sylvra review, a multi-model review or a second opinion on their changes \
         before pushing or opening a pull request.
         ---
@@ -81,7 +82,7 @@ public struct ClaudeSkillInstaller: Sendable {
         Reviewing 12 file(s) against origin/main with opus + fable (effort high)…
         [1/4 · 1:12] ✓ Core · Opus
         … 1 of 4 agents done, 3 running · 1:31
-        Done in 2:41: 7 findings (2 major, 5 minor), merge risk medium
+        Done in 2:41: 7 findings (2 major, 5 minor), merge risk medium, acceptable
         ```
 
         - If you have a tool that streams a background command's output line by line (such as Monitor), follow \
@@ -117,7 +118,8 @@ public struct ClaudeSkillInstaller: Sendable {
 
         ## Use the result
 
-        1. Give the user the summary and the merge risk, then what the reviewers say about each hint (section \
+        1. Give the user the summary, the mergeability verdict and the merge risk (and the signs of unreviewed \
+        code, if any), then what the reviewers say about each hint (section \
         *Reviewer hints*, if you passed any), then the findings, most severe first — short.
         2. The findings are suggestions from AI reviewers. Check each one against the code before you act on it, \
         and say which you agree with and which not, and why.

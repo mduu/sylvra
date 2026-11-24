@@ -241,6 +241,11 @@ struct LocalReviewProgressTests {
                 path: "c", startLine: 1, endLine: 1, severity: .minor, category: "", title: "", rationale: ""),
         ]
         #expect(LocalReviewProgress.outcome(result) == "3 findings (1 major, 2 minor), merge risk medium")
+        result.mergeability = MergeabilityAssessment(level: .acceptable)
+        result.slop = SlopAssessment(level: .some)
+        #expect(
+            LocalReviewProgress.outcome(result)
+                == "3 findings (1 major, 2 minor), merge risk medium, acceptable, slop some")
         #expect(LocalReviewProgress.outcome(ReviewResult()) == "no findings")
         #expect(LocalReviewProgress.duration(161.7) == "2:41")
     }

@@ -91,6 +91,7 @@ To try it without a GitHub account, start it with sample data: `open -a Sylvra -
 - **Findings in the diff**: a framed box in the AI colors with a ✦ in the gutter, so additions and deletions stay green and red — click it to open the card with rationale and the suggestion as a mini diff.
 - **New commits pushed?** Sylvra offers to run the review again on the new code; the old findings are replaced.
 - **Risk**: the review rates the PR as a whole (low / medium / high, with reasons) and every finding by impact and likelihood.
+- **Mergeability and slop**: a verdict whether the PR can be merged as it is (excellent / good / acceptable / not mergeable) and the signs of unreviewed, low-effort code — to decide how much careful review is worth, or whether to send the findings back first.
 - **Patterns**: which conventions the change follows, violates or introduces.
 - **Discuss code privately**: ask Claude about selected lines, a finding or a review thread (*Ask AI*) in a private chat. Each topic gets its own chat, earlier chats stay selectable, and you choose model and effort per question. Answers are formatted (headings, lists, code, tables), code references are clickable, and a suggested reply can go straight into the thread.
 - **Copy for an agent**: the summary, every finding, pattern and chat answer — or all of them at once — copy as Markdown made for pasting into Claude Code: full paths and lines, severity, impact, likelihood, which models found it, suggestions as code blocks.
@@ -134,7 +135,7 @@ To try it without a GitHub account, start it with sample data: `open -a Sylvra -
 ### 8. Review local changes from the terminal or Claude Code
 The same multi-model AI review works without a pull request, on the branch you're working on — for example as a second opinion on what your local Claude Code just wrote, before you push.
 
-- **`sylvra review`** reviews what your branch adds to its base branch: commits, uncommitted changes and new files. Several models in parallel, findings merged and consolidated, with summary, merge risk, reading order, findings rated by impact and likelihood, and patterns.
+- **`sylvra review`** reviews what your branch adds to its base branch: commits, uncommitted changes and new files. Several models in parallel, findings merged and consolidated, with summary, merge verdict and risk, slop signs, reading order, findings rated by impact and likelihood, and patterns.
 - **Your Sylvra settings** (models, effort, agents, language) are the defaults; override them per run.
 - **Markdown for agents** (or `--json`), progress on standard error. The agents only read the repository; nothing is changed, committed or posted.
 - **Claude Code skill** `sylvra-review`: *Settings → AI Review → Use from Claude Code → Install* puts it in `~/.claude/skills/sylvra-review`. Then ask Claude Code for a Sylvra review (or type `/sylvra-review`): it runs the review in the background, presents the findings and checks each one against the code before changing anything.
