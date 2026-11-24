@@ -45,6 +45,7 @@ extension RootScreen {
                 model: environment.aiReview, pullRequest: selection,
                 pullRequestBody: environment.pullRequest.detail?.body ?? "")
         }
+        .sharedBackgroundVisibility(.hidden)
         ToolbarItem(placement: .primaryAction) {
             SubmitReviewToolbarButton(model: environment.review, pullRequestID: selection?.id)
         }

@@ -35,6 +35,18 @@ public enum AIAccent {
             endPoint: .trailing)
     }
 
+    /// Fill of the most important AI control (the AI Review toolbar button): the accent colors, a little deeper,
+    /// so a white symbol on top stays legible.
+    public static var prominentFill: LinearGradient {
+        LinearGradient(
+            colors: [
+                Color(red: 0.58, green: 0.44, blue: 0.92),
+                Color(red: 0.36, green: 0.40, blue: 0.88),
+                Color(red: 0.20, green: 0.62, blue: 0.64),
+            ],
+            startPoint: .topLeading, endPoint: .bottomTrailing)
+    }
+
     /// Card background tint.
     public static var cardBackground: LinearGradient {
         LinearGradient(
