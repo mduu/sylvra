@@ -1,3 +1,4 @@
+import AppKit
 import DesignSystem
 import SwiftUI
 import SylvraCore
@@ -49,11 +50,22 @@ public struct AIChatPanel: View {
                     .lineLimit(1...5)
                     .focused($isInputFocused)
                     .onSubmit(send)
+                    // ⇧↩ (like ⌥↩) starts a new line; ↩ sends.
+                    .onKeyPress(.return, phases: .down) { press in
+                        guard press.modifiers.contains(.shift) else { return .ignored }
+                        NSApp.sendAction(
+                            #selector(NSResponder.insertNewlineIgnoringFieldEditor(_:)), to: nil, from: nil)
+                        return .handled
+                    }
                     .onChange(of: model.inputFocusRequest, initial: true) { old, new in
                         // Also when the panel appears for the request (the inspector was closed).
                         if new > 0, old != new || !isInputFocused { isInputFocused = true }
                     }
-                SendButton(isEnabled: !model.draft.isEmpty && !model.isSending && pullRequestID != nil, send: send)
+                if model.isSending {
+                    StopButton(stop: model.cancel)
+                } else {
+                    SendButton(isEnabled: !model.draft.isEmpty && pullRequestID != nil, send: send)
+                }
             }
             // Clear of the scroll bar, which overlays the inspector's right edge.
             .padding(.trailing, 12)
@@ -133,6 +145,26 @@ private struct SendButton: View {
         .keyboardShortcut(.return, modifiers: .command)
         .help("Send (⌘↩)")
         .accessibilityLabel("Send")
+    }
+}
+
+/// Replaces the send button while the agent answers (pure); ⌘. stops as well.
+private struct StopButton: View {
+    let stop: () -> Void
+
+    var body: some View {
+        Button(action: stop) {
+            Image(systemName: "stop.fill")
+                .font(.system(size: 12, weight: .bold))
+                .foregroundStyle(.white)
+                .frame(width: 30, height: 30)
+                .background(SylvraColor.brandPrimary, in: Circle())
+                .contentShape(Circle())
+        }
+        .buttonStyle(.plain)
+        .keyboardShortcut(".", modifiers: .command)
+        .help("Stop the answer — the question goes back into the input (⌘.)")
+        .accessibilityLabel("Stop")
     }
 }
 

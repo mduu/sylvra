@@ -72,6 +72,8 @@ public final class AIChatModel {
     @ObservationIgnored private var discussedCache: [PullRequestID: (messages: Int, lines: Set<DiscussedLine>)] = [:]
     private var activeChatIDs: [PullRequestID: Chat.ID] = [:]
     public private(set) var isSending = false
+    /// Stops the question being answered (set while sending).
+    @ObservationIgnored private var cancelSending: (() -> Void)?
     public var draft = ""
     public var context = Context()
 
@@ -179,11 +181,44 @@ public final class AIChatModel {
             activeChatIDs[id] = first.id
         }
         guard let chat = activeChat(for: id) else { return }
-        append(Message(role: .user, text: question, location: context.code?.location), to: chat.id, in: id)
+        let message = Message(role: .user, text: question, location: context.code?.location)
+        append(message, to: chat.id, in: id)
         isSending = true
-        defer { isSending = false }
+        defer {
+            isSending = false
+            cancelSending = nil
+        }
 
         let current = settings(id)
+        var prompt = prompt(for: question)
+        if chat.sessionID == nil { prompt = prContext(id) + "\n\n---\n\n" + prompt }
+        let options = options(for: id)
+        let (provider, workspace, sessionID) = (provider, workspace, chat.sessionID)
+        let request = Task { @MainActor in
+            let directory = try? await workspace(id)
+            try Task.checkCancellation()
+            return try await provider.chat(
+                ChatRequest(
+                    message: prompt, sessionID: sessionID, model: options.model, effort: options.effort,
+                    language: current.agentLanguage, workingDirectory: directory))
+        }
+        cancelSending = { request.cancel() }
+        do {
+            let reply = try await request.value
+            // The reply goes to the chat it answers, even if the reviewer switched chats meanwhile.
+            append(Message(role: .assistant, text: reply.text), to: chat.id, in: id, session: reply.sessionID)
+        } catch  where request.isCancelled {
+            // Sent too early: the question goes back into the input to be edited and sent again.
+            remove(message.id, from: chat.id, in: id)
+            if draft.isEmpty { draft = question }
+            inputFocusRequest += 1
+        } catch {
+            append(Message(role: .error, text: String(describing: error)), to: chat.id, in: id)
+        }
+    }
+
+    /// The question with the context chips (file, finding, code under discussion).
+    private func prompt(for question: String) -> String {
         var prompt = question
         if let file = context.file { prompt += "\n\n(Current file: \(file))" }
         if let finding = context.finding { prompt += "\n\n(Selected finding: \(finding))" }
@@ -191,19 +226,17 @@ public final class AIChatModel {
             let side = code.location.side == .left ? "old version" : "new version"
             prompt += "\n\n(About this code, \(code.label), \(side):\n```\n\(code.text)\n```)"
         }
-        if chat.sessionID == nil { prompt = prContext(id) + "\n\n---\n\n" + prompt }
-        let directory = try? await workspace(id)
-        let options = options(for: id)
-        do {
-            let reply = try await provider.chat(
-                ChatRequest(
-                    message: prompt, sessionID: chat.sessionID, model: options.model, effort: options.effort,
-                    language: current.agentLanguage, workingDirectory: directory))
-            // The reply goes to the chat it answers, even if the reviewer switched chats meanwhile.
-            append(Message(role: .assistant, text: reply.text), to: chat.id, in: id, session: reply.sessionID)
-        } catch {
-            append(Message(role: .error, text: String(describing: error)), to: chat.id, in: id)
-        }
+        return prompt
+    }
+
+    /// Stops the agent answering the current question (the agent process is terminated).
+    public func cancel() {
+        cancelSending?()
+    }
+
+    private func remove(_ messageID: Message.ID, from chatID: Chat.ID, in id: PullRequestID) {
+        guard let index = chats[id]?.firstIndex(where: { $0.id == chatID }) else { return }
+        chats[id]?[index].messages.removeAll { $0.id == messageID }
     }
 
     /// Starts a private discussion about selected code; nothing is posted to GitHub.
