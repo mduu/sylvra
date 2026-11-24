@@ -174,13 +174,14 @@ public final class InboxScreenModel {
         browser = nil
     }
 
-    /// The browsed repository's pull requests in groups: waiting for you, yours, all others.
+    /// The browsed repository's pull requests in groups: waiting for you, yours, all others. Pull requests on the
+    /// to-do list are listed there only.
     public var browserGroups: [(title: String, pullRequests: [PullRequestSummary])] {
         guard let browser else { return [] }
         let waiting = Set(
             (snapshot.pullRequests(in: .requestedFromMe) + snapshot.pullRequests(in: .myTeams)).map(\.id))
         let viewer = snapshot.viewerLogin?.lowercased()
-        let visible = browser.pullRequests.filter(activeFilter.matches)
+        let visible = browser.pullRequests.filter { !todos.contains($0.id) && activeFilter.matches($0) }
         let requested = Set(snapshot.pullRequests(in: .requestedFromMe).map(\.id))
         let isDone = { (pullRequest: PullRequestSummary) in
             pullRequest.isWaitingOnOthers && !requested.contains(pullRequest.id)

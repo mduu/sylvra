@@ -17,6 +17,9 @@ public struct InboxScreen: View {
 
     public var body: some View {
         List(selection: $selection) {
+            // The to-do list stays on top, also while a repository is open.
+            let todos = model.visibleTodos
+            if !todos.isEmpty { todoSection(todos) }
             if let browser = model.browser {
                 RepositoryBrowserContent(model: model, browser: browser, rowMenu: rowMenu)
             } else {
@@ -118,11 +121,9 @@ public struct InboxScreen: View {
     /// Open work first, then the repositories, then what was closed recently (history at the bottom).
     @ViewBuilder private var inboxContent: some View {
         let sections = model.visibleSections
-        let todos = model.visibleTodos
-        if !todos.isEmpty { todoSection(todos) }
         ForEach(sections.filter { $0.section != .recentlyClosed }, id: \.section, content: sectionView)
         if model.repositoryLoader != nil {
-            if model.loadState == .loaded, sections.isEmpty, todos.isEmpty {
+            if model.loadState == .loaded, sections.isEmpty, model.visibleTodos.isEmpty {
                 Section {
                     Label("Nothing waiting for you. Enjoy the quiet.", systemImage: "leaf")
                         .foregroundStyle(.secondary)

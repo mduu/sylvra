@@ -92,6 +92,17 @@ struct InboxTodoModelTests {
         #expect(model.visibleTodos.isEmpty)
     }
 
+    @Test func staysVisibleInARepositoryWithoutDuplicates() async throws {
+        let model = InboxScreenModel(loader: DemoInboxLoader(), repositoryLoader: DemoRepositoryPullRequestLoader())
+        await model.refresh()
+        model.openRepository(InboxRepository(owner: "acme", name: "billing"))
+        await model.browser?.load(matching: "", excludingAuthors: [])
+        let pullRequest = try #require(model.browserGroups.first?.pullRequests.first)
+        model.addTodo(pullRequest)
+        #expect(model.visibleTodos.map(\.id) == [pullRequest.id])
+        #expect(!model.browserGroups.flatMap(\.pullRequests).contains { $0.id == pullRequest.id })
+    }
+
     @Test func marksClosedTodos() async throws {
         let model = InboxScreenModel(loader: DemoInboxLoader())
         await model.refresh()
