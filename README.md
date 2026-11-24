@@ -108,7 +108,7 @@ To try it without a GitHub account, start it with sample data: `open -a Sylvra -
 - Comments with code suggestions, replies, resolve, pending reviews and submit.
 - **Writing help**: rephrase factually (observation → effect → suggestion), make it shorter, undo.
 - **English or German per comment**: switching translates the draft.
-- **Tone check** while you type: flags dismissive, absolute or loaded wording ("obviously", "always", "falsch" …) and offers a factual rephrase.
+- **Tone check** while you type: flags dismissive, loaded or absolute wording ("obviously", "falsch", "you always" …) and offers a factual rephrase.
 
 <p align="center">
   <picture><source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/closeup-tone-check-dark.png"><img src="docs/screenshots/closeup-tone-check.png" alt="Tone check while writing a comment, with a factual rephrase" width="70%"></picture><br><br>

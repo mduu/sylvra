@@ -327,13 +327,22 @@ struct CommentLanguageTests {
 
 struct ToneCheckTests {
     @Test func flagsJudgmentalWordingInBothLanguages() {
-        let issues = ToneCheck.issues(in: "This is obviously wrong, we always round at the end!")
+        let issues = ToneCheck.issues(in: "This is obviously wrong, you always round at the end!")
         #expect(issues.map(\.phrase) == ["obviously", "wrong", "always", "!"])
         #expect(ToneCheck.issues(in: "Das ist natürlich Murks").map(\.reason) == [.dismissive, .loaded])
     }
 
     @Test func factualCommentHasNoIssues() {
         #expect(ToneCheck.issues(in: "Rounding per line drifts the total by a few cents. Could we round once?").isEmpty)
+    }
+
+    // Regression: "immer" / "never" describing what the program does were flagged.
+    @Test func absoluteWordsCountOnlyWhenSaidAboutAPerson() {
+        #expect(ToneCheck.issues(in: "Der Test liefert immer true.").isEmpty)
+        #expect(ToneCheck.issues(in: "This branch is never reached, so the cache never fills.").isEmpty)
+        #expect(ToneCheck.issues(in: "Hier wird nie geloggt. Du vergisst immer die Tests.").map(\.phrase) == ["immer"])
+        #expect(ToneCheck.issues(in: "You never check the result").map(\.reason) == [.absolute])
+        #expect(ToneCheck.issues(in: "Niemand liest diesen Log").map(\.reason) == [.absolute])
     }
 
     @Test func ignoresCodeAndWordParts() {
