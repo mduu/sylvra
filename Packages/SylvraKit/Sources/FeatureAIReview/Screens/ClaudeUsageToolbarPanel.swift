@@ -1,8 +1,9 @@
 import DesignSystem
 import SwiftUI
 
-/// The Claude subscription's limits as rings in the toolbar (container): outer ring the week, middle the 5-hour
-/// window, inner Fable's week. A click shows the details with the reset times.
+/// The Claude subscription's limits as rings in the toolbar (container), outside in as listed in the details:
+/// outer ring the 5-hour window, middle the week, inner Fable's week. A click shows the details with the reset
+/// times.
 public struct ClaudeUsageToolbarPanel: View {
     private let model: ClaudeUsageModel
     @State private var isShowingDetails = false
@@ -35,11 +36,11 @@ public struct ClaudeUsageToolbarPanel: View {
         .task { await model.refreshIfOlder(than: 300) }
     }
 
-    /// Week, 5 hours and, once reported, Fable (outer to inner).
+    /// 5 hours, week and, once reported, Fable (outer to inner, the order of the details).
     private var rings: [Double?] {
         let now = Date.now
         guard let usage = model.usage else { return [nil, nil] }
-        var rings = [usage.week?.remaining(at: now), usage.fiveHour?.remaining(at: now)]
+        var rings = [usage.fiveHour?.remaining(at: now), usage.week?.remaining(at: now)]
         if let fable = usage.fable { rings.append(fable.remaining(at: now)) }
         return rings
     }
@@ -65,6 +66,7 @@ struct ClaudeUsageDetailsView: View {
         let window: ClaudeUsage.Window
     }
 
+    /// In the order of the toolbar rings, outside in.
     static func rows(of usage: ClaudeUsage) -> [Row] {
         [
             usage.fiveHour.map { Row(title: String(localized: "5-hour limit"), window: $0) },
@@ -95,8 +97,9 @@ struct ClaudeUsageDetailsView: View {
                 .help("Ask Claude Code for the current limits (a tiny Haiku request)")
             }
             if let usage, !usage.isEmpty {
-                ForEach(Self.rows(of: usage), id: \.title) { row in
-                    rowView(row)
+                let rows = Self.rows(of: usage)
+                ForEach(Array(rows.enumerated()), id: \.element.title) { index, row in
+                    rowView(row, ring: index, of: rows.count)
                 }
                 if let warning = warning(for: usage) {
                     Label(warning, systemImage: "exclamationmark.triangle.fill")
@@ -121,12 +124,15 @@ struct ClaudeUsageDetailsView: View {
         .frame(width: 320)
     }
 
-    private func rowView(_ row: Row) -> some View {
+    /// The mini rings show where this limit sits in the toolbar: all tracks, only its own ring filled.
+    private func rowView(_ row: Row, ring: Int, of count: Int) -> some View {
         let remaining = row.window.remaining(at: now)
+        var rings = [Double?](repeating: nil, count: count)
+        rings[ring] = remaining
         return VStack(alignment: .leading, spacing: 5) {
             HStack(spacing: 10) {
-                UsageRingsView(remaining: [remaining], lineWidth: 4)
-                    .frame(width: 26, height: 26)
+                UsageRingsView(remaining: rings, lineWidth: 3, gap: 1.2)
+                    .frame(width: 28, height: 28)
                 VStack(alignment: .leading, spacing: 1) {
                     Text(row.title).font(.callout.weight(.semibold))
                     Text(resetText(row.window)).font(.caption).foregroundStyle(.secondary)
