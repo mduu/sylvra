@@ -73,7 +73,7 @@ struct FindingConsolidatorTests {
         #expect(consolidated.findings.map(\.title) == ["A", "B"])
     }
 
-    @Test func theEngineCombinesFindingsOfSeveralModels() async {
+    @MainActor @Test func theEngineCombinesFindingsOfSeveralModels() async {
         let provider = GroupingProvider(answer: #"{"findings": [[0, 1]], "overall": []}"#)
         var settings = ReviewSettings(models: ["opus", "fable"])
         settings.maxParallelAgents = 1
@@ -82,8 +82,12 @@ struct FindingConsolidatorTests {
             isNoise: false)
         let input = ReviewEngine.Input(
             files: [file], title: "t", body: "", context: [], history: [], settings: settings, workingDirectory: nil)
-        let result = await ReviewEngine(provider: provider).run(input) { _ in }
+        var steps: [String: ReviewEngine.Progress] = [:]
+        let result = await ReviewEngine(provider: provider).run(input) { steps[$0.id] = $0 }
         #expect(result.findings.count == 1)
+        // Every step's tokens count, combining the findings included.
+        #expect(steps[ReviewEngine.consolidationID]?.tokens?.total == 1_000)
+        #expect(TokenUsage.sum(steps.values.map(\.tokens))?.total == 105_000)
         #expect(Set(result.findings.first?.sources.map(\.model) ?? []) == ["opus", "fable"])
         #expect(await provider.chats == 1)
     }
@@ -102,7 +106,7 @@ private actor GroupingProvider: AgentProvider {
     func chat(_ request: ChatRequest) async throws -> ChatReply {
         chats += 1
         guard let answer else { throw AgentError.failed("offline") }
-        return ChatReply(text: answer, sessionID: nil)
+        return ChatReply(text: answer, sessionID: nil, tokens: TokenUsage(input: 900, output: 100))
     }
 
     nonisolated func review(_ request: ReviewRequest) async throws -> AgentReviewOutput {
@@ -112,6 +116,8 @@ private actor GroupingProvider: AgentProvider {
             {"summary":"s","findings":[{"path":"a.swift","startLine":\(line),"endLine":\(line),"severity":"major",\
             "category":"bug","title":"\(title)","rationale":"r","confidence":0.8}],"patterns":[]}
             """
-        return try JSONDecoder().decode(AgentReviewOutput.self, from: Data(json.utf8))
+        var output = try JSONDecoder().decode(AgentReviewOutput.self, from: Data(json.utf8))
+        output.tokens = TokenUsage(cacheRead: 50_000, output: 2_000)
+        return output
     }
 }

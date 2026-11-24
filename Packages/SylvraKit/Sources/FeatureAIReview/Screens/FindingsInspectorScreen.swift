@@ -83,7 +83,13 @@ public struct FindingsInspectorScreen: View {
                 if model.runState == .running, model.progress.isEmpty {
                     ReviewPreparationRowView(step: model.preparation ?? String(localized: "Starting…"))
                 }
-                ForEach(model.progress, id: \.id) { AgentProgressRowView(progress: $0) }
+                if model.runState == .running, let started = model.runStartedAt {
+                    ReviewRunningTimeView(started: started)
+                }
+                ForEach(model.progress, id: \.id) { AgentProgressRowView(progress: $0, time: model.stepTimes[$0.id]) }
+                if model.runState == .done, let pullRequest, let result = model.results[pullRequest.id] {
+                    ReviewTotalView(duration: result.duration, tokens: result.tokens)
+                }
                 if model.runState == .running {
                     Button("Cancel review", role: .cancel) { model.cancel() }.controlSize(.small)
                 }
@@ -97,6 +103,7 @@ public struct FindingsInspectorScreen: View {
             if let pullRequest, let result = model.results[pullRequest.id], !isRunning(pullRequest.id) {
                 ReviewFreshnessView(
                     isOutdated: model.isOutdated(pullRequest.id), reviewedAt: result.reviewedAt,
+                    duration: result.duration, tokens: result.tokens,
                     isEnabled: model.runState != .running
                 ) { run(pullRequest) }
             }
@@ -238,7 +245,7 @@ public struct FindingsInspectorScreen: View {
         let id = pullRequest.id
         if model.runState == .running, let other = model.runningPullRequest, other != id {
             OtherReviewRunningView(
-                pullRequest: other, finished: model.finishedAgentCount, total: model.progress.count,
+                pullRequest: other, finished: model.finishedAgentCount, total: model.agentProgress.count,
                 show: showPullRequest.map { show in { show(other) } },
                 reviewHere: {
                     Task { await model.replaceRunningReview(with: id, title: pullRequest.title, body: prBody) }

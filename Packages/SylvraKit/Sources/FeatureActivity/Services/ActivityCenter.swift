@@ -26,14 +26,31 @@ public struct ActivityJob: Identifiable, Hashable, Sendable {
     public var detail: String?
     /// The pull request it works on: the activity list opens it.
     public var pullRequest: PullRequestID?
+    /// When it started (kept when the job is updated).
+    public var startedAt: Date
 
-    public init(id: String, kind: Kind, title: String, detail: String? = nil, pullRequest: PullRequestID? = nil) {
+    public init(
+        id: String, kind: Kind, title: String, detail: String? = nil, pullRequest: PullRequestID? = nil,
+        startedAt: Date = .now
+    ) {
         self.id = id
         self.kind = kind
         self.title = title
         self.detail = detail
         self.pullRequest = pullRequest
+        self.startedAt = startedAt
     }
+}
+
+/// A job that ended, with how long it ran.
+public struct FinishedActivity: Identifiable, Hashable, Sendable {
+    public let job: ActivityJob
+    public let endedAt: Date
+    /// What came out of it ("7 findings").
+    public let message: String?
+
+    public var id: String { "\(job.id)@\(endedAt.timeIntervalSince1970)" }
+    public var duration: TimeInterval { endedAt.timeIntervalSince(job.startedAt) }
 }
 
 /// Tracks running jobs and posts a macOS notification when one finishes while Sylvra is in the background.
@@ -41,6 +58,9 @@ public struct ActivityJob: Identifiable, Hashable, Sendable {
 @Observable
 public final class ActivityCenter {
     public private(set) var running: [ActivityJob] = []
+    /// The latest finished jobs, newest first (only those that take a while: AI reviews and checkouts).
+    public private(set) var finished: [FinishedActivity] = []
+    static let finishedLimit = 5
     private let defaults: UserDefaults
 
     public init(defaults: UserDefaults = .standard) {
@@ -52,16 +72,22 @@ public final class ActivityCenter {
     /// Starts a job, or updates the running job with the same ID (title, progress).
     public func start(_ job: ActivityJob) {
         if let index = running.firstIndex(where: { $0.id == job.id }) {
-            if running[index] != job { running[index] = job }
+            var updated = job
+            updated.startedAt = running[index].startedAt
+            if running[index] != updated { running[index] = updated }
         } else {
             running.append(job)
         }
     }
 
     /// Ends a job; notifies when the app is not active and notifications are enabled for the job kind.
-    public func finish(_ id: String, message: String?) {
+    public func finish(_ id: String, message: String?, at now: Date = .now) {
         guard let job = running.first(where: { $0.id == id }) else { return }
         running.removeAll { $0.id == id }
+        if job.kind == .aiReview || job.kind == .checkout {
+            finished.insert(FinishedActivity(job: job, endedAt: now, message: message), at: 0)
+            finished = Array(finished.prefix(Self.finishedLimit))
+        }
         guard let message, !NSApplication.shared.isActive, notificationsEnabled(for: job.kind) else { return }
         Task { await Self.post(title: job.title, body: message) }
     }

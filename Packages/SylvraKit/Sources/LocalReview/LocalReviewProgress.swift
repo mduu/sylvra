@@ -11,7 +11,7 @@ import Foundation
 ///     … 0 of 4 agents done, 4 running · 0:31
 ///     [1/4 · 1:12] ✓ Core · Opus
 ///     [4/4 · 2:40] ✓ Combining the models' findings
-///     Done in 2:41: 7 findings (2 major, 5 minor), merge risk medium
+///     Done in 2:41: 7 findings (2 major, 5 minor), merge risk medium, 380k tokens
 @MainActor
 final class LocalReviewProgress {
     private let report: @MainActor @Sendable (String) -> Void
@@ -19,9 +19,13 @@ final class LocalReviewProgress {
     private let now: @MainActor () -> Date
     private var states: [String: ReviewEngine.Progress.State] = [:]
     private(set) var failures: [String] = []
+    /// Tokens of the finished agents.
+    private(set) var tokens: [String: TokenUsage] = [:]
+    /// All steps' tokens, combining the findings included.
+    var totalTokens: TokenUsage? { TokenUsage.sum(Array(tokens.values)) }
 
     /// The step that combines several models' findings: not an agent of its own in the counts.
-    static let consolidationID = "consolidate"
+    static let consolidationID = ReviewEngine.consolidationID
 
     init(report: @escaping @MainActor @Sendable (String) -> Void, now: @escaping @MainActor () -> Date = { .now }) {
         self.report = report
@@ -44,9 +48,10 @@ final class LocalReviewProgress {
     func update(_ progress: ReviewEngine.Progress) {
         guard states[progress.id] != progress.state else { return }
         states[progress.id] = progress.state
+        if let used = progress.tokens { tokens[progress.id] = used }
         let prefix = "[\(finished)/\(total) · \(elapsed)]"
         switch progress.state {
-        case .queued: break
+        case .queued, .skipped: break
         case .running: report("\(prefix) ▸ \(progress.title)")
         case .done: report("\(prefix) ✓ \(progress.title)")
         case .failed(let message):
@@ -62,7 +67,9 @@ final class LocalReviewProgress {
     }
 
     func finish(_ result: ReviewResult) {
-        report("Done in \(elapsed): " + Self.outcome(result))
+        var line = "Done in \(elapsed): " + Self.outcome(result)
+        if let used = totalTokens { line += ", " + used.label }
+        report(line)
     }
 
     /// `7 findings (2 major, 5 minor), merge risk medium`

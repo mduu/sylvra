@@ -20,6 +20,7 @@ public struct FindingConsolidator: Sendable {
         result.findings.count > 1 || result.overall.count > 1
     }
 
+    /// The consolidated result; its `tokens` are those of the consolidation call (`nil` when none was made).
     public func consolidate(_ result: ReviewResult, language: String) async -> ReviewResult {
         guard Self.isWorthwhile(result) else { return result }
         do {
@@ -29,9 +30,13 @@ public struct FindingConsolidator: Sendable {
                     language: language, workingDirectory: nil))
             guard let groups = Self.groups(in: reply.text) else {
                 Self.logger.error("Consolidating findings: no groups in the answer")
-                return result
+                var unchanged = result
+                unchanged.tokens = reply.tokens
+                return unchanged
             }
-            return Self.apply(groups, to: result)
+            var consolidated = Self.apply(groups, to: result)
+            consolidated.tokens = reply.tokens
+            return consolidated
         } catch {
             Self.logger.error("Consolidating findings failed: \(String(describing: error), privacy: .public)")
             return result

@@ -160,6 +160,10 @@ public struct ReviewResult: Hashable, Sendable, Codable {
     public var risk: RiskAssessment?
     /// Answers to the author's hints, in the order given (empty without hints).
     public var hints: [HintAnswer] = []
+    /// How long the review took, from start to result (`nil` for older reviews).
+    public var duration: TimeInterval?
+    /// Tokens its agents used (`nil`: unknown).
+    public var tokens: TokenUsage?
 
     public init(
         summary: String = "", findings: [ReviewFinding] = [], patterns: [PatternFinding] = [], history: [String] = [],
@@ -175,6 +179,7 @@ public struct ReviewResult: Hashable, Sendable, Codable {
 
     private enum CodingKeys: String, CodingKey {
         case summary, findings, patterns, overall, history, readingOrder, headSHA, reviewedAt, risk, hints
+        case duration, tokens
     }
 
     // Results cached before reading orders (or head commits) were recorded decode without them.
@@ -190,6 +195,8 @@ public struct ReviewResult: Hashable, Sendable, Codable {
         reviewedAt = try container.decodeIfPresent(Date.self, forKey: .reviewedAt)
         risk = try container.decodeIfPresent(RiskAssessment.self, forKey: .risk)
         hints = try container.decodeIfPresent([HintAnswer].self, forKey: .hints) ?? []
+        duration = try container.decodeIfPresent(TimeInterval.self, forKey: .duration)
+        tokens = try container.decodeIfPresent(TokenUsage.self, forKey: .tokens)
     }
 }
 

@@ -202,6 +202,8 @@ struct ReviewPreparationRowView: View {
 
 struct AgentProgressRowView: View {
     let progress: ReviewEngine.Progress
+    /// When the step started and ended: running steps count up, finished ones show how long they took.
+    var time: AIReviewModel.StepTime?
 
     var body: some View {
         HStack(spacing: 8) {
@@ -210,17 +212,44 @@ struct AgentProgressRowView: View {
             case .running: ProgressView().controlSize(.mini)
             case .done: Image(systemName: "checkmark.circle.fill").foregroundStyle(.green)
             case .failed: Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(.red)
+            case .skipped: Image(systemName: "minus.circle").foregroundStyle(.tertiary)
             }
             Text(progress.title).aiFont(.caption).lineLimit(1)
             Spacer()
             Text(stateText).aiFont(.caption).foregroundStyle(.secondary)
+            if let tokens = progress.tokens {
+                Text(verbatim: TokenUsage.abbreviated(tokens.total))
+                    .aiFont(.caption)
+                    .monospacedDigit()
+                    .foregroundStyle(.secondary)
+                    .help(tokens.breakdown)
+            }
+            elapsed
         }
+        .opacity(progress.state == .skipped ? 0.6 : 1)
         .help(helpText)
+    }
+
+    /// `1:12`, counting while the step runs.
+    @ViewBuilder private var elapsed: some View {
+        if let start = time?.start {
+            if let end = time?.end {
+                Text(verbatim: ElapsedTime.format(end.timeIntervalSince(start)))
+                    .aiFont(.caption).monospacedDigit().foregroundStyle(.secondary)
+            } else if progress.state == .running {
+                TimelineView(.periodic(from: start, by: 1)) { context in
+                    Text(verbatim: ElapsedTime.format(context.date.timeIntervalSince(start)))
+                        .aiFont(.caption).monospacedDigit().foregroundStyle(.secondary)
+                }
+            }
+        }
     }
 
     private var stateText: String {
         switch progress.state {
-        case .queued: String(localized: "queued")
+        case .queued where progress.id == ReviewEngine.consolidationID: String(localized: "after the reviews")
+        case .queued: String(localized: "waiting")
+        case .skipped: String(localized: "not needed")
         case .running: String(localized: "reviewing…")
         case .done: String(localized: "done")
         case .failed: String(localized: "failed")

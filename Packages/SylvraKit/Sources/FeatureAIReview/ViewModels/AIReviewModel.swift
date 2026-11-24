@@ -23,6 +23,16 @@ public final class AIReviewModel {
 
     public private(set) var results: [PullRequestID: ReviewResult] = [:]
     public private(set) var progress: [ReviewEngine.Progress] = []
+    /// When the running (or last) review started.
+    public private(set) var runStartedAt: Date?
+    /// When each step of the running (or last) review started and ended (by progress ID).
+    public private(set) var stepTimes: [String: StepTime] = [:]
+
+    /// Start and end of one step.
+    public struct StepTime: Equatable, Sendable {
+        public var start: Date?
+        public var end: Date?
+    }
     /// What the review prepares before its agents start (loading the diff, checking out, reading guidelines);
     /// `nil` once the agents run. Without it the inspector showed only *Cancel* for that time.
     public private(set) var preparation: String?
@@ -123,6 +133,8 @@ public final class AIReviewModel {
         runningPullRequest = id
         runState = .running
         progress = []
+        stepTimes = [:]
+        runStartedAt = .now
         workspaceWarning = nil
         tab = .findings
         // A new run starts from scratch: old findings (and their diff highlights) go away right away and
@@ -150,9 +162,14 @@ public final class AIReviewModel {
         await run(id, title: title, body: body)
     }
 
+    /// The running review's agents, without the steps after them (combining the findings).
+    public var agentProgress: [ReviewEngine.Progress] {
+        progress.filter { $0.id != ReviewEngine.consolidationID }
+    }
+
     /// Agents of the running review that finished (done or failed), for the activity overview.
     public var finishedAgentCount: Int {
-        progress.count { $0.state != .queued && $0.state != .running }
+        agentProgress.count { $0.state != .queued && $0.state != .running }
     }
 
     private func perform(_ id: PullRequestID, title: String, body: String) async {
@@ -188,19 +205,27 @@ public final class AIReviewModel {
             var reviewed = result
             reviewed.headSHA = headSHA
             reviewed.reviewedAt = .now
+            reviewed.duration = runStartedAt.map { Date.now.timeIntervalSince($0) }
+            reviewed.tokens = TokenUsage.sum(progress.map(\.tokens))
             results[id] = reviewed
             cache?.saveInBackground(
                 Dictionary(uniqueKeysWithValues: results.map { ($0.key.description, $0.value) }),
                 key: "ai-review-results")
-            let failures = progress.filter { if case .failed = $0.state { true } else { false } }
-            runState =
-                failures.count == progress.count && !progress.isEmpty ? .failed(Self.failureText(failures)) : .done
+            let agents = agentProgress
+            let failures = agents.filter { if case .failed = $0.state { true } else { false } }
+            runState = failures.count == agents.count && !agents.isEmpty ? .failed(Self.failureText(failures)) : .done
         } catch {
             runState = .failed(error.localizedDescription)
         }
     }
 
     private func apply(_ update: ReviewEngine.Progress) {
+        let now = Date.now
+        switch update.state {
+        case .running: stepTimes[update.id, default: StepTime()].start = now
+        case .done, .failed: stepTimes[update.id, default: StepTime()].end = now
+        case .queued, .skipped: break
+        }
         if let index = progress.firstIndex(where: { $0.id == update.id }) {
             progress[index] = update
         } else {

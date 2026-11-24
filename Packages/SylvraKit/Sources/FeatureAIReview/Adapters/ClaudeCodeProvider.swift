@@ -75,7 +75,7 @@ public struct ClaudeCodeProvider: AgentProvider {
                 (result.standardError.isEmpty ? result.standardOutput : result.standardError)
                     .trimmingCharacters(in: .whitespacesAndNewlines))
         }
-        return ChatReply(text: text, sessionID: envelope.sessionID ?? request.sessionID)
+        return ChatReply(text: text, sessionID: envelope.sessionID ?? request.sessionID, tokens: envelope.usage)
     }
 
     /// Flags that keep the agent read-only and independent of configuration inside the PR.
@@ -123,8 +123,9 @@ public struct ClaudeCodeProvider: AgentProvider {
     private struct ChatEnvelope: Decodable {
         let result: String?
         let sessionID: String?
+        let usage: TokenUsage?
         enum CodingKeys: String, CodingKey {
-            case result
+            case result, usage
             case sessionID = "session_id"
         }
     }
@@ -150,11 +151,15 @@ public struct ClaudeCodeProvider: AgentProvider {
                 result.standardError.isEmpty ? String(result.standardOutput.prefix(300)) : result.standardError
             throw AgentError.failed(message.trimmingCharacters(in: .whitespacesAndNewlines))
         }
-        if let output = envelope.structuredOutput { return output }
+        if var output = envelope.structuredOutput {
+            output.tokens = envelope.usage
+            return output
+        }
         // Fallback: the result text itself may be the JSON object.
         if let text = envelope.result, let json = text.data(using: .utf8),
-            let output = try? JSONDecoder().decode(AgentReviewOutput.self, from: json)
+            var output = try? JSONDecoder().decode(AgentReviewOutput.self, from: json)
         {
+            output.tokens = envelope.usage
             return output
         }
         throw AgentError.invalidOutput(String((envelope.result ?? "").prefix(300)))
@@ -163,8 +168,9 @@ public struct ClaudeCodeProvider: AgentProvider {
     private struct Envelope: Decodable {
         let result: String?
         let structuredOutput: AgentReviewOutput?
+        let usage: TokenUsage?
         enum CodingKeys: String, CodingKey {
-            case result
+            case result, usage
             case structuredOutput = "structured_output"
         }
     }

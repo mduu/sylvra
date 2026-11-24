@@ -7,6 +7,9 @@ import SylvraCore
 struct ReviewFreshnessView: View {
     let isOutdated: Bool
     let reviewedAt: Date?
+    /// How long the review took and what it used.
+    var duration: TimeInterval?
+    var tokens: TokenUsage?
     var isEnabled = true
     let runAgain: () -> Void
 
@@ -35,6 +38,14 @@ struct ReviewFreshnessView: View {
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
                 }
+                if let cost = costText {
+                    Text(verbatim: "· " + cost)
+                        .aiFont(.caption)
+                        .monospacedDigit()
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                        .help(tokens?.breakdown ?? "")
+                }
                 Spacer(minLength: 4)
                 Button("Run again", systemImage: "arrow.clockwise", action: runAgain)
                     .buttonStyle(.borderless)
@@ -46,10 +57,70 @@ struct ReviewFreshnessView: View {
     }
 }
 
+extension ReviewFreshnessView {
+    /// `took 2:41 · 380k tokens`
+    var costText: String? {
+        let parts = [
+            duration.map { String(localized: "took \(ElapsedTime.format($0))") }, tokens.map(\.label),
+        ].compactMap { $0 }
+        return parts.isEmpty ? nil : parts.joined(separator: " · ")
+    }
+}
+
+/// Below the finished steps: how long the whole review ran and the tokens all its steps used (pure).
+struct ReviewTotalView: View {
+    let duration: TimeInterval?
+    let tokens: TokenUsage?
+
+    var body: some View {
+        if duration != nil || tokens != nil {
+            HStack(spacing: 8) {
+                Image(systemName: "sum").foregroundStyle(.secondary)
+                Text("Total").aiFont(.caption, weight: .semibold)
+                Spacer()
+                if let tokens {
+                    Text(verbatim: TokenUsage.abbreviated(tokens.total))
+                        .aiFont(.caption, weight: .semibold)
+                        .monospacedDigit()
+                        .help(tokens.breakdown)
+                }
+                if let duration {
+                    Text(verbatim: ElapsedTime.format(duration)).aiFont(.caption, weight: .semibold).monospacedDigit()
+                }
+            }
+            .padding(.top, 4)
+            .overlay(alignment: .top) { Divider() }
+            .accessibilityElement(children: .combine)
+        }
+    }
+}
+
+/// How long the running review has been going, counting up (pure).
+struct ReviewRunningTimeView: View {
+    let started: Date
+
+    var body: some View {
+        TimelineView(.periodic(from: started, by: 1)) { context in
+            Label {
+                Text("Running for \(ElapsedTime.format(context.date.timeIntervalSince(started)))")
+                    .monospacedDigit()
+            } icon: {
+                Image(systemName: "timer")
+            }
+            .aiFont(.caption)
+            .foregroundStyle(.secondary)
+        }
+    }
+}
+
 #Preview {
     VStack(spacing: 16) {
         ReviewFreshnessView(isOutdated: true, reviewedAt: .now.addingTimeInterval(-7200)) {}
-        ReviewFreshnessView(isOutdated: false, reviewedAt: .now.addingTimeInterval(-600)) {}
+        ReviewFreshnessView(
+            isOutdated: false, reviewedAt: .now.addingTimeInterval(-600), duration: 161,
+            tokens: TokenUsage(input: 12_000, cacheRead: 340_000, output: 9_000)
+        ) {}
+        ReviewRunningTimeView(started: .now.addingTimeInterval(-72))
     }
     .padding()
     .frame(width: 340)

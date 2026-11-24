@@ -79,9 +79,12 @@ public struct LocalReviewRunner: Sendable {
                 progress.heartbeat()
             }
         }
+        let started = Date.now
         var result = await engine.run(input) { update in progress.update(update) }
         beat.cancel()
         result.reviewedAt = .now
+        result.duration = Date.now.timeIntervalSince(started)
+        result.tokens = progress.totalTokens
         let failures = progress.failures
         if progress.allFailed { throw RunError.allAgentsFailed(failures) }
         progress.finish(result)

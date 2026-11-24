@@ -156,6 +156,8 @@ public struct ContextDocument: Hashable, Sendable {
 
 /// Raw structured output of one agent run.
 public struct AgentReviewOutput: Decodable, Sendable {
+    /// Tokens the agent used (set by the provider, not part of the agent's answer).
+    public var tokens: TokenUsage?
     public struct Finding: Decodable, Sendable {
         let path: String
         let startLine: Int

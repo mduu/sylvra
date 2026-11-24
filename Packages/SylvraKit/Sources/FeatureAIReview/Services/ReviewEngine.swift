@@ -5,18 +5,27 @@ public struct ReviewEngine: Sendable {
     public struct Progress: Sendable, Equatable {
         public enum State: Sendable, Equatable {
             case queued, running, done, failed(String)
+            /// A step that turned out not to be needed (e.g. combining when only one model answered).
+            case skipped
         }
 
         public let id: String
         public let title: String
         public var state: State
+        /// Tokens the step used (known once it is done).
+        public var tokens: TokenUsage?
 
-        public init(id: String, title: String, state: State) {
+        public init(id: String, title: String, state: State, tokens: TokenUsage? = nil) {
             self.id = id
             self.title = title
             self.state = state
+            self.tokens = tokens
         }
     }
+
+    /// The step after the agents that combines several models' findings (not an agent itself).
+    public static let consolidationID = "consolidate"
+    static var consolidationTitle: String { String(localized: "Combining the models' findings") }
 
     private let provider: any AgentProvider
 
@@ -78,6 +87,10 @@ public struct ReviewEngine: Sendable {
         for job in jobs {
             await progress(Progress(id: job.id, title: Self.title(job.shard.name, job.model, models), state: .queued))
         }
+        // Shown up front, so the reviewer sees what still comes after the agents.
+        if models.count > 1 {
+            await progress(Progress(id: Self.consolidationID, title: Self.consolidationTitle, state: .queued))
+        }
 
         var outputs: [(AgentReviewOutput, AgentSource)] = []
         await withTaskGroup(of: (AgentReviewOutput, AgentSource)?.self) { group in
@@ -95,7 +108,7 @@ public struct ReviewEngine: Sendable {
                     request.hints = input.hints
                     do {
                         let output = try await provider.review(request)
-                        await progress(Progress(id: job.id, title: label, state: .done))
+                        await progress(Progress(id: job.id, title: label, state: .done, tokens: output.tokens))
                         return (output, AgentSource(provider: provider.name, model: job.model, effort: settings.effort))
                     } catch {
                         await progress(Progress(id: job.id, title: label, state: .failed(String(describing: error))))
@@ -111,13 +124,26 @@ public struct ReviewEngine: Sendable {
         }
         var merged = ReviewMerger.merge(outputs, files: files)
         merged.hints = ReviewMerger.hintAnswers(input.hints, outputs: outputs)
-        // Several models phrase the same problem differently: one more call groups what the merger missed.
-        guard Set(outputs.map(\.1.model)).count > 1, FindingConsolidator.isWorthwhile(merged) else { return merged }
-        let step = Progress(
-            id: "consolidate", title: String(localized: "Combining the models' findings"), state: .running)
+        return await consolidate(merged, outputs: outputs, models: models, settings: settings, progress: progress)
+    }
+
+    /// Several models phrase the same problem differently: one more call groups what the merger missed.
+    private func consolidate(
+        _ merged: ReviewResult, outputs: [(AgentReviewOutput, AgentSource)], models: [String],
+        settings: ReviewSettings, progress: @escaping @MainActor @Sendable (Progress) -> Void
+    ) async -> ReviewResult {
+        guard Set(outputs.map(\.1.model)).count > 1, FindingConsolidator.isWorthwhile(merged) else {
+            if models.count > 1 {
+                await progress(Progress(id: Self.consolidationID, title: Self.consolidationTitle, state: .skipped))
+            }
+            return merged
+        }
+        let step = Progress(id: Self.consolidationID, title: Self.consolidationTitle, state: .running)
         await progress(step)
-        let result = await FindingConsolidator(provider: provider).consolidate(merged, language: settings.agentLanguage)
-        await progress(Progress(id: step.id, title: step.title, state: .done))
+        var result = await FindingConsolidator(provider: provider).consolidate(merged, language: settings.agentLanguage)
+        await progress(Progress(id: step.id, title: step.title, state: .done, tokens: result.tokens))
+        // The review's total is summed from the steps by whoever runs it.
+        result.tokens = nil
         return result
     }
 

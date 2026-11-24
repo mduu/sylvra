@@ -36,6 +36,18 @@ public struct ActivityToolbarPanel: View {
                         isShowingPopover = false
                     }
                 }
+                if !center.finished.isEmpty {
+                    Divider()
+                    Text("Recently finished").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+                    ForEach(center.finished) { activity in
+                        FinishedActivityRow(
+                            activity: activity,
+                            open: activity.job.pullRequest.flatMap { id in open.map { open in { open(id) } } }
+                        ) {
+                            isShowingPopover = false
+                        }
+                    }
+                }
             }
             .padding()
             .frame(minWidth: 240, alignment: .leading)
@@ -57,6 +69,12 @@ struct ActivityJobRow: View {
                 if let detail = job.detail { Text(detail).font(.caption).foregroundStyle(.secondary) }
             }
             Spacer(minLength: 8)
+            TimelineView(.periodic(from: job.startedAt, by: 1)) { context in
+                Text(verbatim: Self.format(context.date.timeIntervalSince(job.startedAt)))
+                    .font(.caption.monospacedDigit())
+                    .foregroundStyle(.secondary)
+            }
+            .help("Running since \(job.startedAt.formatted(date: .omitted, time: .shortened))")
             if let open {
                 Button("Show", systemImage: "arrow.forward.circle") {
                     open()
@@ -68,6 +86,63 @@ struct ActivityJobRow: View {
             }
         }
     }
+}
+
+extension ActivityJobRow {
+    /// `0:42`, `2:41`, `1:05:12`
+    static func format(_ seconds: TimeInterval) -> String {
+        let total = max(Int(seconds.rounded(.down)), 0)
+        let (hours, minutes, rest) = (total / 3600, total / 60 % 60, total % 60)
+        return hours > 0
+            ? String(format: "%d:%02d:%02d", hours, minutes, rest) : String(format: "%d:%02d", minutes, rest)
+    }
+}
+
+/// A job that ended: how long it ran and when (pure).
+struct FinishedActivityRow: View {
+    let activity: FinishedActivity
+    var open: (() -> Void)?
+    var didOpen: () -> Void = {}
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "checkmark.circle").foregroundStyle(.secondary)
+            VStack(alignment: .leading, spacing: 1) {
+                Text(activity.job.title).lineLimit(1)
+                Text(
+                    "Took \(ActivityJobRow.format(activity.duration)) · \(activity.endedAt, format: .relative(presentation: .named))"
+                )
+                .font(.caption.monospacedDigit())
+                .foregroundStyle(.secondary)
+                if let message = activity.message {
+                    Text(message).font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                }
+            }
+            Spacer(minLength: 8)
+            if let open {
+                Button("Show", systemImage: "arrow.forward.circle") {
+                    open()
+                    didOpen()
+                }
+                .labelStyle(.iconOnly)
+                .buttonStyle(.borderless)
+                .help("Show this pull request")
+            }
+        }
+    }
+}
+
+#Preview("Finished row") {
+    FinishedActivityRow(
+        activity: FinishedActivity(
+            job: ActivityJob(
+                id: "ai-review", kind: .aiReview, title: "AI review · billing #881",
+                startedAt: .now.addingTimeInterval(-400)),
+            endedAt: .now.addingTimeInterval(-240), message: "7 findings"),
+        open: {}
+    )
+    .padding()
+    .frame(width: 300)
 }
 
 #Preview("Job row") {

@@ -36,10 +36,13 @@ public struct ChatRequest: Sendable {
 public struct ChatReply: Sendable, Equatable {
     public let text: String
     public let sessionID: String?
+    /// Tokens the turn used (`nil`: unknown).
+    public var tokens: TokenUsage?
 
-    public init(text: String, sessionID: String?) {
+    public init(text: String, sessionID: String?, tokens: TokenUsage? = nil) {
         self.text = text
         self.sessionID = sessionID
+        self.tokens = tokens
     }
 }
 

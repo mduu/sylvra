@@ -1,3 +1,4 @@
+import FeatureAIReview
 import FeatureActivity
 import FeatureDiff
 import FeatureOpenInIDE
@@ -65,8 +66,13 @@ struct RootModelBridges: View {
                 case .running:
                     environment.activity.start(aiReviewJob)
                 case .done:
-                    let count = environment.aiReview.visibleFindings(for: environment.aiReview.runningPullRequest).count
-                    environment.activity.finish(id, message: String(localized: "Review finished — \(count) findings"))
+                    let review = environment.aiReview
+                    let count = review.visibleFindings(for: review.runningPullRequest).count
+                    var message = String(localized: "Review finished — \(count) findings")
+                    if let tokens = review.runningPullRequest.flatMap({ review.results[$0]?.tokens }) {
+                        message += " · " + tokens.label
+                    }
+                    environment.activity.finish(id, message: message)
                 case .failed(let message):
                     environment.activity.finish(id, message: message)
                 case .idle:
@@ -97,10 +103,13 @@ extension RootModelBridges {
         let title =
             pullRequest.map { String(localized: "AI review · \($0.repository) #\($0.number)") }
             ?? String(localized: "AI review")
+        let isCombining = review.progress.contains { $0.id == ReviewEngine.consolidationID && $0.state == .running }
         let detail =
             review.progress.isEmpty
             ? review.preparation
-            : String(localized: "\(review.finishedAgentCount) of \(review.progress.count) agents")
+            : isCombining
+                ? String(localized: "Combining the models' findings")
+                : String(localized: "\(review.finishedAgentCount) of \(review.agentProgress.count) agents")
         return ActivityJob(id: "ai-review", kind: .aiReview, title: title, detail: detail, pullRequest: pullRequest)
     }
 }
