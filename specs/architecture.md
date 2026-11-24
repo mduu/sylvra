@@ -224,7 +224,7 @@ protocol AgentProvider: Sendable {
 }
 ```
 
-- **MVP**: `ClaudeCodeProvider` (Claude Code CLI in non-interactive print mode, streaming JSON output).
+- **MVP**: `ClaudeCodeProvider` (Claude Code CLI in non-interactive print mode, streaming JSON output: the final `result` line carries the answer and structured output; `rate_limit_event` lines carry the subscription's limits — `five_hour`, `seven_day`, and `seven_day_overage_included` for Fable — which feed the toolbar usage rings via `ClaudeUsageModel`).
 - **Later**: `CodexProvider`, `GeminiProvider`, … behind the same protocol.
 - **Capability detection** at startup (`--version`, `--help`): supported flags (model, effort, output format, structured output, session resume) are detected at runtime instead of hardcoded.
 - **Working directory**: the PR worktree (or main clone), so the agent can read the full code base.

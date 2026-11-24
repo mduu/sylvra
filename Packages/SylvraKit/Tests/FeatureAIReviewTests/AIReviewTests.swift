@@ -117,6 +117,7 @@ struct ClaudeCodeProviderTests {
             history: [], model: "fable", effort: "high", language: "German", workingDirectory: nil)
         let arguments = ClaudeCodeProvider.arguments(for: request)
         #expect(arguments.contains("--json-schema"))
+        #expect(arguments.contains("stream-json") && arguments.contains("--verbose"))
         #expect(arguments.contains("fable"))
         #expect(!arguments.contains("Bash") && !arguments.contains("Edit") && !arguments.contains("Write"))
         #expect(request.prompt.contains("in German"))

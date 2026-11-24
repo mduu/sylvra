@@ -9,6 +9,10 @@ public enum SylvraColor {
     public static let brandSecondary = dynamic(light: 0xB39AF2, dark: 0x4B2A8A)
     /// Very light tints, hover backgrounds, empty states.
     public static let brandTint = dynamic(light: 0xEADFFF, dark: 0x2D1857)
+    /// Something runs low (e.g. the Claude usage left): needs attention soon.
+    public static let statusWarning = dynamic(light: 0xE8891C, dark: 0xF5A23D)
+    /// Almost used up or blocked.
+    public static let statusCritical = dynamic(light: 0xD93A3A, dark: 0xF06262)
     /// Accent for the focus of attention (use sparingly).
     public static let accentGold = dynamic(light: 0xE2B44F, dark: 0xF7DC86)
     /// Gold glow and specular highlights.

@@ -86,6 +86,7 @@ To try it without a GitHub account, start it with sample data: `open -a Sylvra -
 
 ### 4. AI as a reviewer's assistant, never as the reviewer
 - **One-click AI review** with your locally installed Claude Code, using your repo's `AGENTS.md`, `CLAUDE.md` and specs as context.
+- **Your Claude limits at a glance**: rings next to the AI Review button show what is left of your 5-hour window, your week and Fable's week, turn orange and red when they run low, and tell you when each resets.
 - **Several models in parallel** (e.g. Opus + Fable); findings are merged and show who found them. Large PRs are split across agents.
 - **Findings in the diff**: a framed box in the AI colors with a ✦ in the gutter, so additions and deletions stay green and red — click it to open the card with rationale and the suggestion as a mini diff.
 - **New commits pushed?** Sylvra offers to run the review again on the new code; the old findings are replaced.

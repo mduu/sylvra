@@ -8,7 +8,9 @@ import Testing
 struct PullRequestTitleViewTests {
     @Test func boxGrowsInStepsWithTheWindow() {
         let width = PullRequestTitleView.width(forWindowWidth:current:)
-        #expect(width(1470, 400) == 400)
+        // Laptops: a narrower box leaves the toolbar room for the pull request actions.
+        #expect(width(1470, 320) == 320)
+        #expect(width(1650, 320) == 400)
         #expect(width(1800, 400) == 560)
         #expect(width(2718, 400) == 880)
         // Near a step boundary the box keeps its width (no flicker while resizing).

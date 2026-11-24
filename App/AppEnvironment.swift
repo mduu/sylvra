@@ -59,6 +59,8 @@ final class AppEnvironment {
     let worktrees: WorktreesModel
     let aiReview: AIReviewModel
     let chat: AIChatModel
+    /// What is left of the Claude subscription's limits.
+    let claudeUsage: ClaudeUsageModel
     let activity = ActivityCenter()
     let notifications = NotificationRouter()
     let review: ReviewScreenModel
@@ -101,7 +103,12 @@ final class AppEnvironment {
             loader: diffLoader, pollInterval: isDemo ? .seconds(2) : .seconds(60), defaults: isDemo ? nil : .standard)
         // AI agents read a per-PR worktree (never the shared IDE worktree, which may switch PRs meanwhile).
         let checkout: CheckoutService? = isDemo ? nil : CheckoutService()
-        let agent: any AgentProvider = isDemo ? DemoAgentProvider() : ClaudeCodeProvider()
+        // The subscription's limits come with every Claude Code call (toolbar rings).
+        let usage = ClaudeUsageModel(usage: isDemo ? .demo : nil)
+        claudeUsage = usage
+        let claude = ClaudeCodeProvider(onUsage: { reported in Task { @MainActor in usage.update(reported) } })
+        if !isDemo { usage.probe = { try await claude.probeUsage() } }
+        let agent: any AgentProvider = isDemo ? DemoAgentProvider() : claude
         aiReview = AIReviewModel(
             engine: ReviewEngine(provider: agent),
             files: { id in ReviewableFiles.make(from: try await diffLoader.loadDiff(for: id).files) },

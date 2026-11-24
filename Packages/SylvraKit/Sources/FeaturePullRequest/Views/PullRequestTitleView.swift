@@ -15,11 +15,11 @@ public struct PullRequestTitleView: View {
     let doubleClick: () -> Void
 
     /// Width without a window size yet.
-    public static let narrowWidth: CGFloat = 400
+    public static let narrowWidth: CGFloat = 320
     /// Box widths by window width: wider windows give the title more room. Constant within a step: a toolbar
     /// item that changes width while AppKit lays out the toolbar can loop its constraint pass.
     static let widthSteps: [(minWindowWidth: CGFloat, width: CGFloat)] = [
-        (0, 400), (1760, 560), (2000, 720), (2300, 880),
+        (0, 320), (1600, 400), (1760, 560), (2000, 720), (2300, 880),
     ]
     /// A window must be this far into another step before the box changes (no flicker while resizing).
     static let hysteresis: CGFloat = 40

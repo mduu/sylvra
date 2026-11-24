@@ -83,7 +83,7 @@ Examples:
 A three-column `NavigationSplitView` plus an optional inspector and a bottom terminal panel.
 
 Toolbar (like Fork: the pull request in the middle, buttons split by purpose):
-`[Sidebar] [⟳] [Changes ▾] [Commits ▾] [▥|☰]   ( repo · #1234 · Title / head → base · 1 of 2 approvals · 1 check failing )   [Open in ▾] [>_ ▾] [✦ AI Review ▾] [Submit review 1]  [activity] [layout ▾] [AI panel]`
+`[Sidebar] [⟳] [Changes ▾] [Commits ▾] [▥|☰]   ( repo · #1234 · Title / head → base · 1 of 2 approvals · 1 check failing )   [Open in ▾] [>_ ▾] [◎ usage] [✦ ▾] [Submit review 1]  [activity] [layout ▾] [AI panel]`
 
 - **Left — what you see**: sidebar, refresh, which changes (scope, commit by commit) and how (side by side / inline).
 - **Middle — what it is about**: a glass box with gently rounded corners. Its width grows in steps with the window (400 / 560 / 720 / 880 pt from 0 / 1760 / 2000 / 2300 pt window width, 40 pt hysteresis) and stays constant within a step, so AppKit never sees it change during a layout pass. Repository and number chips open GitHub; the title is one line; the status line shows head → base, the approvals (jumps to the Overview tab) and the checks (jumps to the Checks tab). Empty box space drags and zooms the window.
@@ -270,7 +270,9 @@ Existing threads inline (collapsible) with reply, resolve / unresolve, reactions
   [ Save as default for this PR ]
 ```
 
+- The button is a capsule on the AI gradient (white, bold symbol): the most important action in the toolbar. *Reason for the custom capsule instead of the toolbar glass*: it must stand out from the other actions.
 - Single click runs with the PR's settings (or the global defaults).
+- **Claude usage rings** right before the button: what is left of the Claude subscription's limits as concentric rings — outer the week (all models), middle the 5-hour window, inner Fable's week (once Claude Code reports it). Over 20 % left: AI gradient; 20 % or less: orange; under 10 %: red. The tooltip lists the percentages; a click opens a popover with each limit, what is left and when it resets (*Resets 12:00 · in 1 hr*), a warning when one runs low, when the values were updated, and a refresh button. The values come with every Claude Code call Sylvra makes (reviews, chat, rewriting: `rate_limit_event` in the stream-json output), plus a tiny Haiku request at launch and when the popover opens with values older than two minutes — no credentials are read. Work in other Claude sessions shows up with the next update. On narrow windows the title box shrinks to keep room for the actions.
 - **Progress** in the inspector: before the agents start, the step being prepared ("Loading the diff…", "Checking out the pull request…", "Reading the project's guidelines…"); then one row per agent / shard / model, streaming status, elapsed time, cancel. The toolbar activity indicator gives the overview ("AI review · billing #881", "2 of 3 agents", a button opens that pull request); the inspector has the detail.
 - **One review at a time.** The inspector header always offers the next step: *Run AI Review* before the first review, *Run again* after it, *Cancel* while it runs. While a review runs for another pull request, the header says which one (with its progress), and offers *Show* and *Stop It and Review This One*.
 - The tabs **Findings · Patterns · Chat** are always shown for a selected pull request: the chat works without a review; findings and patterns say "No AI review yet" until there is one (no count badge then).

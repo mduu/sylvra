@@ -9,9 +9,45 @@ import Platform
 public struct ClaudeCodeProvider: AgentProvider {
     public let name = "Claude Code"
     private let runner: any ProcessRunning
+    /// Receives the subscription's limits Claude Code reports with every call.
+    private let onUsage: (@Sendable (ClaudeUsage) -> Void)?
 
-    public init(runner: any ProcessRunning = SystemProcessRunner()) {
+    public init(
+        runner: any ProcessRunning = SystemProcessRunner(), onUsage: (@Sendable (ClaudeUsage) -> Void)? = nil
+    ) {
         self.runner = runner
+        self.onUsage = onUsage
+    }
+
+    /// A tiny Haiku call only to learn the subscription's limits (e.g. at launch, before any review or chat).
+    public func probeUsage() async throws -> ClaudeUsage? {
+        guard let claude = ExecutableLocator.locate("claude") else { throw AgentError.notInstalled(name) }
+        let result = try await runner.run(
+            claude, arguments: Self.probeArguments, workingDirectory: try Self.isolatedDirectory(),
+            input: Data("Reply with: ok".utf8))
+        let usage = ClaudeUsage.parse(streamJSON: result.standardOutput)
+        if let usage { onUsage?(usage) }
+        return usage
+    }
+
+    static let probeArguments =
+        [
+            "--print", "--output-format", "stream-json", "--verbose", "--model", "haiku", "--max-turns", "1",
+            "--no-session-persistence",
+        ] + isolationArguments(workspace: nil)
+
+    /// Passes on the limits and returns the result line (stream-json prints one JSON object per line).
+    private func handle(_ result: ProcessResult) -> ProcessResult {
+        if let usage = ClaudeUsage.parse(streamJSON: result.standardOutput) { onUsage?(usage) }
+        return ProcessResult(
+            exitCode: result.exitCode, standardOutput: Self.resultLine(of: result.standardOutput),
+            standardError: result.standardError)
+    }
+
+    /// The final `result` message of stream-json output; other output (an error text) stays as it is.
+    static func resultLine(of output: String) -> String {
+        output.split(whereSeparator: \.isNewline).last { $0.hasPrefix("{") && $0.contains("\"type\":\"result\"") }
+            .map(String.init) ?? output
     }
 
     public func detectVersion() async -> String? {
@@ -23,14 +59,15 @@ public struct ClaudeCodeProvider: AgentProvider {
         let result = try await runner.run(
             claude, arguments: Self.arguments(for: request), workingDirectory: try Self.isolatedDirectory(),
             input: Data(request.prompt.utf8))
-        return try Self.decode(result)
+        return try Self.decode(handle(result))
     }
 
     public func chat(_ request: ChatRequest) async throws -> ChatReply {
         guard let claude = ExecutableLocator.locate("claude") else { throw AgentError.notInstalled(name) }
-        let result = try await runner.run(
-            claude, arguments: Self.chatArguments(for: request), workingDirectory: try Self.isolatedDirectory(),
-            input: Data(request.message.utf8))
+        let result = handle(
+            try await runner.run(
+                claude, arguments: Self.chatArguments(for: request), workingDirectory: try Self.isolatedDirectory(),
+                input: Data(request.message.utf8)))
         guard let data = result.standardOutput.data(using: .utf8),
             let envelope = try? JSONDecoder().decode(ChatEnvelope.self, from: data), let text = envelope.result
         else {
@@ -74,7 +111,7 @@ public struct ClaudeCodeProvider: AgentProvider {
 
     static func chatArguments(for request: ChatRequest) -> [String] {
         var arguments = [
-            "--print", "--output-format", "json", "--model", request.model,
+            "--print", "--output-format", "stream-json", "--verbose", "--model", request.model,
             "--append-system-prompt", chatSystemPrompt(language: request.language),
         ]
         if let effort = request.effort { arguments += ["--effort", effort] }
@@ -95,7 +132,7 @@ public struct ClaudeCodeProvider: AgentProvider {
     static func arguments(for request: ReviewRequest) -> [String] {
         [
             "--print",
-            "--output-format", "json",
+            "--output-format", "stream-json", "--verbose",
             "--json-schema", ReviewRequest.outputSchema,
             "--model", request.model,
             "--effort", request.effort,

@@ -41,9 +41,14 @@ extension RootScreen {
             }
         }
         ToolbarItem(placement: .primaryAction) {
-            AIReviewToolbarPanel(
-                model: environment.aiReview, pullRequest: selection,
-                pullRequestBody: environment.pullRequest.detail?.body ?? "")
+            // One item: the usage rings sit right before the AI review they are about, without a capsule of their
+            // own, so the toolbar keeps room for the pull request actions.
+            HStack(spacing: 8) {
+                ClaudeUsageToolbarPanel(model: environment.claudeUsage)
+                AIReviewToolbarPanel(
+                    model: environment.aiReview, pullRequest: selection,
+                    pullRequestBody: environment.pullRequest.detail?.body ?? "")
+            }
         }
         .sharedBackgroundVisibility(.hidden)
         ToolbarItem(placement: .primaryAction) {
