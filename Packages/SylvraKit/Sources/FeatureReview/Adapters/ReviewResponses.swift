@@ -9,6 +9,7 @@ struct ReviewResponse: Decodable, Sendable {
 
     struct PullRequestNode: Decodable, Sendable {
         let id: String
+        let viewerDidAuthor: Bool?
         let reviews: Nodes<PendingReviewNode>
         let reviewThreads: Nodes<ThreadNode>
 
@@ -16,7 +17,8 @@ struct ReviewResponse: Decodable, Sendable {
             ReviewSnapshot(
                 pullRequestNodeID: id,
                 threads: reviewThreads.values.compactMap(\.thread),
-                pendingReviewID: reviews.values.first { $0.viewerDidAuthor }?.id)
+                pendingReviewID: reviews.values.first { $0.viewerDidAuthor }?.id,
+                viewerDidAuthor: viewerDidAuthor ?? false)
         }
     }
 

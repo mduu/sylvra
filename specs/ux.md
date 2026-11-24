@@ -253,7 +253,7 @@ Existing threads inline (collapsible) with reply, resolve / unresolve, reactions
 - **Open in IDE at a line**: hovering a line also shows an open-in-IDE button next to `+` in the gutter, and the line's right-click menu starts with *Open in <IDE> at Line n*. It opens the pull request's worktree in the preferred IDE at that line of the head version; a removed line opens where it was (the next line that still exists). In single-commit view the line numbers are the commit's, so the IDE may be off by the later commits' changes.
 - **Composer**: Markdown with preview; **Insert suggestion** (⌘⇧S) pre-fills a ```` ```suggestion ```` block with the selected lines and shows a live mini-diff; *Add to review* (pending) or *Comment now*.
 - **From AI finding**: *Turn into comment* prefills title, rationale and suggestion in the **comment language** (default English), editable. The reviewer owns the comment; no automatic "AI" label.
-- **Pending review** counter in the toolbar. *Submit* opens a sheet: summary, *Comment / Approve / Request changes*, list of pending comments.
+- **Pending review** counter in the toolbar. *Submit* opens a sheet: summary, *Comment / Approve / Request changes*, list of pending comments. The sheet checks GitHub's rules before submitting and says what is missing (*Submit* disabled): no approval or change request on one's own pull request, a change request needs a summary, a comment needs a summary or inline comments. Errors GitHub still returns are shown in the sheet, never as an alert of the window behind it (macOS opens that as a window of its own).
 
 ## 9. AI review flow
 

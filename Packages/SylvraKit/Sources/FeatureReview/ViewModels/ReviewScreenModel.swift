@@ -42,6 +42,9 @@ public final class ReviewScreenModel {
     /// A write is in flight.
     public private(set) var isWorking = false
     public var errorMessage: String?
+    /// Why the last submit failed, shown in the submit sheet (an alert from the window behind it would open as
+    /// a window of its own).
+    public var submitError: String?
 
     private var threadsByAnchor: [CodeLocation: [ReviewThread]] = [:]
     /// Threads the reviewer expanded or collapsed against their default.
@@ -257,29 +260,6 @@ public final class ReviewScreenModel {
         }
     }
 
-    // MARK: - Submit
-
-    /// Submits the pending review (or a review without inline comments) and reloads the threads.
-    public func submitReview() async {
-        guard let nodeID = snapshot?.pullRequestNodeID else { return }
-        if submitEvent == .requestChanges, submitBody.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            errorMessage = String(localized: "Requesting changes needs a summary.")
-            return
-        }
-        let reviewID = snapshot?.pendingReviewID
-        let started = pullRequestID
-        await perform("submit review") {
-            try await self.service.submitReview(
-                pullRequestNodeID: nodeID, reviewID: reviewID, event: self.submitEvent, body: self.submitBody)
-            guard self.pullRequestID == started else { return }
-            self.snapshot?.pendingReviewID = nil
-            self.submitBody = ""
-            self.submitEvent = .comment
-            self.isSubmitSheetPresented = false
-            try await self.reload()
-        }
-    }
-
     // MARK: - Helpers
 
     private func canPost(_ body: String) -> Bool {
@@ -293,7 +273,7 @@ public final class ReviewScreenModel {
         return id
     }
 
-    private func reload() async throws {
+    func reload() async throws {
         guard let pullRequestID else { return }
         snapshot = try await service.loadReview(for: pullRequestID)
     }

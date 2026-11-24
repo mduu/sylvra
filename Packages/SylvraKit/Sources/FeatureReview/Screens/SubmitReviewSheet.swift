@@ -36,6 +36,8 @@ public struct SubmitReviewSheet: View {
 
             PendingCommentsView(comments: model.pendingComments.map { ($0.thread.location, $0.comment) })
 
+            SubmitProblemView(problem: model.submitProblem, error: model.submitError)
+
             HStack {
                 Spacer()
                 if model.isWorking { ProgressView().controlSize(.small) }
@@ -45,11 +47,34 @@ public struct SubmitReviewSheet: View {
                     .buttonStyle(.borderedProminent)
                     .tint(SylvraColor.brandPrimary)
                     .keyboardShortcut(.return, modifiers: .command)
-                    .disabled(model.isWorking)
+                    .disabled(model.isWorking || model.submitProblem != nil)
             }
         }
         .padding(20)
         .frame(width: 520)
+        .onChange(of: model.submitEvent) { model.submitError = nil }
+        .onDisappear { model.submitError = nil }
+    }
+}
+
+/// Why the review can't be submitted yet, or why GitHub refused it (pure).
+struct SubmitProblemView: View {
+    let problem: String?
+    let error: String?
+
+    var body: some View {
+        if let error {
+            Label(error, systemImage: "exclamationmark.triangle.fill")
+                .font(.callout)
+                .foregroundStyle(SylvraColor.statusCritical)
+                .fixedSize(horizontal: false, vertical: true)
+                .textSelection(.enabled)
+        } else if let problem {
+            Label(problem, systemImage: "info.circle")
+                .font(.callout)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
     }
 }
 

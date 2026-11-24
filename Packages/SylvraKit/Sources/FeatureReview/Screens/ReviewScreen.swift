@@ -28,7 +28,10 @@ public struct ReviewScreen<Content: View>: View {
             }
             .alert(
                 "Review action failed",
-                isPresented: Binding(get: { model.errorMessage != nil }, set: { if !$0 { model.errorMessage = nil } })
+                // Not over the submit sheet: from the window behind it, macOS shows the alert as a window of its own.
+                isPresented: Binding(
+                    get: { model.errorMessage != nil && !model.isSubmitSheetPresented },
+                    set: { if !$0 { model.errorMessage = nil } })
             ) {
                 Button("OK", role: .cancel) {}
             } message: {

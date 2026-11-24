@@ -24,7 +24,7 @@ struct MarkdownBlockTests {
 struct GitHubReviewMappingTests {
     // swiftlint:disable line_length
     static let json = """
-        {"repository":{"pullRequest":{"id":"PR_1",
+        {"repository":{"pullRequest":{"id":"PR_1","viewerDidAuthor":true,
           "reviews":{"nodes":[{"id":"PRR_other","viewerDidAuthor":false},{"id":"PRR_mine","viewerDidAuthor":true}]},
           "reviewThreads":{"nodes":[
             {"id":"T1","isResolved":false,"isOutdated":false,"path":"a.swift","line":12,"startLine":10,"originalLine":12,"originalStartLine":10,"diffSide":"RIGHT","viewerCanReply":true,"viewerCanResolve":true,"viewerCanUnresolve":false,
@@ -49,6 +49,7 @@ struct GitHubReviewMappingTests {
         let snapshot = try snapshot()
         #expect(snapshot.pullRequestNodeID == "PR_1")
         #expect(snapshot.pendingReviewID == "PRR_mine")
+        #expect(snapshot.viewerDidAuthor)
         // File-level thread without any line is skipped.
         #expect(snapshot.threads.map(\.id) == ["T1", "T2"])
     }
@@ -209,9 +210,11 @@ struct ReviewScreenModelTests {
     @Test func requestChangesNeedsSummary() async {
         let model = await loadedModel()
         model.submitEvent = .requestChanges
+        #expect(model.submitProblem != nil)
         await model.submitReview()
-        #expect(model.errorMessage != nil)
         #expect(model.hasPendingReview)
+        model.submitBody = "Round once."
+        #expect(model.submitProblem == nil)
     }
 
     @Test func failedResolveRollsBack() async throws {

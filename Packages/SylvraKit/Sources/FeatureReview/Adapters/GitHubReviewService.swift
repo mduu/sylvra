@@ -146,7 +146,7 @@ enum ReviewQueries {
         query($owner: String!, $name: String!, $number: Int!) {
           repository(owner: $owner, name: $name) {
             pullRequest(number: $number) {
-              id
+              id viewerDidAuthor
               reviews(first: 5, states: PENDING) { nodes { id viewerDidAuthor } }
               reviewThreads(first: 100) { nodes { ...ThreadFields } }
             }

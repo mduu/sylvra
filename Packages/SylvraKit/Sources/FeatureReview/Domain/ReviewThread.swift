@@ -65,11 +65,17 @@ public struct ReviewSnapshot: Hashable, Sendable {
     public var threads: [ReviewThread]
     /// ID of the viewer's pending review, if one exists.
     public var pendingReviewID: String?
+    /// The viewer opened the pull request: GitHub refuses their approval or change request.
+    public var viewerDidAuthor = false
 
-    public init(pullRequestNodeID: String, threads: [ReviewThread], pendingReviewID: String? = nil) {
+    public init(
+        pullRequestNodeID: String, threads: [ReviewThread], pendingReviewID: String? = nil,
+        viewerDidAuthor: Bool = false
+    ) {
         self.pullRequestNodeID = pullRequestNodeID
         self.threads = threads
         self.pendingReviewID = pendingReviewID
+        self.viewerDidAuthor = viewerDidAuthor
     }
 }
 
