@@ -12,6 +12,9 @@ import SwiftUI
 @main
 struct SylvraApp: App {
     @State private var environment = AppEnvironment()
+    @State private var skillUpdate = ClaudeSkillUpdateModel(
+        installer: CommandLine.arguments.contains("--demo")
+            ? nil : SylvraApp.commandLineTool.map { ClaudeSkillInstaller(commandLineTool: $0) })
     @AppStorage(AppearanceSetting.storageKey) private var appearance = AppearanceSetting.auto.rawValue
     @AppStorage(AITextSize.storageKey) private var aiTextSize = AITextSize.standard.rawValue
 
@@ -56,6 +59,7 @@ struct SylvraApp: App {
                     launchAppearance?.colorScheme ?? AppearanceSetting(rawValue: appearance)?.colorScheme
                 )
                 .environment(\.aiTextScale, AITextSize(rawValue: aiTextSize)?.scale ?? 1)
+                .claudeSkillUpdatePrompt(skillUpdate)
         }
         .defaultSize(width: 1440, height: 900)
         .commands {
