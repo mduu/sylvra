@@ -86,6 +86,10 @@ public struct ReviewRequest: Sendable {
             and `signs`: only clear ones, each with a short `title`, a `rationale` and one to three places on lines \
             of the diff as `evidence`. An empty list with none is fine.
 
+            Keep the `summary` short and to the point: two or three sentences on what the change does and why, \
+            and what matters most for merging it (the main risk or the biggest problem). Leave out file lists, \
+            details the findings already carry, and praise — but nothing essential.
+
             Write summary, titles, rationales, risk and mergeability reasons, slop signs, reading-order reasons, \
             overall points and pattern explanations in \
             \(language). Keep code, identifiers and \

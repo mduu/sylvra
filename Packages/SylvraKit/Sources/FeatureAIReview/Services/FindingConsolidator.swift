@@ -4,7 +4,8 @@ import SylvraCore
 
 /// After a review with several models: one more agent call groups findings and whole-PR points that describe
 /// the same problem in other words, another language or at another line (the merger's heuristic only catches
-/// close wording). Each group becomes one finding with all sources; on any failure the result stays as it is.
+/// close wording). Each group becomes one finding with all sources; the models' summaries become one short
+/// summary. On any failure the result stays as it is.
 public struct FindingConsolidator: Sendable {
     private let provider: any AgentProvider
     private let model: String
@@ -21,12 +22,15 @@ public struct FindingConsolidator: Sendable {
     }
 
     /// The consolidated result; its `tokens` are those of the consolidation call (`nil` when none was made).
-    public func consolidate(_ result: ReviewResult, language: String) async -> ReviewResult {
-        guard Self.isWorthwhile(result) else { return result }
+    /// `summaries`: each agent's summary, combined into one (none or one: the summary stays).
+    public func consolidate(_ result: ReviewResult, summaries: [String] = [], language: String) async -> ReviewResult {
+        let summaries = Self.distinct(summaries)
+        guard Self.isWorthwhile(result) || summaries.count > 1 else { return result }
         do {
             let reply = try await provider.chat(
                 ChatRequest(
-                    message: Self.prompt(for: result), sessionID: nil, model: model, effort: "low",
+                    message: Self.prompt(for: result, summaries: summaries, language: language), sessionID: nil,
+                    model: model, effort: "low",
                     language: language, workingDirectory: nil))
             guard let groups = Self.groups(in: reply.text) else {
                 Self.logger.error("Consolidating findings: no groups in the answer")
@@ -48,9 +52,34 @@ public struct FindingConsolidator: Sendable {
     struct Groups: Decodable, Equatable {
         var findings: [[Int]]?
         var overall: [[Int]]?
+        /// The models' summaries in one.
+        var summary: String?
     }
 
-    static func prompt(for result: ReviewResult) -> String {
+    static func distinct(_ summaries: [String]) -> [String] {
+        var seen: [String] = []
+        for summary in summaries.map({ $0.trimmingCharacters(in: .whitespacesAndNewlines) })
+        where !summary.isEmpty && !seen.contains(summary) {
+            seen.append(summary)
+        }
+        return seen
+    }
+
+    static func prompt(for result: ReviewResult, summaries: [String] = [], language: String = "English") -> String {
+        let summaryTask =
+            summaries.count > 1
+            ? """
+
+
+            Also combine the reviewers' summaries below into one `summary` in \(language): two or three short \
+            sentences on what the change does and why, and what matters most for merging it. Keep everything \
+            essential; drop repetition, file lists and praise.
+
+            Summaries:
+            \(summaries.map { "- " + $0.replacingOccurrences(of: "\n", with: " ") }.joined(separator: "\n"))
+            """
+            : ""
+        let example = summaries.count > 1 ? #", "summary": "…""# : ""
         let findings = result.findings.enumerated().map { index, finding in
             "[\(index)] \(finding.path):\(finding.startLine)-\(finding.endLine) · \(finding.category) · "
                 + "\(finding.title) — \(finding.rationale.prefix(300))"
@@ -65,8 +94,8 @@ public struct FindingConsolidator: Sendable {
             about different problems stay separate, even on the same line. When unsure, do not group.
 
             Reply with JSON only, no prose and no code fence, in this form:
-            {"findings": [[0, 3]], "overall": [[1, 2]]}
-            List only groups with two or more entries; use [] when nothing belongs together.
+            {"findings": [[0, 3]], "overall": [[1, 2]]\(example)}
+            List only groups with two or more entries; use [] when nothing belongs together.\(summaryTask)
 
             Findings:
             \(findings.isEmpty ? "(none)" : findings.joined(separator: "\n"))
@@ -90,6 +119,9 @@ public struct FindingConsolidator: Sendable {
         var merged = result
         merged.findings = mergeFindings(result.findings, groups: groups.findings ?? [])
         merged.overall = mergeOverall(result.overall, groups: groups.overall ?? [])
+        if let summary = groups.summary?.trimmingCharacters(in: .whitespacesAndNewlines), !summary.isEmpty {
+            merged.summary = summary
+        }
         return merged
     }
 

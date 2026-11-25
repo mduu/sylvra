@@ -190,7 +190,7 @@ All tabs stay visible side by side (⌘1–⌘5) with their counts as small badg
 
 ### 6.3 Change essence
 
-1. **AI summary** — 2–4 sentences: intent, scope, risk areas, relation to earlier changes. Marked with the AI accent. Shown in the PR column **above the tabs** (pinned with the header, collapsed to 3 lines, *More* expands; the reading order folds out below), so it stays visible during the whole review.
+1. **AI summary** — short and to the point, nothing essential left out: two or three sentences on what the change does and why and what matters most for merging it (no file lists, no repeated findings, no praise). With several models the combining step writes one summary from theirs; shards of a large change each add theirs. Marked with the AI accent. Shown in the PR column **above the tabs** (pinned with the header, collapsed to 3 lines, *More* expands; the reading order folds out below), so it stays visible during the whole review.
 2. **Change map** — treemap of namespaces/folders (area = changed lines, color intensity = add/delete ratio, soft AI glow where findings are). Alternatives: sunburst, indented tree with sparkline bars. Click filters files and diff.
 3. **Patterns — "What patterns are used or missed?"** — compact list: pattern name, verdict chip (*followed* · *violated* · *introduced*), one-line rationale; click highlights the evidence in the diff.
 4. **Files by namespace** — tree grouped by folder, with +/−, kind icon, viewed checkmark, finding/comment counts. Noise group collapsed at the bottom. Optional AI reading order.

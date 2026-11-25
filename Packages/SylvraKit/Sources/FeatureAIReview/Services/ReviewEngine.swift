@@ -132,7 +132,10 @@ public struct ReviewEngine: Sendable {
         _ merged: ReviewResult, outputs: [(AgentReviewOutput, AgentSource)], models: [String],
         settings: ReviewSettings, progress: @escaping @MainActor @Sendable (Progress) -> Void
     ) async -> ReviewResult {
-        guard Set(outputs.map(\.1.model)).count > 1, FindingConsolidator.isWorthwhile(merged) else {
+        let summaries = outputs.map(\.0.summary)
+        guard Set(outputs.map(\.1.model)).count > 1,
+            FindingConsolidator.isWorthwhile(merged) || FindingConsolidator.distinct(summaries).count > 1
+        else {
             if models.count > 1 {
                 await progress(Progress(id: Self.consolidationID, title: Self.consolidationTitle, state: .skipped))
             }
@@ -140,7 +143,8 @@ public struct ReviewEngine: Sendable {
         }
         let step = Progress(id: Self.consolidationID, title: Self.consolidationTitle, state: .running)
         await progress(step)
-        var result = await FindingConsolidator(provider: provider).consolidate(merged, language: settings.agentLanguage)
+        var result = await FindingConsolidator(provider: provider).consolidate(
+            merged, summaries: summaries, language: settings.agentLanguage)
         await progress(Progress(id: step.id, title: step.title, state: .done, tokens: result.tokens))
         // The review's total is summed from the steps by whoever runs it.
         result.tokens = nil

@@ -32,6 +32,19 @@ struct FindingConsolidatorTests {
         #expect(FindingConsolidator.groups(in: "No duplicates.") == nil)
     }
 
+    @Test func combinesTheModelsSummariesIntoOne() {
+        let summaries = FindingConsolidator.distinct(["Adds CSV export.", " Adds CSV export. ", "Rounds per line.", ""])
+        #expect(summaries == ["Adds CSV export.", "Rounds per line."])
+        let prompt = FindingConsolidator.prompt(for: result([]), summaries: summaries, language: "German")
+        #expect(prompt.contains("one `summary` in German"))
+        #expect(prompt.contains("- Rounds per line."))
+        #expect(!FindingConsolidator.prompt(for: result([])).contains("`summary`"))
+        let merged = FindingConsolidator.apply(
+            .init(summary: " Adds CSV export; rounding changes totals. "), to: result([]))
+        #expect(merged.summary == "Adds CSV export; rounding changes totals.")
+        #expect(FindingConsolidator.apply(.init(summary: " "), to: result([])).summary == "s")
+    }
+
     @Test func mergesAGroupIntoItsMostSevereFindingWithAllSources() {
         let input = result([
             finding("Totals drift", line: 8, source: opus, impact: .low),
