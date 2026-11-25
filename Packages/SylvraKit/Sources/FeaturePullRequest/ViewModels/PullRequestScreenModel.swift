@@ -20,6 +20,10 @@ public final class PullRequestScreenModel {
     public private(set) var loadState: LoadState = .idle
     /// The stack around the pull request (`nil`: none, or not loaded yet).
     public private(set) var stack: StackStatus?
+    /// A reload of the shown pull request is running (the details stay visible).
+    public private(set) var isRefreshing = false
+    /// When the details were last loaded.
+    public private(set) var lastUpdated: Date?
     public var tab: Tab = .overview
     /// Which section of the Comments tab is shown.
     public var discussionFilter: DiscussionFilter = .conversation
@@ -72,8 +76,10 @@ public final class PullRequestScreenModel {
         do {
             let loaded = try await loader.loadDetail(for: id)
             guard !Task.isCancelled else { return }
-            detail = loaded
+            // An unchanged answer must not re-render the column.
+            if detail != loaded { detail = loaded }
             loadState = .loaded
+            lastUpdated = .now
         } catch {
             guard !Task.isCancelled else { return }
             loadState = .failed(String(describing: error))
@@ -82,13 +88,42 @@ public final class PullRequestScreenModel {
         await loadStack()
     }
 
+    /// How often the shown pull request is reloaded (status, checks, approvals and comments change on GitHub).
+    public static let refreshInterval: Duration = .seconds(60)
+
+    /// Loads the shown pull request again, keeping it visible meanwhile (a failure keeps what is shown).
+    public func refresh() async {
+        guard let id = detail?.summary.id, !isRefreshing else { return }
+        isRefreshing = true
+        defer { isRefreshing = false }
+        do {
+            let loaded = try await loader.loadDetail(for: id)
+            guard !Task.isCancelled, detail?.summary.id == id else { return }
+            if detail != loaded { detail = loaded }
+            lastUpdated = .now
+        } catch {
+            Self.logger.error("Refreshing the pull request failed: \(String(describing: error), privacy: .public)")
+            return
+        }
+        await loadStack()
+    }
+
+    /// Reloads every `interval` until the task is cancelled (another pull request is shown).
+    public func keepRefreshing(every interval: Duration = refreshInterval) async {
+        while !Task.isCancelled {
+            try? await Task.sleep(for: interval)
+            guard !Task.isCancelled else { return }
+            await refresh()
+        }
+    }
+
     /// After the details, so the pull request shows without waiting for its neighbours.
     private func loadStack() async {
         guard let detail else { return }
         do {
             let loaded = try await loader.loadStack(for: detail)
             guard !Task.isCancelled, self.detail?.summary.id == detail.summary.id else { return }
-            stack = loaded
+            if stack != loaded { stack = loaded }
         } catch {
             // Keeps what was shown: a failing refresh shouldn't make the stack flicker away.
             Self.logger.error("Loading the stack failed: \(String(describing: error), privacy: .public)")

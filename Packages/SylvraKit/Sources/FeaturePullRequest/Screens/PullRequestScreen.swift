@@ -8,6 +8,8 @@ import SylvraCore
 /// summary), `overviewTop` (e.g. the change map), `files` (file navigator) and `conversation` (the comments on
 /// the pull request itself, with writing). Selecting a commit reviews it on its own (`selectCommit`, `nil` = all
 /// changes). `openPullRequest` opens another layer of the pull request's stack (`nil` hides the stack bar).
+/// The details reload every minute and with the header's refresh button; `refreshOthers` reloads what the app
+/// shows next to them (comments, threads, new commits).
 public struct PullRequestScreen<Files: View, OverviewTop: View, Summary: View, Conversation: View>: View {
     @Bindable private var model: PullRequestScreenModel
     private let pullRequest: PullRequestSummary?
@@ -19,6 +21,7 @@ public struct PullRequestScreen<Files: View, OverviewTop: View, Summary: View, C
     private let selectCommit: ((Commit?) -> Void)?
     private let showInCode: ((String, Int?) -> Void)?
     private let openPullRequest: ((PullRequestSummary) -> Void)?
+    private let refreshOthers: (() async -> Void)?
     @Environment(\.openURL) private var openURL
 
     public init(
@@ -26,6 +29,7 @@ public struct PullRequestScreen<Files: View, OverviewTop: View, Summary: View, C
         selectedCommitSHA: String? = nil, selectCommit: ((Commit?) -> Void)? = nil,
         showInCode: ((String, Int?) -> Void)? = nil,
         openPullRequest: ((PullRequestSummary) -> Void)? = nil,
+        refreshOthers: (() async -> Void)? = nil,
         @ViewBuilder summary: () -> Summary,
         @ViewBuilder overviewTop: () -> OverviewTop,
         @ViewBuilder files: () -> Files,
@@ -39,6 +43,7 @@ public struct PullRequestScreen<Files: View, OverviewTop: View, Summary: View, C
         self.selectCommit = selectCommit
         self.showInCode = showInCode
         self.openPullRequest = openPullRequest
+        self.refreshOthers = refreshOthers
         self.overviewTop = overviewTop()
         self.files = files()
     }
@@ -53,7 +58,10 @@ public struct PullRequestScreen<Files: View, OverviewTop: View, Summary: View, C
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(SylvraColor.surfacePrimary)
-        .task(id: pullRequest?.id) { await model.load(pullRequest?.id) }
+        .task(id: pullRequest?.id) {
+            await model.load(pullRequest?.id)
+            await model.keepRefreshing()
+        }
         .sheet(item: $model.openedCheck) { check in
             CheckReportSheet(
                 check: check, load: { try await model.report(for: check) }, openOnGitHub: { open(check.url) })
@@ -64,7 +72,9 @@ public struct PullRequestScreen<Files: View, OverviewTop: View, Summary: View, C
     private func content(_ detail: PullRequestDetail) -> some View {
         VStack(alignment: .leading, spacing: 0) {
             VStack(alignment: .leading, spacing: 12) {
-                PullRequestHeaderView(detail: detail) { open(detail.summary.url) }
+                PullRequestHeaderView(
+                    detail: detail, isRefreshing: model.isRefreshing, lastUpdated: model.lastUpdated,
+                    refresh: { Task { await refresh() } }, openOnGitHub: { open(detail.summary.url) })
                 if let stack = model.stack, let openPullRequest {
                     StackBarView(status: stack, open: openPullRequest)
                 }
@@ -164,6 +174,11 @@ public struct PullRequestScreen<Files: View, OverviewTop: View, Summary: View, C
     }
 
     // MARK: - Side effects
+
+    private func refresh() async {
+        await model.refresh()
+        await refreshOthers?()
+    }
 
     private func open(_ url: URL?) {
         if let url { openURL(url) }

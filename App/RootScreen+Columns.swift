@@ -136,6 +136,14 @@ extension RootScreen {
                 environment.inbox.remember(pullRequest)
                 selectedID = pullRequest.id
             },
+            refreshOthers: {
+                // Everything else shown for the pull request: comments, code threads, new commits, the inbox.
+                async let conversation: Void = environment.conversation.refresh()
+                async let threads: Void = environment.review.refreshThreads()
+                async let commits: Void = environment.diff.checkForNewCommits()
+                async let inbox: Void = environment.inbox.refresh()
+                _ = await (conversation, threads, commits, inbox)
+            },
             summary: {
                 AISummaryPanel(model: environment.aiReview, pullRequestID: selection?.id) { path in
                     Task { await environment.diff.reveal(path) }

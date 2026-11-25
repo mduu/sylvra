@@ -5,6 +5,9 @@ import SylvraCore
 /// Title, author, refs and status chips (pure).
 struct PullRequestHeaderView: View {
     let detail: PullRequestDetail
+    var isRefreshing = false
+    var lastUpdated: Date?
+    var refresh: (() -> Void)?
     let openOnGitHub: () -> Void
 
     var body: some View {
@@ -23,6 +26,20 @@ struct PullRequestHeaderView: View {
                         .truncationMode(.middle)
                 }
                 Spacer(minLength: 0)
+                if let refresh {
+                    Button(action: refresh) {
+                        if isRefreshing {
+                            ProgressView().controlSize(.mini)
+                        } else {
+                            Image(systemName: "arrow.clockwise")
+                        }
+                    }
+                    .buttonStyle(.borderless)
+                    .frame(width: 18, height: 18)
+                    .disabled(isRefreshing)
+                    .help(refreshHelp)
+                    .accessibilityLabel("Refresh pull request")
+                }
                 Button(action: openOnGitHub) {
                     Image(systemName: "arrow.up.right.square")
                 }
@@ -38,6 +55,12 @@ struct PullRequestHeaderView: View {
                     systemImage: "plusminus", tint: .secondary)
             }
         }
+    }
+
+    private var refreshHelp: String {
+        guard let lastUpdated else { return String(localized: "Reload the pull request from GitHub") }
+        let age = lastUpdated.formatted(.relative(presentation: .named))
+        return String(localized: "Reload the pull request from GitHub (updated \(age))")
     }
 
     private var checksTitle: String {
