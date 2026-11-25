@@ -107,16 +107,29 @@ private struct SelectionTracking: ViewModifier {
     let key: DiffTextSelectionController.RowKey?
     let length: Int
     let controller: DiffTextSelectionController?
+    /// Identifies this view's entries: a replaced view leaving late must not remove its successor's.
+    @State private var owner = UUID()
+    @State private var frame: CGRect?
 
     func body(content: Content) -> some View {
         if let key, let controller {
             content
                 .onGeometryChange(for: CGRect.self) {
                     $0.frame(in: .named(DiffTextSelectionController.coordinateSpace))
-                } action: { frame in
-                    controller.register(key, frame: frame, length: length)
+                } action: { newFrame in
+                    frame = newFrame
+                    controller.register(key, frame: newFrame, length: length, owner: owner)
                 }
-                .onDisappear { controller.unregister(key) }
+                // The same row gets a new hunk or row index (new commits, revealed context) without moving:
+                // move its entry, or hover and selection keep looking for the old one.
+                .onChange(of: key) { old, new in
+                    controller.unregister(old, owner: owner)
+                    if let frame { controller.register(new, frame: frame, length: length, owner: owner) }
+                }
+                .onChange(of: length) { _, new in
+                    if let frame { controller.register(key, frame: frame, length: new, owner: owner) }
+                }
+                .onDisappear { controller.unregister(key, owner: owner) }
                 .simultaneousGesture(TapGesture().onEnded { controller.clear() })
         } else {
             content

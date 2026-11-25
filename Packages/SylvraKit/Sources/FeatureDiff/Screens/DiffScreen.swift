@@ -200,6 +200,7 @@ public struct DiffScreen<LineAccessory: View>: View {
                 .onAppear(perform: connectTextSelection)
                 .environment(\.diffRowCache, rowCache)
                 .onChange(of: pullRequestID) {
+                    textSelection.resetHover()
                     textSelection.clear()
                     rowCache.removeAll()
                 }

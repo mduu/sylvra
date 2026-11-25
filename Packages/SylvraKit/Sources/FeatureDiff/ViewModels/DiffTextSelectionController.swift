@@ -27,6 +27,8 @@ final class DiffTextSelectionController {
     private struct RowInfo {
         var frame: CGRect
         var length: Int
+        /// The view that registered the row.
+        var owner: UUID
     }
 
     /// Coordinate space of the diff's content; row frames and drag locations are in it.
@@ -71,12 +73,14 @@ final class DiffTextSelectionController {
     @ObservationIgnored var askAI: ((DiffTextSelection) -> Void)?
     @ObservationIgnored var copy: ((DiffTextSelection) -> Void)?
 
-    func register(_ key: RowKey, frame: CGRect, length: Int) {
-        rows[key] = RowInfo(frame: frame, length: length)
+    func register(_ key: RowKey, frame: CGRect, length: Int, owner: UUID) {
+        rows[key] = RowInfo(frame: frame, length: length, owner: owner)
     }
 
-    func unregister(_ key: RowKey) {
-        rows[key] = nil
+    /// Only the view that registered the row removes it: when rows are rebuilt, the old view's `onDisappear`
+    /// can come after its successor registered the same row.
+    func unregister(_ key: RowKey, owner: UUID) {
+        if rows[key]?.owner == owner { rows[key] = nil }
     }
 
     // MARK: Hover
@@ -109,9 +113,10 @@ final class DiffTextSelectionController {
         if let key { hoverFlag(for: key).isHovered = true }
     }
 
-    /// Rows are built from scratch (another layout, scope or commit): their hover states go with them.
+    /// Rows are built from scratch (another layout, scope or commit): nothing is hovered. The flags stay — the
+    /// new rows already observe them (this runs after their body), and new flags would reach no row.
     func resetHover() {
-        hoverFlags = [:]
+        for flag in hoverFlags.values { flag.isHovered = false }
         hovered = nil
     }
 

@@ -1,4 +1,5 @@
 import CoreGraphics
+import Foundation
 import Testing
 
 @testable import FeatureDiff
@@ -40,7 +41,7 @@ struct DiffHoverTests {
 
     @Test func onlyTheLanesThatChangeAreTouched() {
         let controller = DiffTextSelectionController()
-        for lane in sideBySide { controller.register(lane.key, frame: lane.frame, length: 40) }
+        for lane in sideBySide { controller.register(lane.key, frame: lane.frame, length: 40, owner: UUID()) }
         let left = controller.hoverFlag(for: Self.key(.left))
         let right = controller.hoverFlag(for: Self.key(.right))
 
@@ -54,11 +55,38 @@ struct DiffHoverTests {
 
     @Test func scrollingMovesTheHoverWithTheContent() {
         let controller = DiffTextSelectionController()
-        for lane in sideBySide { controller.register(lane.key, frame: lane.frame, length: 40) }
+        for lane in sideBySide { controller.register(lane.key, frame: lane.frame, length: 40, owner: UUID()) }
         controller.hover(at: CGPoint(x: 10, y: 5))
         // The diff scrolls one row down under the resting pointer.
         controller.visibleRect = CGRect(x: 0, y: 22, width: 1000, height: 600)
         #expect(controller.hoverFlag(for: Self.key(.left, row: 1)).isHovered)
         #expect(!controller.hoverFlag(for: Self.key(.left)).isHovered)
+    }
+
+    /// Regression: rebuilt rows lost their gutter buttons — the old row's late `onDisappear` removed the entry
+    /// its successor had just registered.
+    @Test func aReplacedRowLeavingLateKeepsItsSuccessor() {
+        let controller = DiffTextSelectionController()
+        let (old, new) = (UUID(), UUID())
+        let row = sideBySide[0]
+        controller.register(row.key, frame: row.frame, length: 40, owner: old)
+        controller.register(row.key, frame: row.frame, length: 40, owner: new)
+        controller.unregister(row.key, owner: old)
+        controller.hover(at: CGPoint(x: 10, y: 5))
+        #expect(controller.hoverFlag(for: row.key).isHovered)
+    }
+
+    /// Regression: after another layout or commit the visible rows showed no gutter buttons — the reset
+    /// replaced the flags they already observed.
+    @Test func resettingTheHoverKeepsTheFlagsTheRowsObserve() {
+        let controller = DiffTextSelectionController()
+        for lane in sideBySide { controller.register(lane.key, frame: lane.frame, length: 40, owner: UUID()) }
+        let left = controller.hoverFlag(for: Self.key(.left))
+        controller.hover(at: CGPoint(x: 10, y: 5))
+        controller.resetHover()
+        #expect(!left.isHovered)
+        controller.hover(at: CGPoint(x: 300, y: 5))
+        #expect(left.isHovered)
+        #expect(controller.hoverFlag(for: Self.key(.left)) === left)
     }
 }

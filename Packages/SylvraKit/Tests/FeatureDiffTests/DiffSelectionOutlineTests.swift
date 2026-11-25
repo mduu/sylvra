@@ -1,4 +1,5 @@
 import CoreGraphics
+import Foundation
 import Testing
 
 @testable import FeatureDiff
@@ -53,7 +54,7 @@ struct DiffCopySelectionTests {
         #expect(!controller.copySelection())
 
         let key = DiffTextSelectionController.RowKey(path: "A.swift", lane: .inline, hunk: 0, row: 0)
-        controller.register(key, frame: CGRect(x: 100, y: 0, width: 400, height: 22), length: 40)
+        controller.register(key, frame: CGRect(x: 100, y: 0, width: 400, height: 22), length: 40, owner: UUID())
         controller.drag(from: CGPoint(x: 101, y: 5), to: CGPoint(x: 160, y: 5), horizontalOffset: 0)
         controller.endDrag()
         #expect(controller.copySelection())
