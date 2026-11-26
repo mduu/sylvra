@@ -17,6 +17,8 @@ struct WorkflowGraphView: View {
     var selectAICheck: (DeliveryStage, String?) -> Void = { _, _ in }
 
     static let aiBandID = "ai"
+    /// The AI check's titles are sentences: wider boxes, two lines.
+    static let aiBoxWidth: CGFloat = 270
 
     var body: some View {
         let layout = WorkflowGraphLayout(groups: groups)
@@ -46,7 +48,8 @@ struct WorkflowGraphView: View {
                 column.boxIDs.map { WorkflowGraphLayout.Item(id: $0, isDone: column.result != nil) }
             }
             groups.append(
-                WorkflowGraphLayout.Group(id: Self.aiBandID, columns: columns, entries: columns.first?.map(\.id)))
+                WorkflowGraphLayout.Group(
+                    id: Self.aiBandID, columns: columns, entries: columns.first?.map(\.id), boxWidth: Self.aiBoxWidth))
         }
         return groups
     }
@@ -190,15 +193,42 @@ struct WorkflowEdgesView: View {
                 var dots = Path()
                 for edge in edges where edge.isWalked == walked {
                     path.addPath(Self.curve(edge))
-                    for point in [edge.start, edge.end] {
-                        dots.addEllipse(in: CGRect(x: point.x - 3, y: point.y - 3, width: 6, height: 6))
-                    }
+                    if !edge.startsAtJunction { dots.addEllipse(in: Self.dot(edge.start, size: 6)) }
+                    if !edge.endsAtJunction { dots.addEllipse(in: Self.dot(edge.end, size: 6)) }
                 }
                 context.stroke(path, with: .color(color), style: StrokeStyle(lineWidth: 1.8, lineCap: .round))
                 context.fill(dots, with: .color(color))
             }
+            // Junctions: one ringed point where lines gather.
+            var junctions = Set<CGPointKey>()
+            for edge in edges {
+                if edge.endsAtJunction { junctions.insert(CGPointKey(edge.end)) }
+                if edge.startsAtJunction { junctions.insert(CGPointKey(edge.start)) }
+            }
+            for key in junctions {
+                let walked = edges.contains { $0.startsAtJunction && CGPointKey($0.start) == key && $0.isWalked }
+                let color = walked ? Color.green : Color.secondary.opacity(0.6)
+                context.fill(Path(ellipseIn: Self.dot(key.point, size: 10)), with: .color(color))
+                context.stroke(
+                    Path(ellipseIn: Self.dot(key.point, size: 10)), with: .color(.white.opacity(0.5)), lineWidth: 1.5)
+            }
         }
         .accessibilityHidden(true)
+    }
+
+    static func dot(_ point: CGPoint, size: CGFloat) -> CGRect {
+        CGRect(x: point.x - size / 2, y: point.y - size / 2, width: size, height: size)
+    }
+
+    /// A point as a set member (junctions shared by several lines).
+    struct CGPointKey: Hashable {
+        let x: CGFloat
+        let y: CGFloat
+        init(_ point: CGPoint) {
+            x = point.x
+            y = point.y
+        }
+        var point: CGPoint { CGPoint(x: x, y: y) }
     }
 
     /// An S-curve: leaves and enters horizontally, the bend spread over the gap.

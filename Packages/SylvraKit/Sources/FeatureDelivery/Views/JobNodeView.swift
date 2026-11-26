@@ -40,11 +40,11 @@ struct JobNodeView: View {
     private var state: StageState { job?.state ?? stage?.state ?? .waiting }
 
     var body: some View {
-        HStack(alignment: .center, spacing: 9) {
+        HStack(alignment: .center, spacing: 11) {
             StateBadge(
                 symbol: state.badgeSymbol, tint: state.tint, isHollow: state == .waiting,
                 isSpinning: state == .running)
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: 3) {
                 Text(title)
                     .font(.callout.weight(.semibold))
                     .foregroundStyle(state == .waiting ? .secondary : .primary)
@@ -59,7 +59,7 @@ struct JobNodeView: View {
             }
             Spacer(minLength: 0)
         }
-        .padding(.horizontal, 11)
+        .padding(.horizontal, 14)
         .graphBox(isSelected: isSelected, accent: isAlerting ? state.tint : nil, isWaiting: state == .waiting)
         .overlay {
             if state == .running {
@@ -83,8 +83,9 @@ struct JobNodeView: View {
         return job.state == .running || job.state == .failed
     }
 
+    /// A reusable workflow's job ("deploy / deploy-infrastructure"): its own name; the caller goes below.
     private var title: String {
-        if let job { return job.name }
+        if let job { return Self.ownName(job.name) }
         guard let stage else { return "" }
         return stage.kind == .environment ? String(localized: "Deploy \(stage.name)") : stage.name
     }
@@ -98,8 +99,21 @@ struct JobNodeView: View {
                 ?? "\(progress.done)/\(progress.total)"
         }
         if state == .needsApproval { return String(localized: "needs approval") }
-        if let duration = job?.duration ?? stage?.duration, state.isFinished { return deliveryDurationText(duration) }
-        return state.title.lowercased()
+        let caller = job.flatMap { Self.caller($0.name) }
+        if let duration = job?.duration ?? stage?.duration, state.isFinished {
+            return [caller, deliveryDurationText(duration)].compactMap { $0 }.joined(separator: " · ")
+        }
+        return [caller, state.title.lowercased()].compactMap { $0 }.joined(separator: " · ")
+    }
+
+    static func ownName(_ name: String) -> String {
+        guard let range = name.range(of: " / ", options: .backwards) else { return name }
+        return String(name[range.upperBound...])
+    }
+
+    static func caller(_ name: String) -> String? {
+        guard let range = name.range(of: " / ", options: .backwards) else { return nil }
+        return String(name[..<range.lowerBound])
     }
 
     private var help: String {
@@ -122,17 +136,18 @@ struct AICheckNodeView: View {
     var isSelected = false
 
     var body: some View {
-        HStack(alignment: .center, spacing: 9) {
+        HStack(alignment: .center, spacing: 11) {
             badge
             VStack(alignment: .leading, spacing: 2) {
-                Text(title).font(.callout.weight(.semibold)).lineLimit(1).truncationMode(.middle)
+                Text(title).font(.subheadline.weight(.semibold)).lineLimit(2).truncationMode(.tail)
+                    .fixedSize(horizontal: false, vertical: true)
                 Text(subtitle).font(.caption)
                     .foregroundStyle(check?.outcome == .problem ? SylvraColor.statusCritical : .secondary)
                     .lineLimit(1)
             }
             Spacer(minLength: 0)
         }
-        .padding(.horizontal, 11)
+        .padding(.horizontal, 14)
         .graphBox(
             isSelected: isSelected, accent: check?.outcome == .problem ? SylvraColor.statusCritical : nil, isAI: true
         )
@@ -254,19 +269,19 @@ extension StageVerification.Check.Outcome {
     HStack(alignment: .top, spacing: 16) {
         VStack(spacing: 12) {
             ForEach(Array(jobs.prefix(2)) + Array(jobs.suffix(2)), id: \.id) { job in
-                JobNodeView(job: job, stage: nil).frame(width: 160, height: 56)
+                JobNodeView(job: job, stage: nil).frame(width: 200, height: 64)
             }
-            JobNodeView(job: nil, stage: delivery.stages.last, isSelected: true).frame(width: 160, height: 56)
+            JobNodeView(job: nil, stage: delivery.stages.last, isSelected: true).frame(width: 200, height: 64)
         }
         VStack(spacing: 12) {
             ForEach(column.result?.checks ?? []) { check in
-                AICheckNodeView(column: column, check: check).frame(width: 160, height: 56)
+                AICheckNodeView(column: column, check: check).frame(width: 200, height: 64)
             }
             AICheckNodeView(
                 column: AICheckColumn(stage: dev, result: nil, isRunning: false, error: nil, isCheckable: true),
                 check: nil
             )
-            .frame(width: 160, height: 56)
+            .frame(width: 200, height: 64)
         }
     }
     .padding()

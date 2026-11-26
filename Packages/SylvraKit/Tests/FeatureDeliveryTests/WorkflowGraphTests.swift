@@ -104,10 +104,36 @@ struct WorkflowGraphLayoutTests {
         let unit = try #require(layout.nodes.first { $0.id == "Unit" }).frame
         #expect(split.start == CGPoint(x: compile.maxX, y: compile.midY))
         #expect(split.end == CGPoint(x: unit.minX, y: unit.midY))
-        // The join into dev follows `needs` across the stages; prod hangs on dev's last job.
+        // The join into dev follows `needs` across the stages (one target: direct lines); prod hangs on dev.
         #expect(["Unit>Deploy dev", "Integration>Deploy dev", "Lint>Deploy dev"].allSatisfy { edge($0) != nil })
         #expect(edge("Deploy dev>stage#prod")?.isWalked == false)
         #expect(edge("Compile>Unit")?.isWalked == true)
+    }
+
+    /// Many boxes waiting for the same many boxes: the lines gather in one junction (3 + 3, not 3 × 3).
+    @Test func manyToManyLinesMeetInAJunction() {
+        let stages = [
+            DeliveryStage(
+                id: "test", name: "Test", kind: .environment, workflow: "CI", state: .succeeded,
+                jobs: ["a", "b", "c"].map { job($0) }),
+            DeliveryStage(
+                id: "prod", name: "Prod", kind: .environment, workflow: "CI", state: .running,
+                jobs: ["x", "y", "z"].map { job($0, .running) }),
+        ]
+        let layout = WorkflowGraphLayout(stages: stages)
+        #expect(layout.edges.count == 6)
+        #expect(layout.edges.filter(\.endsAtJunction).count == 3 && layout.edges.filter(\.startsAtJunction).count == 3)
+        let point = layout.edges.first { $0.endsAtJunction }?.end
+        #expect(layout.edges.filter { $0.startsAtJunction }.allSatisfy { $0.start == point && $0.isWalked })
+        let test = layout.bands[0].frame
+        let prod = layout.bands[1].frame
+        #expect((point?.x ?? 0) > test.maxX - WorkflowGraphLayout.bandPadding && (point?.x ?? 0) < prod.minX + 12)
+    }
+
+    @Test func reusableWorkflowJobsShowTheirOwnName() {
+        #expect(JobNodeView.ownName("deploy / deploy-infrastructure") == "deploy-infrastructure")
+        #expect(JobNodeView.caller("deploy / deploy-infrastructure") == "deploy")
+        #expect(JobNodeView.ownName("Compile") == "Compile" && JobNodeView.caller("Compile") == nil)
     }
 
     /// The AI check comes last: one column per checked stage, the line from the last stage into its first.

@@ -25,11 +25,14 @@ public struct WorkflowGraphLayout: Equatable, Sendable {
         public let columns: [[Item]]
         /// The boxes the line from the band before leads into (`nil`: the first boxes by `needs`).
         public let entries: [String]?
+        /// Wider boxes than the standard (e.g. the AI check's longer titles).
+        public let boxWidth: CGFloat?
 
-        public init(id: String, columns: [[Item]], entries: [String]? = nil) {
+        public init(id: String, columns: [[Item]], entries: [String]? = nil, boxWidth: CGFloat? = nil) {
             self.id = id
             self.columns = columns
             self.entries = entries
+            self.boxWidth = boxWidth
         }
     }
 
@@ -51,11 +54,14 @@ public struct WorkflowGraphLayout: Equatable, Sendable {
         public let end: CGPoint
         /// The box it comes from is done: the way is walked.
         public let isWalked: Bool
+        /// The line starts or ends at a junction (many lines gathered into one point), not at a box.
+        public var startsAtJunction = false
+        public var endsAtJunction = false
     }
 
-    public static let nodeSize = CGSize(width: 160, height: 56)
-    static let columnGap: CGFloat = 40
-    static let rowGap: CGFloat = 12
+    public static let nodeSize = CGSize(width: 200, height: 64)
+    static let columnGap: CGFloat = 64
+    static let rowGap: CGFloat = 14
     static let bandPadding: CGFloat = 12
     /// Room for the band's name above its boxes.
     static let bandTitle: CGFloat = 34
@@ -81,15 +87,16 @@ public struct WorkflowGraphLayout: Equatable, Sendable {
         var x: CGFloat = 0
         for group in groups {
             let count = max(1, group.columns.count)
-            let width = 2 * Self.bandPadding + CGFloat(count) * node.width + CGFloat(count - 1) * Self.columnGap
+            let boxWidth = group.boxWidth ?? node.width
+            let width = 2 * Self.bandPadding + CGFloat(count) * boxWidth + CGFloat(count - 1) * Self.columnGap
             bands.append(Band(id: group.id, frame: CGRect(x: x, y: 0, width: width, height: bandHeight)))
             for (column, items) in group.columns.enumerated() {
                 let columnHeight = CGFloat(items.count) * node.height + CGFloat(items.count - 1) * Self.rowGap
                 var y = Self.bandTitle + (contentHeight - columnHeight) / 2
-                let left = x + Self.bandPadding + CGFloat(column) * (node.width + Self.columnGap)
+                let left = x + Self.bandPadding + CGFloat(column) * (boxWidth + Self.columnGap)
                 for item in items {
-                    nodes.append(
-                        Node(id: item.id, bandID: group.id, frame: CGRect(origin: CGPoint(x: left, y: y), size: node)))
+                    let frame = CGRect(x: left, y: y, width: boxWidth, height: node.height)
+                    nodes.append(Node(id: item.id, bandID: group.id, frame: frame))
                     y += node.height + Self.rowGap
                 }
             }
@@ -132,22 +139,78 @@ public struct WorkflowGraphLayout: Equatable, Sendable {
     static func edges(groups: [Group], nodes: [Node]) -> [Edge] {
         let frames = Dictionary(nodes.map { ($0.id, $0.frame) }, uniquingKeysWith: { first, _ in first })
         var edges: [Edge] = []
-        func connect(_ from: Item, _ to: Item) {
-            guard let source = frames[from.id], let target = frames[to.id] else { return }
-            edges.append(
-                Edge(
-                    id: "\(from.id)>\(to.id)", start: CGPoint(x: source.maxX, y: source.midY),
-                    end: CGPoint(x: target.minX, y: target.midY), isWalked: from.isDone))
-        }
         for (index, group) in groups.enumerated() {
             let own = group.columns.flatMap(\.self)
             let byID = Dictionary(own.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
-            for item in own {
-                for need in item.needs { if let from = byID[need] { connect(from, item) } }
-            }
+            let inside = own.flatMap { item in item.needs.compactMap { byID[$0] }.map { ($0, item) } }
+            edges += route(inside, frames: frames)
             guard index > 0 else { continue }
             let previous = groups[index - 1].columns.flatMap(\.self)
-            for (from, to) in crossings(from: previous, to: own, entries: group.entries) { connect(from, to) }
+            edges += route(crossings(from: previous, to: own, entries: group.entries), frames: frames)
+        }
+        return edges
+    }
+
+    /// Lines for pairs of boxes. Where several boxes all wait for the same several boxes (every test job for
+    /// every build job), the lines gather in a junction between them instead of crossing each other n × m times.
+    static func route(_ pairs: [(Item, Item)], frames: [String: CGRect]) -> [Edge] {
+        var sourcesOf: [String: [Item]] = [:]
+        var targets: [Item] = []
+        for (from, to) in pairs {
+            if sourcesOf[to.id] == nil { targets.append(to) }
+            if sourcesOf[to.id]?.contains(where: { $0.id == from.id }) != true {
+                sourcesOf[to.id, default: []].append(from)
+            }
+        }
+        // Targets by the set of boxes they wait for.
+        var clusters: [[String]: [Item]] = [:]
+        var order: [[String]] = []
+        for target in targets {
+            let key = (sourcesOf[target.id] ?? []).map(\.id).sorted()
+            if clusters[key] == nil { order.append(key) }
+            clusters[key, default: []].append(target)
+        }
+        return order.flatMap { key -> [Edge] in
+            let members = clusters[key] ?? []
+            let sources = members.first.flatMap { sourcesOf[$0.id] } ?? []
+            if sources.count > 1, members.count > 1 {
+                return junction(from: sources, to: members, key: key, frames: frames)
+            }
+            return members.flatMap { target in
+                sources.compactMap { source -> Edge? in
+                    guard let from = frames[source.id], let to = frames[target.id] else { return nil }
+                    return Edge(
+                        id: "\(source.id)>\(target.id)", start: CGPoint(x: from.maxX, y: from.midY),
+                        end: CGPoint(x: to.minX, y: to.midY), isWalked: source.isDone)
+                }
+            }
+        }
+    }
+
+    /// Lines from every source into one point between the boxes, and from there to every target.
+    private static func junction(from sources: [Item], to targets: [Item], key: [String], frames: [String: CGRect])
+        -> [Edge]
+    {
+        let sourceFrames = sources.compactMap { frames[$0.id] }
+        let targetFrames = targets.compactMap { frames[$0.id] }
+        guard let right = sourceFrames.map(\.maxX).max(), let left = targetFrames.map(\.minX).min() else { return [] }
+        let middles = (sourceFrames + targetFrames).map(\.midY)
+        let point = CGPoint(x: (right + left) / 2, y: middles.reduce(0, +) / CGFloat(middles.count))
+        let name = "junction(\(key.joined(separator: ",")))"
+        var edges: [Edge] = []
+        for (source, frame) in zip(sources, sourceFrames) {
+            var edge = Edge(
+                id: "\(source.id)>\(name)", start: CGPoint(x: frame.maxX, y: frame.midY), end: point,
+                isWalked: source.isDone)
+            edge.endsAtJunction = true
+            edges.append(edge)
+        }
+        let allDone = sources.allSatisfy(\.isDone)
+        for (target, frame) in zip(targets, targetFrames) {
+            var edge = Edge(
+                id: "\(name)>\(target.id)", start: point, end: CGPoint(x: frame.minX, y: frame.midY), isWalked: allDone)
+            edge.startsAtJunction = true
+            edges.append(edge)
         }
         return edges
     }
