@@ -4,11 +4,12 @@ Guidelines for AI coding agents (Claude Code, Codex, Copilot, …) working on th
 
 ## Project
 
-**Sylvra** is a native macOS PR review client for GitHub, written in Swift and SwiftUI. It is *not* a Git client. Read these before making non-trivial changes:
+**Sylvra** is a native macOS PR review client for GitHub, written in Swift and SwiftUI: it helps to bring a change from pull request to live production. It is *not* a Git client. Read these before making non-trivial changes:
 
 - `specs/projectidea.md` — vision, scope, non-goals
 - `specs/architecture.md` — feature slices, integrations, data model, CI and release
 - `specs/ux.md` — layout, interactions, color system, motion
+- `specs/delivery.md` — concept: merge, following deployments, verifying them up to production
 
 If a change contradicts the specs, point it out and update the spec in the same change (or ask first if it is a product decision).
 
@@ -92,9 +93,9 @@ Run lint and the relevant tests before reporting a task as done. If you cannot r
 
 1. **Don't touch the user's working copy unasked.** PR checkouts happen in Sylvra-managed worktrees by default. The main clone is only used after an explicit user choice; a dirty working tree is never stashed or changed silently.
 2. **Never post to GitHub without an explicit user action.** AI findings are suggestions, not comments.
-3. **AI review agents run read-only.** No file edits, no pushes, no network side effects.
+3. **AI agents run read-only.** No file edits, no pushes, no network side effects. The delivery verification agent may query monitoring and logging tools through the user's own local access, reading only; fixing happens in an interactive session the user drives.
 4. **Secrets only in the Keychain.** No tokens in `UserDefaults`, files or logs.
-5. **No Git client scope creep.** No staging, committing, branching or merging UI.
+5. **No Git client scope creep.** No staging, committing, branching or local merging UI. Merging a pull request on GitHub (on a click) is in scope.
 6. **AI content is always visually marked** with the AI accent style.
 7. **Long-running work is visible** (activity indicator) and cancellable.
 

@@ -11,7 +11,7 @@ AI agents now write a large share of the code that lands in pull requests. The v
 
 Reviews should stop being an ever-growing burden. Sylvra should be a tool one **genuinely enjoys** opening every day — beautiful and practical, again and again.
 
-Sylvra is **not a Git client**. It does not stage, commit, rebase or push. It is a highly specialized **PR review client**.
+Sylvra is **not a Git client**. It does not stage, commit, rebase or push. It is a highly specialized **PR client**: review first, and from there it helps to bring a change **from pull request to live production** — notifications on my own pull requests, merge, following the deployment and checking its effect (see [`delivery.md`](delivery.md)).
 
 ## 2. Problem
 
@@ -124,6 +124,13 @@ Everything GitHub shows about a PR, in a calmer layout:
 - A visible **activity indicator** whenever Sylvra works in the background (AI review, fetch, worktree preparation).
 - A **macOS notification** when long-running work finishes while the app is not focused (configurable per job type).
 
+### 5.12 Delivery: from merge to production (concept)
+- **Notifications** when one of my pull requests gets a comment, an approval or a change request.
+- **Merge** a pull request from Sylvra (a click, never automatic).
+- **Follow the deployment** stage by stage (build, dev, test, prod) with a notification per stage.
+- **Verify** each stage with an AI agent using the locally installed tools (e.g. Datadog): did it deploy, does it throw errors, does the change show its effect in logs and metrics. Read-only; fixing happens in an interactive Claude session in the terminal.
+- Optional: automatic for my own pull requests. Details: [`delivery.md`](delivery.md).
+
 ## 6. Smart features (post-MVP ideas)
 
 - **Review order suggestion**: the agent proposes the best reading order (entry points → core logic → tests → config).
@@ -140,7 +147,7 @@ Everything GitHub shows about a PR, in a calmer layout:
 
 ## 7. Non-goals
 
-- No Git client features (staging, committing, branching UI, merge conflict resolution). Checking out a PR head for local review is the only Git write operation.
+- No Git client features (staging, committing, branching UI, local merging, merge conflict resolution). Checking out a PR head for local review is the only Git write operation. Merging a pull request on GitHub is a pull request action, not a Git client feature.
 - No support for GitLab, Bitbucket or Azure DevOps (for now — GitHub only, including GitHub Enterprise later).
 - No hosted backend, no account system.
 - No replacement for the IDE. Deep code navigation happens in Rider / VS Code / Xcode.

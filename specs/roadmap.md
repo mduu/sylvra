@@ -36,6 +36,8 @@ More ideas: [`backlog.md`](backlog.md).
 
 ## Next (after the MVP)
 
+- **Delivery** ([`delivery.md`](delivery.md)): notifications for my pull requests and merge → Delivery tab (pipeline from GitHub) → AI verification per stage up to production → automatic for my own pull requests.
+
 - Pagination beyond 100 changed files / 100 review threads / 50 comments per thread.
 - Outdated and file-level review threads in a separate list.
 - Horizontal scrolling for long lines in the side-by-side diff (currently truncated).
