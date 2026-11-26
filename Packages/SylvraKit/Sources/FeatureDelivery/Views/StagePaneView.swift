@@ -75,7 +75,9 @@ struct StagePaneView: View {
                 }
             }
         }
-        if let number = job.jobID {
+        if !job.hasLog {
+            NoLogView(state: job.state)
+        } else if let number = job.jobID {
             switch logs[number] {
             case .loaded(let log):
                 JobLogView(log: log)
@@ -88,6 +90,42 @@ struct StagePaneView: View {
             }
         } else {
             Text("GitHub keeps no log for this job.").font(.caption).foregroundStyle(.secondary)
+        }
+    }
+}
+
+/// For a job without a log: why there is none (pure).
+private struct NoLogView: View {
+    let state: StageState
+
+    var body: some View {
+        HStack(spacing: 12) {
+            StateBadge(symbol: state.badgeSymbol, tint: state.tint, isHollow: state == .waiting)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title).font(.headline)
+                Text(detail).font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color.secondary.opacity(0.08), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+    }
+
+    private var title: String {
+        switch state {
+        case .skipped: String(localized: "Skipped")
+        case .cancelled: String(localized: "Cancelled")
+        case .needsApproval: String(localized: "Waiting for approval")
+        default: String(localized: "Not started yet")
+        }
+    }
+
+    private var detail: String {
+        switch state {
+        case .skipped: String(localized: "This job did not run: its condition was not met, so there is no log.")
+        case .cancelled: String(localized: "This job was cancelled before it ran, so there is no log.")
+        case .needsApproval: String(localized: "The job starts once the deployment is approved.")
+        default: String(localized: "The job has not started yet; its log appears once it runs.")
         }
     }
 }

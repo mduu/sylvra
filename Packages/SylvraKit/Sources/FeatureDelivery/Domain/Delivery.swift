@@ -85,6 +85,17 @@ public struct DeliveryJob: Identifiable, Hashable, Sendable, Codable {
         self.steps = steps
     }
 
+    /// GitHub keeps a log only for a job that ran: not for one skipped, still waiting or cancelled before it
+    /// started.
+    public var hasLog: Bool {
+        guard jobID != nil else { return false }
+        switch state {
+        case .skipped, .waiting, .needsApproval: return false
+        case .cancelled: return startedAt != nil && duration.map { $0 > 0 } ?? false
+        case .running, .succeeded, .failed: return true
+        }
+    }
+
     /// How far a running job got (`nil`: not running, or no steps known).
     public var progress: JobProgress? {
         guard state == .running, !steps.isEmpty else { return nil }

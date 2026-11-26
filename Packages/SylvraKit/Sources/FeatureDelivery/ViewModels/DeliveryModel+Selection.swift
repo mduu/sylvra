@@ -102,7 +102,7 @@ extension DeliveryModel {
     public func select(_ item: DeliveryItem, of id: PullRequestID) {
         selectedItem[id] = item
         if case .job(let jobID) = item, let job = shownStage(for: id)?.jobs.first(where: { $0.id == jobID }),
-            let number = job.jobID, needsLog(number, running: job.state == .running)
+            job.hasLog, let number = job.jobID, needsLog(number, running: job.state == .running)
         {
             Task { await loadLog(number, of: id) }
         }

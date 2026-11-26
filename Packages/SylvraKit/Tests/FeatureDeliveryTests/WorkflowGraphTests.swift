@@ -130,6 +130,20 @@ struct WorkflowGraphLayoutTests {
         #expect((point?.x ?? 0) > test.maxX - WorkflowGraphLayout.bandPadding && (point?.x ?? 0) < prod.minX + 12)
     }
 
+    /// Only a job that ran has a log: a skipped or waiting one is not asked for (GitHub answers 404).
+    @Test func onlyJobsThatRanHaveALog() {
+        func job(_ state: StageState, started: Bool = true) -> DeliveryJob {
+            DeliveryJob(
+                id: "j", name: "j", state: state, startedAt: started ? .now - 60 : nil,
+                finishedAt: started ? .now : nil,
+                jobID: 7)
+        }
+        #expect(job(.succeeded).hasLog && job(.failed).hasLog && job(.running).hasLog)
+        #expect(!job(.skipped).hasLog && !job(.waiting, started: false).hasLog && !job(.needsApproval).hasLog)
+        #expect(!job(.cancelled, started: false).hasLog && job(.cancelled).hasLog)
+        #expect(!DeliveryJob(id: "j", name: "j", state: .succeeded).hasLog)
+    }
+
     @Test func toolNamesReadWell() {
         #expect(ToolName.short("mcp__datadog__analyze_datadog_logs") == "datadog · analyze_datadog_logs")
         #expect(ToolName.short("mcp__plugin_engineering_datadog__search") == "engineering_datadog · search")
