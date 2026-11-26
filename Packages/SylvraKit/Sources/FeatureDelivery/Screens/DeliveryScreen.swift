@@ -1,3 +1,4 @@
+import AppKit
 import DesignSystem
 import SwiftUI
 import SylvraCore
@@ -15,6 +16,11 @@ public struct DeliveryScreen: View {
     @Environment(\.openURL) private var openURL
     @State private var stageToApprove: DeliveryStage?
     @State private var isEditingNotes = false
+    /// The graph's share of the height below the headline (dragged with the handle; the graph never takes more
+    /// than it needs, and the details keep at least `minimumDetails`).
+    @AppStorage("delivery.graphShare") private var graphShare = 0.5
+    private static let minimumDetails: CGFloat = 260
+    private static let minimumGraph: CGFloat = 150
     /// Tools to allow for AI checks, waiting for the user's confirmation; then the stage is checked again.
     @State private var toolsToAllow: ToolsToAllow?
 
@@ -119,13 +125,37 @@ public struct DeliveryScreen: View {
         }
     }
 
-    /// The graph and, below it, the details of what is selected in it.
-    @ViewBuilder private func stagesView(_ delivery: Delivery, _ id: PullRequestID) -> some View {
+    /// The graph and, below it, the details of what is selected in it; a handle between them sets the split.
+    private func stagesView(_ delivery: Delivery, _ id: PullRequestID) -> some View {
+        let columns = model.aiColumns(for: id)
+        let cardHeight = AICheckCardView.height(rows: columns.count)
+        let natural =
+            max(WorkflowGraphLayout(stages: delivery.stages).size.height, columns.isEmpty ? 0 : cardHeight) + 12
+        return GeometryReader { proxy in
+            let available = proxy.size.height
+            let wanted = max(Self.minimumGraph, min(available - Self.minimumDetails, available * graphShare))
+            let graphHeight = min(natural, wanted)
+            VStack(spacing: 0) {
+                graphView(delivery, id, columns: columns, cardHeight: cardHeight)
+                    .frame(height: graphHeight)
+                SplitHandle()
+                    .gesture(
+                        DragGesture(coordinateSpace: .named("deliverySplit"))
+                            .onChanged { value in
+                                graphShare = min(0.85, max(0.15, Double(value.location.y / max(1, available))))
+                            })
+                detailsView(delivery, id)
+            }
+            .coordinateSpace(.named("deliverySplit"))
+        }
+    }
+
+    @ViewBuilder private func graphView(
+        _ delivery: Delivery, _ id: PullRequestID, columns: [AICheckColumn], cardHeight: CGFloat
+    ) -> some View {
         let stage = model.shownStage(for: id)
         let item = model.shownItem(for: id)
         let showsAI = model.isShowingAICheck(for: id)
-        let columns = model.aiColumns(for: id)
-        let cardHeight = AICheckCardView.height(rows: columns.count)
         WorkflowGraphView(
             stages: delivery.stages,
             selectedBandID: showsAI ? stage.map { DeliveryModel.aiPrefix + $0.id } : stage?.id,
@@ -136,13 +166,13 @@ public struct DeliveryScreen: View {
                 ? nil : card(columns, selectedStage: showsAI ? stage : nil, item: item, delivery: delivery, id),
             cardHeight: cardHeight
         )
-        .frame(
-            height: max(
-                WorkflowGraphLayout(stages: delivery.stages).size.height, columns.isEmpty ? 0 : cardHeight) + 12
-        )
-        if let stage {
+    }
+
+    @ViewBuilder private func detailsView(_ delivery: Delivery, _ id: PullRequestID) -> some View {
+        let item = model.shownItem(for: id)
+        if let stage = model.shownStage(for: id) {
             StageDetailsView(
-                stage: stage, showsAICheck: showsAI, item: item,
+                stage: stage, showsAICheck: model.isShowingAICheck(for: id), item: item,
                 verification: model.verification(of: stage, in: id),
                 isVerifying: model.isVerifying(stage, in: id),
                 verificationError: model.verificationError(of: stage, in: id), isApproving: model.isApproving,
@@ -252,5 +282,25 @@ extension DeliveryScreen {
                     } : nil,
                 allowBlockedTools: unique.isEmpty
                     ? nil : { toolsToAllow = ToolsToAllow(tools: unique, stageIDs: blockedStages) }))
+    }
+}
+
+/// The grip between the graph and the details: drag to give one more room.
+private struct SplitHandle: View {
+    @State private var isHovering = false
+
+    var body: some View {
+        Capsule()
+            .fill(Color.secondary.opacity(isHovering ? 0.6 : 0.3))
+            .frame(width: 44, height: 5)
+            .frame(maxWidth: .infinity)
+            .frame(height: 14)
+            .contentShape(Rectangle())
+            .onHover { hovering in
+                isHovering = hovering
+                if hovering { NSCursor.resizeUpDown.push() } else { NSCursor.pop() }
+            }
+            .help("Drag to share the height between the graph and the details")
+            .accessibilityLabel("Resize the graph and the details")
     }
 }

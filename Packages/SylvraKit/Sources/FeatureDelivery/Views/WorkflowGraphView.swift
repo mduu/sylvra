@@ -26,7 +26,8 @@ struct WorkflowGraphView<Card: View>: View {
         let height = max(layout.size.height, card == nil ? 0 : cardHeight)
         let width = layout.size.width + (card == nil ? 0 : Self.cardGap + Self.cardWidth)
         ScrollViewReader { proxy in
-            ScrollView(.horizontal) {
+            // Sideways for long pipelines, down for stages with many jobs (the details keep their room).
+            ScrollView([.horizontal, .vertical]) {
                 ZStack(alignment: .topLeading) {
                     ForEach(layout.bands) { band in bandView(band) }
                     WorkflowEdgesView(edges: layout.edges)

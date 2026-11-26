@@ -122,9 +122,14 @@ private struct StepListView: View {
         if let running = steps.first(where: { $0.state == .running }) {
             return String(localized: "\(steps.count) steps · step \(running.number) running")
         }
-        return done == steps.count
-            ? String(localized: "\(steps.count) steps · all done")
-            : String(localized: "\(steps.count) steps · \(done) done")
+        // Skipped steps (conditions not met) belong to a finished job: said as such, not as missing.
+        let skipped = steps.count { $0.state == .skipped || $0.state == .cancelled }
+        if done + skipped == steps.count {
+            return skipped == 0
+                ? String(localized: "\(steps.count) steps · all done")
+                : String(localized: "\(steps.count) steps · \(done) done, \(skipped) skipped")
+        }
+        return String(localized: "\(steps.count) steps · \(done) done")
     }
 
     private func row(_ step: JobStep) -> some View {
