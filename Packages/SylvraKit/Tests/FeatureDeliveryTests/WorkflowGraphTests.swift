@@ -130,23 +130,16 @@ struct WorkflowGraphLayoutTests {
         #expect((point?.x ?? 0) > test.maxX - WorkflowGraphLayout.bandPadding && (point?.x ?? 0) < prod.minX + 12)
     }
 
+    @Test func toolNamesReadWell() {
+        #expect(ToolName.short("mcp__datadog__analyze_datadog_logs") == "datadog · analyze_datadog_logs")
+        #expect(ToolName.short("mcp__plugin_engineering_datadog__search") == "engineering_datadog · search")
+        #expect(ToolName.short("Bash") == "Bash")
+    }
+
     @Test func reusableWorkflowJobsShowTheirOwnName() {
         #expect(JobNodeView.ownName("deploy / deploy-infrastructure") == "deploy-infrastructure")
         #expect(JobNodeView.caller("deploy / deploy-infrastructure") == "deploy")
         #expect(JobNodeView.ownName("Compile") == "Compile" && JobNodeView.caller("Compile") == nil)
-    }
-
-    /// The AI check comes last: one column per checked stage, the line from the last stage into its first.
-    @Test func theAICheckBandFollowsTheStages() {
-        let ai = WorkflowGraphLayout.Group(
-            id: "ai", columns: [[.init(id: "a1"), .init(id: "a2")], [.init(id: "b1")]], entries: ["a1", "a2"])
-        let layout = WorkflowGraphLayout(groups: stages.map(WorkflowGraphLayout.group) + [ai])
-        #expect(layout.bands.last?.id == "ai")
-        let into = layout.edges.filter { $0.id.hasSuffix(">a1") || $0.id.hasSuffix(">a2") || $0.id.hasSuffix(">b1") }
-        #expect(into.map(\.id).sorted() == ["stage#prod>a1", "stage#prod>a2"])
-        let a1 = layout.nodes.first { $0.id == "a1" }?.frame ?? .zero
-        let b1 = layout.nodes.first { $0.id == "b1" }?.frame ?? .zero
-        #expect(b1.minX > a1.maxX)
     }
 
     @Test func withoutNeedsTheJobsOfAStageStandTogether() {

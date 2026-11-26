@@ -48,8 +48,10 @@ struct JobNodeView: View {
                 Text(title)
                     .font(.callout.weight(.semibold))
                     .foregroundStyle(state == .waiting ? .secondary : .primary)
-                    .lineLimit(1)
+                    // Room for two lines, unless the steps take the third.
+                    .lineLimit(showsSteps ? 1 : 2)
                     .truncationMode(.middle)
+                    .fixedSize(horizontal: false, vertical: true)
                 Text(subtitle)
                     .font(.caption)
                     .foregroundStyle(isAlerting ? state.tint : .secondary)
@@ -60,6 +62,9 @@ struct JobNodeView: View {
             Spacer(minLength: 0)
         }
         .padding(.horizontal, 14)
+        .padding(.vertical, 10)
+        // The box fills its cell: the shape is the cell, not the text.
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
         .graphBox(isSelected: isSelected, accent: isAlerting ? state.tint : nil, isWaiting: state == .waiting)
         .overlay {
             if state == .running {
@@ -125,60 +130,6 @@ struct JobNodeView: View {
         isPulsing = false
         guard state == .running, !reduceMotion else { return }
         withAnimation(.easeOut(duration: 1.6).repeatForever(autoreverses: false)) { isPulsing = true }
-    }
-}
-
-/// A box of the AI check band (pure): one check with its outcome, or — for a stage not checked yet, being
-/// checked or whose check failed — one box for the whole check. AI content: the AI accent.
-struct AICheckNodeView: View {
-    let column: AICheckColumn
-    let check: StageVerification.Check?
-    var isSelected = false
-
-    var body: some View {
-        HStack(alignment: .center, spacing: 11) {
-            badge
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title).font(.subheadline.weight(.semibold)).lineLimit(2).truncationMode(.tail)
-                    .fixedSize(horizontal: false, vertical: true)
-                Text(subtitle).font(.caption)
-                    .foregroundStyle(check?.outcome == .problem ? SylvraColor.statusCritical : .secondary)
-                    .lineLimit(1)
-            }
-            Spacer(minLength: 0)
-        }
-        .padding(.horizontal, 14)
-        .graphBox(
-            isSelected: isSelected, accent: check?.outcome == .problem ? SylvraColor.statusCritical : nil, isAI: true
-        )
-        .help(check.map { "\($0.title)\n\($0.finding)" } ?? title)
-        .accessibilityElement(children: .combine)
-    }
-
-    @ViewBuilder private var badge: some View {
-        if let check {
-            StateBadge(symbol: check.outcome.badgeSymbol, tint: check.outcome.tint)
-        } else if column.isRunning {
-            StateBadge(symbol: "sparkles", tint: SylvraColor.brandPrimary, isSpinning: true)
-        } else if column.error != nil {
-            StateBadge(symbol: "exclamationmark", tint: SylvraColor.statusWarning)
-        } else {
-            StateBadge(symbol: "sparkles", tint: SylvraColor.brandPrimary, isHollow: true)
-        }
-    }
-
-    private var title: String {
-        if let check { return check.title }
-        if column.isRunning { return String(localized: "Checking \(column.stage.name)…") }
-        if let result = column.result { return result.verdict.title }
-        return String(localized: "Check \(column.stage.name)")
-    }
-
-    private var subtitle: String {
-        if check != nil { return column.stage.name }
-        if column.isRunning { return String(localized: "logs and monitoring") }
-        if column.error != nil { return String(localized: "check failed — retry") }
-        return column.isCheckable ? String(localized: "with AI · select to start") : column.stage.name
     }
 }
 
@@ -249,6 +200,16 @@ extension StageState {
     }
 }
 
+extension StageVerification.Verdict {
+    var badgeSymbol: String {
+        switch self {
+        case .healthy: "checkmark"
+        case .problems: "exclamationmark"
+        case .unchecked: "questionmark"
+        }
+    }
+}
+
 extension StageVerification.Check.Outcome {
     var badgeSymbol: String {
         switch self {
@@ -262,27 +223,11 @@ extension StageVerification.Check.Outcome {
 #Preview {
     let delivery = DemoDeliveryLoader.delivery(for: .init(owner: "acme", repository: "billing", number: 812))
     let jobs = delivery.stages.flatMap(\.jobs)
-    let dev = delivery.stages[1]
-    let column = AICheckColumn(
-        stage: dev, result: DemoDeliveryVerifier.verification(for: dev), isRunning: false, error: nil, isCheckable: true
-    )
-    HStack(alignment: .top, spacing: 16) {
-        VStack(spacing: 12) {
-            ForEach(Array(jobs.prefix(2)) + Array(jobs.suffix(2)), id: \.id) { job in
-                JobNodeView(job: job, stage: nil).frame(width: 200, height: 64)
-            }
-            JobNodeView(job: nil, stage: delivery.stages.last, isSelected: true).frame(width: 200, height: 64)
+    VStack(spacing: 12) {
+        ForEach(Array(jobs.prefix(2)) + Array(jobs.suffix(2)), id: \.id) { job in
+            JobNodeView(job: job, stage: nil).frame(width: 200, height: 76)
         }
-        VStack(spacing: 12) {
-            ForEach(column.result?.checks ?? []) { check in
-                AICheckNodeView(column: column, check: check).frame(width: 200, height: 64)
-            }
-            AICheckNodeView(
-                column: AICheckColumn(stage: dev, result: nil, isRunning: false, error: nil, isCheckable: true),
-                check: nil
-            )
-            .frame(width: 200, height: 64)
-        }
+        JobNodeView(job: nil, stage: delivery.stages.last, isSelected: true).frame(width: 200, height: 76)
     }
     .padding()
 }

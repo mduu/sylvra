@@ -16,6 +16,10 @@ struct StageDetailsActions {
     var loadLog: (Int) -> Void
     /// Shows the stage's AI check (its column in the AI check band); `nil`: none.
     var showAICheck: (() -> Void)?
+    /// Tools Claude Code refused in the check and that are still not allowed (full names).
+    var deniedTools: [String] = []
+    /// Allows the denied tools for AI checks (confirmed by the screen) and checks again.
+    var allowDeniedTools: (() -> Void)?
 }
 
 /// The details of the selected band (pure): for a stage its jobs, for the AI check the stage's checks; on the
@@ -212,6 +216,7 @@ private struct StageListView: View {
                     .padding(.trailing, 12)
             }
             if let verificationError { errorLabel(verificationError).padding(.trailing, 12) }
+            if !actions.deniedTools.isEmpty { deniedToolsBox.padding(.trailing, 12).padding(.top, 6) }
         }
     }
 
@@ -307,5 +312,27 @@ private struct StageListView: View {
         }
         .buttonStyle(.plain)
         .accessibilityAddTraits(isSelected ? .isSelected : [])
+    }
+}
+
+extension StageListView {
+    /// Tools the check needed but Claude Code refused: one click allows them for AI checks.
+    private var deniedToolsBox: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Label("Claude Code blocked tools this check needed", systemImage: "lock.fill")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(SylvraColor.statusWarning)
+            Text(actions.deniedTools.map(ToolName.short).joined(separator: ", "))
+                .font(.caption.monospaced())
+                .fixedSize(horizontal: false, vertical: true)
+            if let allow = actions.allowDeniedTools {
+                Button("Allow for AI Checks…", action: allow)
+                    .controlSize(.small)
+                    .help("Let Sylvra's AI checks use these tools; your other Claude sessions keep their own rules")
+            }
+        }
+        .padding(10)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(SylvraColor.statusWarning.opacity(0.1), in: RoundedRectangle(cornerRadius: 8))
     }
 }

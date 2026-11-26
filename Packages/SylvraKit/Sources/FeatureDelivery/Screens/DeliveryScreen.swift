@@ -15,6 +15,15 @@ public struct DeliveryScreen: View {
     @Environment(\.openURL) private var openURL
     @State private var stageToApprove: DeliveryStage?
     @State private var isEditingNotes = false
+    /// Tools to allow for AI checks, waiting for the user's confirmation; then the stage is checked again.
+    @State private var toolsToAllow: ToolsToAllow?
+
+    struct ToolsToAllow: Identifiable {
+        let tools: [String]
+        /// The stages to check again once the tools are allowed.
+        let stageIDs: [String]
+        var id: String { (tools + stageIDs).joined(separator: ",") }
+    }
 
     public init(
         model: DeliveryModel, pullRequestID: PullRequestID?, askAI: ((String) -> Void)? = nil,
@@ -52,6 +61,20 @@ public struct DeliveryScreen: View {
         } message: { _ in
             Text("GitHub starts the deployment right away.")
         }
+        .confirmationDialog(
+            "Allow these tools for AI checks?", isPresented: toolsBinding, presenting: toolsToAllow
+        ) { request in
+            Button("Allow and Check Again") {
+                model.allowForChecks(request.tools)
+                if let id = pullRequestID { for stageID in request.stageIDs { model.startVerifying(stageID, of: id) } }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: { request in
+            Text(
+                "\(request.tools.map(ToolName.short).joined(separator: ", "))\n\nSylvra's AI checks may then call "
+                    + "them without asking, in every repository. Allow only tools that read. Your other Claude "
+                    + "sessions keep their own rules; the options (…) let you stop allowing them.")
+        }
         .sheet(isPresented: $isEditingNotes) {
             if let id = pullRequestID {
                 MonitoringNotesSheet(repository: "\(id.owner)/\(id.repository)", notes: model.monitoringNotes(for: id))
@@ -60,6 +83,10 @@ public struct DeliveryScreen: View {
                 }
             }
         }
+    }
+
+    private var toolsBinding: Binding<Bool> {
+        Binding(get: { toolsToAllow != nil }, set: { if !$0 { toolsToAllow = nil } })
     }
 
     private var approvalBinding: Binding<Bool> {
@@ -72,7 +99,9 @@ public struct DeliveryScreen: View {
                 delivery: delivery, isFollowing: model.isFollowing(id),
                 toggleFollowing: { model.isFollowing(id) ? model.unfollow(id) : model.follow(id) },
                 verifiesAutomatically: model.canVerify ? $model.verifiesAutomatically : nil,
-                editNotes: model.canVerify ? { isEditingNotes = true } : nil
+                editNotes: model.canVerify ? { isEditingNotes = true } : nil,
+                allowedTools: model.allowedCheckTools,
+                stopAllowing: { model.stopAllowingForChecks($0) }
             )
             .padding(.horizontal, 20)
             .padding(.top, 14)
@@ -85,43 +114,44 @@ public struct DeliveryScreen: View {
                 .foregroundStyle(.secondary)
                 .padding(20)
             } else {
-                let stage = model.shownStage(for: id)
-                let item = model.shownItem(for: id)
-                let showsAI = model.isShowingAICheck(for: id)
-                WorkflowGraphView(
-                    stages: delivery.stages, aiColumns: model.aiColumns(for: id),
-                    selectedBandID: showsAI ? stage.map { DeliveryModel.aiPrefix + $0.id } : stage?.id,
-                    selectedBoxID: selectedBox(item, stage: stage, showsAI: showsAI),
-                    selectStage: { stage in withAnimation(.snappy) { model.selectStage(stage.id, of: id) } },
-                    selectJob: { job in withAnimation(.snappy) { model.selectJob(job.id, of: id) } },
-                    selectAICheck: { stage, title in
-                        withAnimation(.snappy) { model.selectAICheck(stage.id, item: title.map { .check($0) }, of: id) }
-                    }
-                )
-                .frame(height: WorkflowGraphLayout(stages: delivery.stages).size.height + 12)
-                if let stage {
-                    StageDetailsView(
-                        stage: stage, showsAICheck: showsAI, item: item,
-                        verification: model.verification(of: stage, in: id),
-                        isVerifying: model.isVerifying(stage, in: id),
-                        verificationError: model.verificationError(of: stage, in: id), isApproving: model.isApproving,
-                        approvalError: model.approvalError, logs: model.logs,
-                        actions: actions(for: stage, in: delivery, id)
-                    )
-                    .padding([.horizontal, .bottom], 14)
-                    .onChange(of: stage) { _, stage in reloadRunningLog(stage, item: model.shownItem(for: id), id: id) }
-                    .task(id: item) { loadLogIfNeeded(item, stage: stage, id: id) }
-                }
+                stagesView(delivery, id)
             }
         }
     }
 
-    /// The box ringed in the graph: the job shown, or the check shown in the AI check band.
-    private func selectedBox(_ item: DeliveryItem?, stage: DeliveryStage?, showsAI: Bool) -> String? {
-        switch item {
-        case .job(let job): showsAI ? nil : job
-        case .check(let title): stage.map { "ai#\($0.id)#\(title)" }
-        default: nil
+    /// The graph and, below it, the details of what is selected in it.
+    @ViewBuilder private func stagesView(_ delivery: Delivery, _ id: PullRequestID) -> some View {
+        let stage = model.shownStage(for: id)
+        let item = model.shownItem(for: id)
+        let showsAI = model.isShowingAICheck(for: id)
+        let columns = model.aiColumns(for: id)
+        let cardHeight = AICheckCardView.height(rows: columns.count)
+        WorkflowGraphView(
+            stages: delivery.stages,
+            selectedBandID: showsAI ? stage.map { DeliveryModel.aiPrefix + $0.id } : stage?.id,
+            selectedBoxID: item.flatMap { if case .job(let job) = $0, !showsAI { job } else { nil } },
+            selectStage: { stage in withAnimation(.snappy) { model.selectStage(stage.id, of: id) } },
+            selectJob: { job in withAnimation(.snappy) { model.selectJob(job.id, of: id) } },
+            card: columns.isEmpty
+                ? nil : card(columns, selectedStage: showsAI ? stage : nil, item: item, delivery: delivery, id),
+            cardHeight: cardHeight
+        )
+        .frame(
+            height: max(
+                WorkflowGraphLayout(stages: delivery.stages).size.height, columns.isEmpty ? 0 : cardHeight) + 12
+        )
+        if let stage {
+            StageDetailsView(
+                stage: stage, showsAICheck: showsAI, item: item,
+                verification: model.verification(of: stage, in: id),
+                isVerifying: model.isVerifying(stage, in: id),
+                verificationError: model.verificationError(of: stage, in: id), isApproving: model.isApproving,
+                approvalError: model.approvalError, logs: model.logs,
+                actions: actions(for: stage, in: delivery, id)
+            )
+            .padding([.horizontal, .bottom], 14)
+            .onChange(of: stage) { _, stage in reloadRunningLog(stage, item: model.shownItem(for: id), id: id) }
+            .task(id: item) { loadLogIfNeeded(item, stage: stage, id: id) }
         }
     }
 
@@ -141,7 +171,13 @@ public struct DeliveryScreen: View {
             },
             loadLog: { number in Task { await model.loadLog(number, of: id) } },
             showAICheck: model.aiColumns(for: id).contains { $0.stage.id == stage.id }
-                ? { withAnimation(.snappy) { model.selectAICheck(stage.id, of: id) } } : nil)
+                ? { withAnimation(.snappy) { model.selectAICheck(stage.id, of: id) } } : nil,
+            deniedTools: check.map(model.stillDenied) ?? [],
+            allowDeniedTools: {
+                let tools = check.map(model.stillDenied) ?? []
+                guard !tools.isEmpty else { return }
+                toolsToAllow = ToolsToAllow(tools: tools, stageIDs: [stage.id])
+            })
     }
 
     /// The details show a job without a log yet (the first item of a stage is chosen, not clicked).
@@ -186,4 +222,35 @@ public struct DeliveryScreen: View {
         askAI: { _ in }, openSession: { _, _ in }
     )
     .frame(width: 1200, height: 760)
+}
+
+extension DeliveryScreen {
+    /// The AI check's verdict card at the end of the graph.
+    fileprivate func card(
+        _ columns: [AICheckColumn], selectedStage: DeliveryStage?, item: DeliveryItem?, delivery: Delivery,
+        _ id: PullRequestID
+    ) -> AICheckCardView {
+        let blocked = columns.compactMap(\.result).flatMap(model.stillDenied)
+        var unique: [String] = []
+        for tool in blocked where !unique.contains(tool) { unique.append(tool) }
+        let blockedStages = columns.filter { $0.result.map(model.stillDenied)?.isEmpty == false }.map(\.stage.id)
+        return AICheckCardView(
+            columns: columns, selectedStageID: selectedStage?.id,
+            selectedCheck: item.flatMap { if case .check(let title) = $0 { title } else { nil } },
+            blockedTools: unique.map(ToolName.short),
+            actions: AICheckCardActions(
+                select: { stage, title in
+                    withAnimation(.snappy) { model.selectAICheck(stage.id, item: title.map { .check($0) }, of: id) }
+                },
+                verify: model.canVerify ? { stage in model.startVerifying(stage.id, of: id) } : nil,
+                stop: { stage in model.stopVerifying(stage.id, of: id) },
+                verifyAll: model.canVerify
+                    ? {
+                        for column in columns where column.isCheckable && !column.isRunning {
+                            model.startVerifying(column.stage.id, of: id)
+                        }
+                    } : nil,
+                allowBlockedTools: unique.isEmpty
+                    ? nil : { toolsToAllow = ToolsToAllow(tools: unique, stageIDs: blockedStages) }))
+    }
 }

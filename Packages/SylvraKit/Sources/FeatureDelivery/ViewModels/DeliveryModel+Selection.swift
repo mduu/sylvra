@@ -21,7 +21,7 @@ extension DeliveryItem {
     }
 }
 
-/// One column of the AI check band: a stage's check — its result, running, or still to do.
+/// A stage in the AI check's card: its result, running, or still to do.
 public struct AICheckColumn: Equatable, Sendable, Identifiable {
     public let stage: DeliveryStage
     public let result: StageVerification?
@@ -31,11 +31,6 @@ public struct AICheckColumn: Equatable, Sendable, Identifiable {
 
     public var id: String { stage.id }
 
-    /// The boxes of the column: the checks, or one box for the whole column (running, to do, failed).
-    public var boxIDs: [String] {
-        guard let result, !result.checks.isEmpty, !isRunning else { return ["ai#\(stage.id)#check"] }
-        return result.checks.map { "ai#\(stage.id)#\($0.title)" }
-    }
 }
 
 /// A job log being loaded or shown.

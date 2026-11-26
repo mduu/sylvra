@@ -23,16 +23,10 @@ public struct WorkflowGraphLayout: Equatable, Sendable {
     public struct Group: Equatable, Sendable {
         public let id: String
         public let columns: [[Item]]
-        /// The boxes the line from the band before leads into (`nil`: the first boxes by `needs`).
-        public let entries: [String]?
-        /// Wider boxes than the standard (e.g. the AI check's longer titles).
-        public let boxWidth: CGFloat?
 
-        public init(id: String, columns: [[Item]], entries: [String]? = nil, boxWidth: CGFloat? = nil) {
+        public init(id: String, columns: [[Item]]) {
             self.id = id
             self.columns = columns
-            self.entries = entries
-            self.boxWidth = boxWidth
         }
     }
 
@@ -59,7 +53,7 @@ public struct WorkflowGraphLayout: Equatable, Sendable {
         public var endsAtJunction = false
     }
 
-    public static let nodeSize = CGSize(width: 200, height: 64)
+    public static let nodeSize = CGSize(width: 200, height: 76)
     static let columnGap: CGFloat = 64
     static let rowGap: CGFloat = 14
     static let bandPadding: CGFloat = 12
@@ -87,7 +81,7 @@ public struct WorkflowGraphLayout: Equatable, Sendable {
         var x: CGFloat = 0
         for group in groups {
             let count = max(1, group.columns.count)
-            let boxWidth = group.boxWidth ?? node.width
+            let boxWidth = node.width
             let width = 2 * Self.bandPadding + CGFloat(count) * boxWidth + CGFloat(count - 1) * Self.columnGap
             bands.append(Band(id: group.id, frame: CGRect(x: x, y: 0, width: width, height: bandHeight)))
             for (column, items) in group.columns.enumerated() {
@@ -146,7 +140,7 @@ public struct WorkflowGraphLayout: Equatable, Sendable {
             edges += route(inside, frames: frames)
             guard index > 0 else { continue }
             let previous = groups[index - 1].columns.flatMap(\.self)
-            edges += route(crossings(from: previous, to: own, entries: group.entries), frames: frames)
+            edges += route(crossings(from: previous, to: own), frames: frames)
         }
         return edges
     }
@@ -217,7 +211,7 @@ public struct WorkflowGraphLayout: Equatable, Sendable {
 
     /// The lines from one band into the next: the `needs` that reach back, or else from the band's last boxes to
     /// the next band's first.
-    static func crossings(from previous: [Item], to own: [Item], entries: [String]? = nil) -> [(Item, Item)] {
+    static func crossings(from previous: [Item], to own: [Item]) -> [(Item, Item)] {
         let ownIDs = Set(own.map(\.id))
         let byID = Dictionary(previous.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
         let needed = own.flatMap { item in item.needs.compactMap { byID[$0] }.map { ($0, item) } }
@@ -226,9 +220,7 @@ public struct WorkflowGraphLayout: Equatable, Sendable {
         let ends = previous.filter { candidate in
             !previous.contains { $0.needs.contains(candidate.id) && previousIDs.contains($0.id) }
         }
-        let starts = own.filter { item in
-            entries.map { $0.contains(item.id) } ?? !item.needs.contains { ownIDs.contains($0) }
-        }
+        let starts = own.filter { item in !item.needs.contains { ownIDs.contains($0) } }
         return ends.flatMap { from in starts.map { (from, $0) } }
     }
 }

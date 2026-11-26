@@ -2,26 +2,29 @@ import DesignSystem
 import SwiftUI
 
 /// The delivery as a graph, like GitHub draws a workflow run (pure): each stage a band with its jobs as boxes,
-/// joined by curved lines from box to box — splits and joins included — and at the end the AI check, a band with
-/// a column of checks per checked stage. Wider than the window, it scrolls sideways and starts at the selection.
-struct WorkflowGraphView: View {
+/// joined by curved lines from box to box — splits and joins included. At the end, joined by a dashed line (an
+/// assessment, not a step), the AI check's verdict card. Wider than the window, it scrolls sideways and starts at
+/// the selection.
+struct WorkflowGraphView<Card: View>: View {
     let stages: [DeliveryStage]
-    var aiColumns: [AICheckColumn] = []
-    /// The selected band: a stage's id, or `ai#<stage id>` for a stage's AI check.
+    /// The selected band: a stage's id, or `ai#<stage id>` for a stage's AI check (then the card is selected).
     let selectedBandID: String?
-    /// The selected box's id (a job, or `ai#<stage id>#<check>`).
+    /// The selected job's id.
     var selectedBoxID: String?
     let selectStage: (DeliveryStage) -> Void
     let selectJob: (DeliveryJob) -> Void
-    /// A box of the AI check band: the stage and, for a check's box, its title.
-    var selectAICheck: (DeliveryStage, String?) -> Void = { _, _ in }
+    /// The AI check's card (`nil`: no AI check).
+    var card: Card?
+    var cardHeight: CGFloat = 0
 
-    static let aiBandID = "ai"
-    /// The AI check's titles are sentences: wider boxes, two lines.
-    static let aiBoxWidth: CGFloat = 270
+    static var cardID: String { "ai-card" }
+    static var cardWidth: CGFloat { 460 }
+    static var cardGap: CGFloat { 64 }
 
     var body: some View {
-        let layout = WorkflowGraphLayout(groups: groups)
+        let layout = WorkflowGraphLayout(stages: stages)
+        let height = max(layout.size.height, card == nil ? 0 : cardHeight)
+        let width = layout.size.width + (card == nil ? 0 : Self.cardGap + Self.cardWidth)
         ScrollViewReader { proxy in
             ScrollView(.horizontal) {
                 ZStack(alignment: .topLeading) {
@@ -30,8 +33,19 @@ struct WorkflowGraphView: View {
                         .frame(width: layout.size.width, height: layout.size.height)
                         .allowsHitTesting(false)
                     ForEach(layout.nodes) { node in nodeView(node) }
+                    if let card {
+                        DashedConnector()
+                            .stroke(AIAccent.border.opacity(0.8), style: StrokeStyle(lineWidth: 1.8, dash: [5, 4]))
+                            .frame(width: Self.cardGap, height: 12)
+                            .offset(x: layout.size.width, y: layout.size.height / 2 - 6)
+                            .accessibilityHidden(true)
+                        card
+                            .frame(width: Self.cardWidth, height: height)
+                            .id(Self.cardID)
+                            .offset(x: layout.size.width + Self.cardGap)
+                    }
                 }
-                .frame(width: layout.size.width, height: layout.size.height, alignment: .topLeading)
+                .frame(width: width, height: height, alignment: .topLeading)
                 .padding(.horizontal, 16)
                 .padding(.vertical, 6)
             }
@@ -41,59 +55,25 @@ struct WorkflowGraphView: View {
         }
     }
 
-    private var groups: [WorkflowGraphLayout.Group] {
-        var groups = stages.map(WorkflowGraphLayout.group)
-        if !aiColumns.isEmpty {
-            let columns = aiColumns.map { column in
-                column.boxIDs.map { WorkflowGraphLayout.Item(id: $0, isDone: column.result != nil) }
-            }
-            groups.append(
-                WorkflowGraphLayout.Group(
-                    id: Self.aiBandID, columns: columns, entries: columns.first?.map(\.id), boxWidth: Self.aiBoxWidth))
-        }
-        return groups
-    }
-
     private func reveal(_ proxy: ScrollViewProxy) {
         guard let selectedBandID else { return }
-        proxy.scrollTo(
-            selectedBandID.hasPrefix(DeliveryModel.aiPrefix) ? Self.aiBandID : selectedBandID, anchor: .center)
-    }
-
-    private func isSelected(_ band: WorkflowGraphLayout.Band) -> Bool {
-        band.id == Self.aiBandID ? selectedBandID?.hasPrefix(DeliveryModel.aiPrefix) == true : band.id == selectedBandID
+        proxy.scrollTo(selectedBandID.hasPrefix(DeliveryModel.aiPrefix) ? Self.cardID : selectedBandID, anchor: .center)
     }
 
     private func bandView(_ band: WorkflowGraphLayout.Band) -> some View {
         let stage = stages.first { $0.id == band.id }
-        let isAI = band.id == Self.aiBandID
-        let selected = isSelected(band)
+        let selected = band.id == selectedBandID
         return Button {
-            if let stage {
-                selectStage(stage)
-            } else if isAI, let first = aiColumns.first {
-                selectAICheck(first.stage, nil)
-            }
+            if let stage { selectStage(stage) }
         } label: {
             ZStack(alignment: .topLeading) {
                 RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .fill(
-                        isAI
-                            ? AnyShapeStyle(AIAccent.lineGradient(opacity: selected ? 0.16 : 0.08))
-                            : AnyShapeStyle(bandFill(selected)))
+                    .fill(selected ? SylvraColor.surfaceSelected : SylvraColor.surfaceElevated.opacity(0.5))
                 RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .strokeBorder(bandBorder(isAI: isAI, selected: selected), lineWidth: selected ? 1.5 : 1)
-                Group {
-                    if let stage {
-                        StageBandTitle(stage: stage)
-                    } else if isAI {
-                        Label("AI check", systemImage: "sparkles")
-                            .font(.caption.weight(.bold))
-                            .foregroundStyle(AIAccent.border)
-                    }
-                }
-                .padding(.leading, 14)
-                .padding(.top, 10)
+                    .strokeBorder(
+                        selected ? SylvraColor.brandPrimary : Color.secondary.opacity(0.2),
+                        lineWidth: selected ? 1.5 : 1)
+                if let stage { StageBandTitle(stage: stage).padding(.leading, 14).padding(.top, 10) }
             }
             .frame(width: band.frame.width, height: band.frame.height)
             .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
@@ -101,61 +81,39 @@ struct WorkflowGraphView: View {
         .buttonStyle(.plain)
         .id(band.id)
         .offset(x: band.frame.minX, y: band.frame.minY)
-        .accessibilityLabel(stage.map { "\($0.name): \($0.state.title)" } ?? String(localized: "AI check"))
+        .accessibilityLabel(stage.map { "\($0.name): \($0.state.title)" } ?? "")
         .accessibilityAddTraits(selected ? .isSelected : [])
     }
 
-    private func bandFill(_ selected: Bool) -> Color {
-        selected ? SylvraColor.surfaceSelected : SylvraColor.surfaceElevated.opacity(0.5)
-    }
-
-    private func bandBorder(isAI: Bool, selected: Bool) -> AnyShapeStyle {
-        if isAI { return AnyShapeStyle(AIAccent.border.opacity(selected ? 0.9 : 0.45)) }
-        return AnyShapeStyle(selected ? SylvraColor.brandPrimary : Color.secondary.opacity(0.2))
-    }
-
-    @ViewBuilder private func nodeView(_ node: WorkflowGraphLayout.Node) -> some View {
-        if node.bandID == Self.aiBandID {
-            aiNodeView(node)
-        } else {
-            let stage = stages.first { $0.id == node.bandID }
-            let job = stage?.jobs.first { $0.id == node.id }
-            Button {
-                if let job {
-                    selectJob(job)
-                } else if let stage {
-                    selectStage(stage)
-                }
-            } label: {
-                JobNodeView(
-                    job: job, stage: stage,
-                    isSelected: job.map { $0.id == selectedBoxID }
-                        ?? (stage?.id == selectedBandID && selectedBoxID == nil)
-                )
-                .frame(width: node.frame.width, height: node.frame.height)
+    private func nodeView(_ node: WorkflowGraphLayout.Node) -> some View {
+        let stage = stages.first { $0.id == node.bandID }
+        let job = stage?.jobs.first { $0.id == node.id }
+        return Button {
+            if let job {
+                selectJob(job)
+            } else if let stage {
+                selectStage(stage)
             }
-            .buttonStyle(.plain)
-            .offset(x: node.frame.minX, y: node.frame.minY)
+        } label: {
+            JobNodeView(
+                job: job, stage: stage,
+                isSelected: job.map { $0.id == selectedBoxID } ?? (stage?.id == selectedBandID && selectedBoxID == nil)
+            )
+            .frame(width: node.frame.width, height: node.frame.height)
         }
+        .buttonStyle(.plain)
+        .offset(x: node.frame.minX, y: node.frame.minY)
     }
+}
 
-    @ViewBuilder private func aiNodeView(_ node: WorkflowGraphLayout.Node) -> some View {
-        if let column = aiColumns.first(where: { node.id.hasPrefix("ai#\($0.stage.id)#") }) {
-            let title = String(node.id.dropFirst("ai#\(column.stage.id)#".count))
-            let check = column.result?.checks.first { $0.title == title }
-            Button {
-                selectAICheck(column.stage, check?.title)
-            } label: {
-                AICheckNodeView(
-                    column: column, check: check,
-                    isSelected: node.id == selectedBoxID
-                        || (check == nil && selectedBandID == DeliveryModel.aiPrefix + column.stage.id)
-                )
-                .frame(width: node.frame.width, height: node.frame.height)
-            }
-            .buttonStyle(.plain)
-            .offset(x: node.frame.minX, y: node.frame.minY)
-        }
+/// A horizontal line with a dot at its end (the dashed join to the AI check's card).
+private struct DashedConnector: Shape {
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        path.move(to: CGPoint(x: rect.minX, y: rect.midY))
+        path.addLine(to: CGPoint(x: rect.maxX - 6, y: rect.midY))
+        path.addEllipse(in: CGRect(x: rect.maxX - 8, y: rect.midY - 4, width: 8, height: 8))
+        return path
     }
 }
 
@@ -181,7 +139,7 @@ private struct StageBandTitle: View {
 }
 
 /// The lines between the boxes (pure): smooth curves from box to box with a dot at each end; walked ones
-/// green, the rest grey.
+/// green, the rest grey. Where lines gather, a ringed junction.
 struct WorkflowEdgesView: View {
     let edges: [WorkflowGraphLayout.Edge]
 
@@ -199,18 +157,16 @@ struct WorkflowEdgesView: View {
                 context.stroke(path, with: .color(color), style: StrokeStyle(lineWidth: 1.8, lineCap: .round))
                 context.fill(dots, with: .color(color))
             }
-            // Junctions: one ringed point where lines gather.
-            var junctions = Set<CGPointKey>()
+            var junctions = Set<PointKey>()
             for edge in edges {
-                if edge.endsAtJunction { junctions.insert(CGPointKey(edge.end)) }
-                if edge.startsAtJunction { junctions.insert(CGPointKey(edge.start)) }
+                if edge.endsAtJunction { junctions.insert(PointKey(edge.end)) }
+                if edge.startsAtJunction { junctions.insert(PointKey(edge.start)) }
             }
             for key in junctions {
-                let walked = edges.contains { $0.startsAtJunction && CGPointKey($0.start) == key && $0.isWalked }
-                let color = walked ? Color.green : Color.secondary.opacity(0.6)
-                context.fill(Path(ellipseIn: Self.dot(key.point, size: 10)), with: .color(color))
-                context.stroke(
-                    Path(ellipseIn: Self.dot(key.point, size: 10)), with: .color(.white.opacity(0.5)), lineWidth: 1.5)
+                let walked = edges.contains { $0.startsAtJunction && PointKey($0.start) == key && $0.isWalked }
+                let circle = Path(ellipseIn: Self.dot(key.point, size: 10))
+                context.fill(circle, with: .color(walked ? Color.green : Color.secondary.opacity(0.6)))
+                context.stroke(circle, with: .color(.white.opacity(0.5)), lineWidth: 1.5)
             }
         }
         .accessibilityHidden(true)
@@ -221,7 +177,7 @@ struct WorkflowEdgesView: View {
     }
 
     /// A point as a set member (junctions shared by several lines).
-    struct CGPointKey: Hashable {
+    struct PointKey: Hashable {
         let x: CGFloat
         let y: CGFloat
         init(_ point: CGPoint) {
@@ -246,15 +202,10 @@ struct WorkflowEdgesView: View {
 #Preview {
     @Previewable @State var selected: String?
     let delivery = DemoDeliveryLoader.delivery(for: .init(owner: "acme", repository: "billing", number: 812))
-    let dev = delivery.stages[1]
-    WorkflowGraphView(
-        stages: delivery.stages,
-        aiColumns: [
-            AICheckColumn(
-                stage: dev, result: DemoDeliveryVerifier.verification(for: dev), isRunning: false, error: nil,
-                isCheckable: true)
-        ],
-        selectedBandID: selected ?? delivery.currentStage?.id, selectStage: { selected = $0.id }, selectJob: { _ in }
+    WorkflowGraphView<EmptyView>(
+        stages: delivery.stages, selectedBandID: selected ?? delivery.currentStage?.id,
+        selectStage: { selected = $0.id },
+        selectJob: { _ in }
     )
     .frame(width: 1100, height: 300)
 }
