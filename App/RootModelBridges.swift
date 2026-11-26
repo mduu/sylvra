@@ -1,5 +1,6 @@
 import FeatureAIReview
 import FeatureActivity
+import FeatureDelivery
 import FeatureDiff
 import FeatureOpenInIDE
 import SwiftUI
@@ -86,6 +87,13 @@ struct RootModelBridges: View {
                     environment.activity.finish("checkout", message: nil)
                 }
             }
+            .onChange(of: deliveryJobs, initial: true) { old, jobs in
+                guard role == .main else { return }
+                for job in old where !jobs.contains(where: { $0.id == job.id }) {
+                    environment.activity.finish(job.id, message: nil)
+                }
+                for job in jobs { environment.activity.start(job) }
+            }
             // Initial too: an inbox restored from the cache is there before this view observes it.
             .onChange(of: environment.inbox.snapshot, initial: true) {
                 guard selectedID == nil, let wanted = environment.initialSelection else { return }
@@ -96,6 +104,18 @@ struct RootModelBridges: View {
 }
 
 extension RootModelBridges {
+    /// One job per followed delivery: "Delivery · billing #881" with its headline; opens that pull request.
+    fileprivate var deliveryJobs: [ActivityJob] {
+        environment.delivery.followed.map { id in
+            ActivityJob(
+                id: "delivery-\(id)", kind: .delivery,
+                title: String(localized: "Delivery · \(id.repository) #\(id.number)"),
+                detail: environment.delivery.delivery(for: id)?.headline(), pullRequest: id,
+                // Stable, or every reload would count as a new job.
+                startedAt: environment.delivery.delivery(for: id)?.mergedAt ?? .distantPast)
+        }
+    }
+
     /// "AI review · billing #881" with the agents done so far; opens that pull request.
     fileprivate var aiReviewJob: ActivityJob {
         let review = environment.aiReview

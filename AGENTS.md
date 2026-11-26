@@ -36,7 +36,7 @@ Packages/SylvraKit/Sources/
   Platform/                   Shared infrastructure: GitHubClient, GitRunner, ProcessRunner, Keychain, Persistence …
   DesignSystem/               Color tokens, typography, animations, AI highlight styles, shared components
   Feature<Name>/              One slice per topic: Inbox, PullRequest, Diff, Review, AIReview,
-                              OpenInIDE, Terminal, CustomTools, Activity, Settings
+                              OpenInIDE, Terminal, CustomTools, Activity, Settings, Updates, Delivery
     Screens/ Views/ ViewModels/ Domain/ Services/ Adapters/
   LocalReview/                Composition shared by the app and the `sylvra` CLI (may import slices)
   SylvraCLI/                  The `sylvra` command line tool (thin main over LocalReview)

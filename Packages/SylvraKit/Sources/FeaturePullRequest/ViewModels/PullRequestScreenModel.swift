@@ -9,6 +9,8 @@ import SylvraCore
 public final class PullRequestScreenModel {
     public enum Tab: String, CaseIterable, Identifiable {
         case overview, files, commits, checks, comments
+        /// A merged pull request's way to production (only when the app provides the view).
+        case delivery
         public var id: String { rawValue }
     }
 
@@ -38,6 +40,9 @@ public final class PullRequestScreenModel {
     public internal(set) var mergeError: String?
     /// The method chosen in the sheet.
     public var mergeMethod: MergeMethod = .merge
+
+    /// Called after a merge through Sylvra went through (wired by the app: follows the delivery).
+    @ObservationIgnored public var onMerged: ((PullRequestID) -> Void)?
 
     private let loader: any PullRequestDetailLoading
     let merger: (any PullRequestMerging)?

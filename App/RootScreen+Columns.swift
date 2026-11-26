@@ -1,4 +1,5 @@
 import FeatureAIReview
+import FeatureDelivery
 import FeatureDiff
 import FeatureInbox
 import FeaturePullRequest
@@ -144,6 +145,10 @@ extension RootScreen {
                 async let inbox: Void = environment.inbox.refresh()
                 _ = await (conversation, threads, commits, inbox)
             },
+            delivery: AnyView(
+                DeliveryPanel(model: environment.delivery, pullRequestID: selection?.id) { question in
+                    askAI(question)
+                }),
             summary: {
                 AISummaryPanel(model: environment.aiReview, pullRequestID: selection?.id) { path in
                     Task { await environment.diff.reveal(path) }

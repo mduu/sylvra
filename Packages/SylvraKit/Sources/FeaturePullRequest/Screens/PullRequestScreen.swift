@@ -8,6 +8,7 @@ import SylvraCore
 /// summary), `overviewTop` (e.g. the change map), `files` (file navigator) and `conversation` (the comments on
 /// the pull request itself, with writing). Selecting a commit reviews it on its own (`selectCommit`, `nil` = all
 /// changes). `openPullRequest` opens another layer of the pull request's stack (`nil` hides the stack bar).
+/// `delivery` is the Delivery tab of a merged pull request (`nil`: no such tab).
 /// The details reload every minute and with the header's refresh button; `refreshOthers` reloads what the app
 /// shows next to them (comments, threads, new commits).
 public struct PullRequestScreen<Files: View, OverviewTop: View, Summary: View, Conversation: View>: View {
@@ -22,6 +23,7 @@ public struct PullRequestScreen<Files: View, OverviewTop: View, Summary: View, C
     private let showInCode: ((String, Int?) -> Void)?
     private let openPullRequest: ((PullRequestSummary) -> Void)?
     private let refreshOthers: (() async -> Void)?
+    private let delivery: AnyView?
     @Environment(\.openURL) private var openURL
 
     public init(
@@ -30,6 +32,7 @@ public struct PullRequestScreen<Files: View, OverviewTop: View, Summary: View, C
         showInCode: ((String, Int?) -> Void)? = nil,
         openPullRequest: ((PullRequestSummary) -> Void)? = nil,
         refreshOthers: (() async -> Void)? = nil,
+        delivery: AnyView? = nil,
         @ViewBuilder summary: () -> Summary,
         @ViewBuilder overviewTop: () -> OverviewTop,
         @ViewBuilder files: () -> Files,
@@ -44,6 +47,7 @@ public struct PullRequestScreen<Files: View, OverviewTop: View, Summary: View, C
         self.showInCode = showInCode
         self.openPullRequest = openPullRequest
         self.refreshOthers = refreshOthers
+        self.delivery = delivery
         self.overviewTop = overviewTop()
         self.files = files()
     }
@@ -86,7 +90,9 @@ public struct PullRequestScreen<Files: View, OverviewTop: View, Summary: View, C
                 }
                 summary
                 // All tabs side by side; narrow columns get smaller text or symbols, never a menu.
-                SectionTabBar(items: PullRequestTabItem.items(for: detail).map(\.barItem), selection: $model.tab)
+                SectionTabBar(
+                    items: PullRequestTabItem.items(for: detail, hasDelivery: delivery != nil).map(\.barItem),
+                    selection: $model.tab)
             }
             .padding([.horizontal, .top], 16)
             .padding(.bottom, 10)
@@ -102,7 +108,11 @@ public struct PullRequestScreen<Files: View, OverviewTop: View, Summary: View, C
     }
 
     @ViewBuilder private func tabContent(_ detail: PullRequestDetail) -> some View {
-        switch model.tab {
+        // The Delivery tab only exists for merged pull requests: another one shows its overview instead.
+        let hasDelivery = delivery != nil && detail.state == .merged
+        switch model.tab == .delivery && !hasDelivery ? .overview : model.tab {
+        case .delivery:
+            delivery
         case .overview:
             overviewTop
             OverviewView(detail: detail, open: open)

@@ -17,6 +17,7 @@ let featureSlices = [
     "FeatureActivity",
     "FeatureSettings",
     "FeatureUpdates",
+    "FeatureDelivery",
 ]
 
 /// Composition shared by the app and the `sylvra` command line tool: bridges the diff and AI review slices and

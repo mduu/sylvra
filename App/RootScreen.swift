@@ -105,6 +105,10 @@ struct RootScreen: View {
                 environment.aiReview.tab = .chat
                 await environment.chat.send(question, for: id)
             }
+            .task {
+                // One follower for the app: the review window shows the same deliveries.
+                if role == .main { await environment.delivery.keepFollowing() }
+            }
             .focusedSceneValue(\.reviewActions, reviewActions)
             // Model-to-model wiring observes on its own: read here, every change re-evaluated the whole window.
             .background { RootModelBridges(root: self) }
@@ -235,6 +239,13 @@ extension RootScreen {
         openChat()
     }
 
+    /// Sends a question about the pull request to the chat (e.g. about a delivery stage).
+    func askAI(_ question: String) {
+        guard let id = selection?.id else { return }
+        openChat()
+        Task { await environment.chat.send(question, for: id) }
+    }
+
     private func openChat() {
         environment.aiReview.tab = .chat
         isInspectorPresented = true
@@ -337,6 +348,15 @@ extension RootScreen {
                 environment.activity.notify(
                     isChecks ? .ownChecks : .ownFeedback, about: event.pullRequest, message: event.message)
             }
+        }
+        // Delivery: a merge through Sylvra is followed to production; each stage raises a notification.
+        environment.pullRequest.onMerged = { id in
+            environment.delivery.follow(id)
+            environment.pullRequest.tab = .delivery
+        }
+        environment.delivery.onEvent = { event in
+            environment.activity.notify(
+                .delivery, about: event.pullRequest, title: event.title, message: event.message)
         }
         environment.notifications.open = { id in
             NSApplication.shared.activate()

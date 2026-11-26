@@ -1,6 +1,7 @@
 import FeatureAIReview
 import FeatureActivity
 import FeatureCustomTools
+import FeatureDelivery
 import FeatureDiff
 import FeatureInbox
 import FeatureOpenInIDE
@@ -65,6 +66,8 @@ final class AppEnvironment {
     let notifications = NotificationRouter()
     let review: ReviewScreenModel
     let conversation: ConversationModel
+    /// Merged pull requests on their way to production.
+    let delivery: DeliveryModel
     let terminal = TerminalModel()
     let bottomPanel = BottomPanelState()
     /// Selection and inspector state shared by the main and the review window.
@@ -126,6 +129,9 @@ final class AppEnvironment {
             workspace: { id in try await checkout?.prepareWorktree(for: id, purpose: .agent) }
         )
         review = ReviewScreenModel(service: isDemo ? DemoReviewService() : GitHubReviewService(client: gitHub))
+        delivery = DeliveryModel(
+            loader: isDemo ? DemoDeliveryLoader() : GitHubDeliveryLoader(client: gitHub),
+            defaults: isDemo ? nil : .standard)
         conversation = ConversationModel(
             service: isDemo ? DemoConversationService() : GitHubConversationService(client: gitHub))
         Self.configureCommentRewriting(review, agent: agent, isDemo: isDemo)

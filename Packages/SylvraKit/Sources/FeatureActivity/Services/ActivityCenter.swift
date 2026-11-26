@@ -10,6 +10,8 @@ public struct ActivityJob: Identifiable, Hashable, Sendable {
         case aiReview, checkout, refresh, replies
         /// Reviews and comments on the user's own pull requests; their checks finishing.
         case ownFeedback, ownChecks
+        /// A merged pull request on its way to production.
+        case delivery
 
         public var title: String {
             switch self {
@@ -19,6 +21,7 @@ public struct ActivityJob: Identifiable, Hashable, Sendable {
             case .replies: String(localized: "Replies after your comments")
             case .ownFeedback: String(localized: "Reviews and comments on your pull requests")
             case .ownChecks: String(localized: "Checks finished on your pull requests")
+            case .delivery: String(localized: "Deployments of merged pull requests")
             }
         }
     }
@@ -113,12 +116,16 @@ public final class ActivityCenter {
     /// Something happened on a pull request (a review, a finished check): one notification per pull request
     /// and kind, also while Sylvra is in front. A click opens the pull request.
     public func notify(_ kind: ActivityJob.Kind, about pullRequest: PullRequestSummary, message: String) {
+        notify(kind, about: pullRequest.id, title: pullRequest.title, message: message)
+    }
+
+    /// The same for a pull request known by its ID and title only.
+    public func notify(_ kind: ActivityJob.Kind, about id: PullRequestID, title: String, message: String) {
         guard notificationsEnabled(for: kind) else { return }
-        let title = "\(pullRequest.id.repository) #\(pullRequest.id.number): \(message)"
         Task {
             await Self.post(
-                title: title, body: pullRequest.title, identifier: "\(kind.rawValue)-\(pullRequest.id)",
-                pullRequest: pullRequest.id.description)
+                title: "\(id.repository) #\(id.number): \(message)", body: title,
+                identifier: "\(kind.rawValue)-\(id)-\(message)", pullRequest: id.description)
         }
     }
 

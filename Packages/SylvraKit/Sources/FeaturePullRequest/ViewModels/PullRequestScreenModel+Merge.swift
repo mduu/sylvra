@@ -40,6 +40,7 @@ extension PullRequestScreenModel {
         if action != .disableAutoMerge { defaults?.set(method.rawValue, forKey: Self.methodKey(detail.summary.id)) }
         isMergeSheetPresented = false
         await refresh()
+        if action == .merge { onMerged?(detail.summary.id) }
     }
 
     static func methodKey(_ id: PullRequestID) -> String { "merge.method.\(id.owner)/\(id.repository)" }

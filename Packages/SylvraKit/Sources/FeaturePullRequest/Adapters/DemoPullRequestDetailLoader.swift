@@ -85,7 +85,8 @@ public struct DemoPullRequestDetailLoader: PullRequestDetailLoading {
         ]
         let summary = PullRequestSummary(
             id: id,
-            title: id.number == 1234 ? "Add invoice export" : "Demo pull request #\(id.number)",
+            title: id.number == 1234
+                ? "Add invoice export" : id.number == 812 ? "Fix VAT rounding" : "Demo pull request #\(id.number)",
             author: lena,
             url: demoURL(id, ""),
             createdAt: ago(48),
@@ -115,7 +116,8 @@ public struct DemoPullRequestDetailLoader: PullRequestDetailLoading {
 
                 Closes #1180
                 """,
-            state: .open,
+            // The demo inbox lists #812 as recently closed: it shows a delivery.
+            state: id.number == 812 ? .merged : .open,
             headSHA: commits.last?.sha ?? "",
             baseSHA: "4a7d0b9e8f7a6b5c4d3e2f1a0b9c8d7e6f5a4b3c",
             headOwner: id.owner,
@@ -130,7 +132,8 @@ public struct DemoPullRequestDetailLoader: PullRequestDetailLoading {
                 .init(name: "@acme/billing", user: nil, isTeam: true, status: .pending, isCodeOwner: true),
             ],
             mergeStatus: .derive(
-                state: .open, mergeStateStatus: "BLOCKED", reviewDecision: .reviewRequired, checks: checks,
+                state: id.number == 812 ? .merged : .open, mergeStateStatus: "BLOCKED",
+                reviewDecision: .reviewRequired, checks: checks,
                 isDraft: false),
             checks: checks,
             commits: commits

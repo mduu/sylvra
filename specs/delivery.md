@@ -95,7 +95,7 @@ Notifications are posted when Sylvra is not active or shows another pull request
 ## 9. Steps
 
 1. **Notifications for my pull requests and Merge** — small, useful on their own. *(built: see `ux.md` §6.1 and §13; merge queues not yet handled)*
-2. **Delivery tab without AI** — pipeline strip, stage cards from GitHub, stage notifications, approve deployment.
+2. **Delivery tab without AI** — pipeline strip, stage cards from GitHub, stage notifications, approve deployment. *(built)* How stages are formed: a workflow's jobs that deploy nowhere are a build stage (several such workflows side by side are combined into *Build & checks*); every environment a job deploys to is a stage; deployments reported by other systems add a stage per environment. Only runs started by the merge count (push, `workflow_run`, dispatch, deployment, release), not the pull request's own checks or schedules on the same commit. A merge through Sylvra is followed automatically; any other merged pull request with the bell in its Delivery tab. A followed delivery ends five minutes after its last stage (a chained workflow may still start), at once on a failure, or when nothing started five minutes after the merge.
 3. **Verification** — plan, verify per stage, results in the cards, *Ask AI about this*, *Open Claude session*.
 4. **Automatic for my own pull requests** — the option, catch-up after a restart, inbox dots.
 
