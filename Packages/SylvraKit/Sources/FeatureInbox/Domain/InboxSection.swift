@@ -90,4 +90,61 @@ public struct InboxSnapshot: Sendable, Equatable, Codable {
                 return others > (old.viewerActivity?.othersLastActivityAt ?? .distantFuture)
             }
     }
+
+    /// What happened on the signed-in user's own pull requests since `previous`: feedback by others and
+    /// checks that finished. Only pull requests `previous` already knew count (no burst after launch).
+    public func ownPullRequestEvents(comparedTo previous: InboxSnapshot) -> [OwnPullRequestEvent] {
+        let before = Dictionary(
+            previous.pullRequests(in: .myPullRequests).map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+        return pullRequests(in: .myPullRequests).flatMap { pullRequest -> [OwnPullRequestEvent] in
+            guard let old = before[pullRequest.id] else { return [] }
+            var events: [OwnPullRequestEvent] = []
+            // A snapshot from before this was tracked knows no feedback: only what came after it counts.
+            let known = old.authorFeedback?.at ?? previous.loadedAt.addingTimeInterval(-300)
+            if let feedback = pullRequest.authorFeedback, feedback.at > known {
+                events.append(OwnPullRequestEvent(pullRequest: pullRequest, kind: .feedback(feedback)))
+            }
+            if old.checkState == .pending, pullRequest.checkState != old.checkState {
+                switch pullRequest.checkState {
+                case .success: events.append(OwnPullRequestEvent(pullRequest: pullRequest, kind: .checksPassed))
+                case .failure, .error:
+                    events.append(OwnPullRequestEvent(pullRequest: pullRequest, kind: .checksFailed))
+                default: break
+                }
+            }
+            return events
+        }
+    }
+}
+
+/// Something the author of a pull request wants to hear about.
+public struct OwnPullRequestEvent: Hashable, Sendable {
+    public enum Kind: Hashable, Sendable {
+        case feedback(AuthorFeedback)
+        case checksPassed, checksFailed
+    }
+
+    public let pullRequest: PullRequestSummary
+    public let kind: Kind
+
+    public init(pullRequest: PullRequestSummary, kind: Kind) {
+        self.pullRequest = pullRequest
+        self.kind = kind
+    }
+
+    /// The notification's text, e.g. "@anna approved".
+    public var message: String {
+        switch kind {
+        case .feedback(let feedback):
+            let who = feedback.by.map { "@\($0)" } ?? String(localized: "Someone")
+            switch feedback.kind {
+            case .approved: return String(localized: "\(who) approved")
+            case .changesRequested: return String(localized: "\(who) requested changes")
+            case .comment: return String(localized: "\(who) commented")
+            case .reviewed: return String(localized: "\(who) reviewed")
+            }
+        case .checksPassed: return String(localized: "Checks passed")
+        case .checksFailed: return String(localized: "Checks failed")
+        }
+    }
 }

@@ -67,6 +67,9 @@ public struct PullRequestSummary: Identifiable, Hashable, Sendable, Codable {
     public let commentCount: Int?
     /// The stack the pull request is a layer of (`nil`: none or unknown).
     public var stack: StackMembership?
+    /// On the signed-in user's own pull request: the latest review or comment by someone else (`nil`: none,
+    /// unknown or not their pull request).
+    public var authorFeedback: AuthorFeedback?
 
     public init(
         id: PullRequestID,

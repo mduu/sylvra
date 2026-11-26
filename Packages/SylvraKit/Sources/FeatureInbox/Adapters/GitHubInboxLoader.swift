@@ -187,9 +187,9 @@ struct PullRequestNode: Decodable, Sendable {
           author { __typename login avatarUrl ... on User { name } }
           commits(last: 1) { nodes { commit { committedDate statusCheckRollup { state } } } }
           viewerDidAuthor
-          comments(last: 10) { totalCount nodes { createdAt viewerDidAuthor author { __typename } } }
+          comments(last: 10) { totalCount nodes { createdAt viewerDidAuthor author { __typename login } } }
           reviewThreads { totalCount }
-          reviews(last: 10) { nodes { submittedAt viewerDidAuthor author { __typename } } }
+          reviews(last: 10) { nodes { submittedAt state viewerDidAuthor author { __typename login } } }
         }
         """
 
@@ -226,12 +226,15 @@ struct PullRequestNode: Decodable, Sendable {
             let submittedAt: Date?
             let viewerDidAuthor: Bool?
             let author: Author?
+            /// Reviews only: `APPROVED`, `CHANGES_REQUESTED`, `COMMENTED` …
+            let state: String?
             var date: Date? { submittedAt ?? createdAt }
             var isByBot: Bool { author?.typename == "Bot" }
         }
         struct Author: Decodable, Sendable {
             let typename: String?
-            enum CodingKeys: String, CodingKey { case typename = "__typename" }
+            let login: String?
+            enum CodingKeys: String, CodingKey { case typename = "__typename", login }
         }
     }
 
@@ -268,7 +271,7 @@ struct PullRequestNode: Decodable, Sendable {
     var summary: PullRequestSummary? {
         guard let number, let title, let repository, let createdAt, let updatedAt else { return nil }
         let rollup = commits?.nodes.last??.commit.statusCheckRollup?.state.lowercased()
-        return PullRequestSummary(
+        var summary = PullRequestSummary(
             id: PullRequestID(owner: repository.owner.login, repository: repository.name, number: number),
             title: title,
             author: author?.userRef ?? UserRef(login: "ghost"),
@@ -287,6 +290,30 @@ struct PullRequestNode: Decodable, Sendable {
             viewerActivity: viewerActivity,
             commentCount: commentCount
         )
+        summary.authorFeedback = authorFeedback
+        return summary
+    }
+
+    /// On the viewer's own pull request: the latest review or comment by someone else (bots don't count).
+    var authorFeedback: AuthorFeedback? {
+        guard viewerDidAuthor == true else { return nil }
+        func others(_ activities: Activities?) -> [Activities.Activity] {
+            (activities?.nodes ?? []).compactMap { $0 }.filter { $0.viewerDidAuthor != true && !$0.isByBot }
+        }
+        let comments = others(comments).compactMap { activity in
+            activity.date.map { AuthorFeedback(kind: .comment, at: $0, by: activity.author?.login) }
+        }
+        let reviews = others(reviews).compactMap { activity -> AuthorFeedback? in
+            guard let date = activity.date else { return nil }
+            let kind: AuthorFeedback.Kind =
+                switch activity.state {
+                case "APPROVED": .approved
+                case "CHANGES_REQUESTED": .changesRequested
+                default: .reviewed
+                }
+            return AuthorFeedback(kind: kind, at: date, by: activity.author?.login)
+        }
+        return (comments + reviews).max { $0.at < $1.at }
     }
 
     /// Conversation comments plus code threads (`nil` when the query didn't ask).

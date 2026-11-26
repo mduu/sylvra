@@ -330,6 +330,14 @@ extension RootScreen {
         environment.openInIDE.headBranch = { environment.inbox.summary(for: $0)?.headRefName }
         // Replies after the reviewer's comments: notify; a click on the notification opens the PR.
         environment.inbox.onNewActivity = { environment.activity.notifyNewActivity(on: $0) }
+        // My own pull requests: reviews, comments and finished checks.
+        environment.inbox.onOwnPullRequestEvents = { events in
+            for event in events.prefix(5) {
+                let isChecks = event.kind == .checksPassed || event.kind == .checksFailed
+                environment.activity.notify(
+                    isChecks ? .ownChecks : .ownFeedback, about: event.pullRequest, message: event.message)
+            }
+        }
         environment.notifications.open = { id in
             NSApplication.shared.activate()
             selectedID = id

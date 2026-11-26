@@ -18,6 +18,9 @@ public final class InboxScreenModel {
     /// Called after a refresh with pull requests where someone acted after the reviewer's last comment
     /// (wired by the app for notifications).
     @ObservationIgnored public var onNewActivity: (([PullRequestSummary]) -> Void)?
+    /// Called after a refresh with what happened on the user's own pull requests (wired by the app for
+    /// notifications).
+    @ObservationIgnored public var onOwnPullRequestEvents: (([OwnPullRequestEvent]) -> Void)?
     public private(set) var loadState: LoadState = .idle
     /// A refresh runs (manual or periodic); the refresh button shows a spinner meanwhile.
     public var isRefreshing: Bool { runningRefreshes > 0 }
@@ -142,6 +145,8 @@ public final class InboxScreenModel {
             cache?.saveInBackground(loaded, key: "inbox")
             let active = loaded.newActivity(comparedTo: previous)
             if !active.isEmpty { onNewActivity?(active) }
+            let events = loaded.ownPullRequestEvents(comparedTo: previous)
+            if !events.isEmpty { onOwnPullRequestEvents?(events) }
             await refreshRepositoryCounts()
         } catch is CancellationError {
             if snapshot.isEmpty { loadState = .idle }

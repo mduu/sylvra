@@ -27,3 +27,21 @@ public struct ViewerActivity: Hashable, Sendable, Codable {
         return othersLastActivityAt > lastActionAt
     }
 }
+
+/// The latest review or comment someone else left on the signed-in user's own pull request.
+public struct AuthorFeedback: Hashable, Sendable, Codable {
+    public enum Kind: String, Sendable, Codable {
+        case comment, approved, changesRequested, reviewed
+    }
+
+    public let kind: Kind
+    public let at: Date
+    /// Who left it (login; `nil`: unknown).
+    public let by: String?
+
+    public init(kind: Kind, at: Date, by: String? = nil) {
+        self.kind = kind
+        self.at = at
+        self.by = by
+    }
+}
