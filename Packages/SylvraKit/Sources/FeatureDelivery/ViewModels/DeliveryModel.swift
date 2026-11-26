@@ -51,6 +51,8 @@ public final class DeliveryModel {
     @ObservationIgnored public var pullRequestInfo: ((PullRequestID) async -> DeliveryPullRequestInfo?)?
     /// Pull requests whose delivery was looked for in this launch (closed without merging ones have none).
     @ObservationIgnored var preloaded: Set<PullRequestID> = []
+    /// Bumped when the allowed tools change (they live in the defaults), so views showing them update.
+    public internal(set) var toolsRevision = 0
     /// Running checks started from the view, so they can be stopped (`verificationKey`).
     @ObservationIgnored var verificationTasks: [String: Task<Void, Never>] = [:]
     /// Verifications that are due later (in memory: a restart drops them).

@@ -222,4 +222,37 @@ struct VerificationModelTests {
         model.selectStage("dev", of: id)
         #expect(!model.isShowingAICheck(for: id))
     }
+
+    /// Tools a check was refused can be allowed once, for every repository: the next checks get them.
+    @Test func allowedToolsGoWithEveryCheck() async throws {
+        let name = "allowed-tools-\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: name))
+        defer { defaults.removePersistentDomain(forName: name) }
+        let verifier = RecordingVerifier()
+        let model = DeliveryModel(
+            loader: ScriptedDeliveries([delivery([("prod", .succeeded)])]), verifier: verifier, defaults: defaults)
+        await model.load(id)
+        var refused = StageVerification(stageID: "prod", stageName: "prod", verdict: .unchecked, summary: "")
+        refused.deniedTools = ["mcp__datadog__analyze_datadog_logs", "mcp__datadog__load_datadog_skill"]
+        #expect(model.stillDenied(in: refused).count == 2)
+
+        model.allowForChecks(["mcp__datadog__analyze_datadog_logs"])
+        #expect(model.stillDenied(in: refused) == ["mcp__datadog__load_datadog_skill"])
+        await model.verify("prod", of: id)
+        #expect(verifier.requests.last?.allowedTools == ["mcp__datadog__analyze_datadog_logs"])
+
+        // Kept across launches, and can be taken back.
+        let restarted = DeliveryModel(loader: ScriptedDeliveries([]), defaults: defaults)
+        #expect(restarted.allowedCheckTools == ["mcp__datadog__analyze_datadog_logs"])
+        restarted.stopAllowingForChecks("mcp__datadog__analyze_datadog_logs")
+        #expect(restarted.allowedCheckTools.isEmpty)
+    }
+
+    /// Results saved before the newer fields existed still load.
+    @Test func olderSavedResultsStillDecode() throws {
+        let json =
+            #"{"stageID":"prod","stageName":"prod","verdict":"healthy","summary":"ok","intent":"","checks":[],"notChecked":[],"checkedAt":0,"isSecondLook":false}"#
+        let result = try JSONDecoder().decode(StageVerification.self, from: Data(json.utf8))
+        #expect(result.activity.isEmpty && result.deniedTools.isEmpty && result.verdict == .healthy)
+    }
 }

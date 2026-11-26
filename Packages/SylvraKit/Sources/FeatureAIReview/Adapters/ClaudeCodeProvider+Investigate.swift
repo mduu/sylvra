@@ -11,9 +11,24 @@ extension ClaudeCodeProvider {
         let raw = try await runner.run(
             claude, arguments: Self.investigationArguments(for: request),
             workingDirectory: try Self.isolatedDirectory(), input: Data(request.prompt.utf8))
-        var reply = try Self.decodeInvestigation(handle(raw))
+        let result = handle(raw)
+        var reply = try Self.decodeInvestigation(result)
         reply.activity = Self.toolCalls(in: raw.standardOutput)
+        reply.deniedTools = Self.deniedTools(in: result.standardOutput)
         return reply
+    }
+
+    /// The tools Claude Code refused (`permission_denials` of the result line), each once, in order.
+    static func deniedTools(in resultLine: String) -> [String] {
+        guard let data = resultLine.data(using: .utf8),
+            let envelope = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+            let denials = envelope["permission_denials"] as? [[String: Any]]
+        else { return [] }
+        var tools: [String] = []
+        for name in denials.compactMap({ $0["tool_name"] as? String }) where !tools.contains(name) {
+            tools.append(name)
+        }
+        return tools
     }
 
     /// The tool calls in stream-json output, one line each: the tool and what it was called with.

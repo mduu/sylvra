@@ -36,6 +36,34 @@ extension DeliveryModel {
         verificationErrors[Self.verificationKey(id, stage.id)]
     }
 
+    // MARK: Tools allowed for AI checks
+
+    static let allowedToolsKey = "delivery.allowedCheckTools"
+
+    /// Tools the user allowed for Sylvra's AI checks (global: they belong to the agent setup on this Mac). Only
+    /// these checks get them; the user's other agent sessions keep their own rules.
+    public var allowedCheckTools: [String] {
+        _ = toolsRevision
+        return defaults?.stringArray(forKey: Self.allowedToolsKey) ?? []
+    }
+
+    /// Allows tools a check was denied (the user's click, confirmed in the view).
+    public func allowForChecks(_ tools: [String]) {
+        let merged = allowedCheckTools + tools.filter { !allowedCheckTools.contains($0) }
+        defaults?.set(merged, forKey: Self.allowedToolsKey)
+        toolsRevision += 1
+    }
+
+    public func stopAllowingForChecks(_ tool: String) {
+        defaults?.set(allowedCheckTools.filter { $0 != tool }, forKey: Self.allowedToolsKey)
+        toolsRevision += 1
+    }
+
+    /// A check's denied tools that are still not allowed (some may have been allowed since).
+    public func stillDenied(in result: StageVerification) -> [String] {
+        result.deniedTools.filter { !allowedCheckTools.contains($0) }
+    }
+
     // MARK: Monitoring notes
 
     /// What the user noted about a repository's monitoring (service names, environments), passed to the agent.
@@ -62,9 +90,10 @@ extension DeliveryModel {
         verificationErrors[key] = nil
         defer { verifying.remove(key) }
         let info = await pullRequestInfo?(id)
-        let request = VerificationRequest(
+        var request = VerificationRequest(
             pullRequest: id, title: info?.title ?? delivery.title, body: info?.body ?? "", delivery: delivery,
             stage: stage, monitoringNotes: monitoringNotes(for: id), isSecondLook: isSecondLook)
+        request.allowedTools = allowedCheckTools
         do {
             let result = try await verifier.verify(request)
             verifications[id, default: [:]][stageID] = result

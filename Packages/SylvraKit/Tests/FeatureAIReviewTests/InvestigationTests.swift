@@ -62,4 +62,15 @@ struct InvestigationTests {
                 "Bash: gh run view 1 --log-failed", "datadog · search_logs: service:api status:error",
             ])
     }
+
+    /// Tools Claude Code refused, from the result's `permission_denials`, each once.
+    @Test func listsTheDeniedTools() {
+        let line =
+            #"{"type":"result","result":"x","permission_denials":[{"tool_name":"mcp__datadog__analyze_datadog_logs","tool_use_id":"1","tool_input":{}},{"tool_name":"mcp__datadog__load_datadog_skill"},{"tool_name":"mcp__datadog__analyze_datadog_logs"}]}"#
+        #expect(
+            ClaudeCodeProvider.deniedTools(in: line) == [
+                "mcp__datadog__analyze_datadog_logs", "mcp__datadog__load_datadog_skill",
+            ])
+        #expect(ClaudeCodeProvider.deniedTools(in: #"{"type":"result","result":"x"}"#).isEmpty)
+    }
 }

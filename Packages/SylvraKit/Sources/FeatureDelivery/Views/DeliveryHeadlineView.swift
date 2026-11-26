@@ -9,6 +9,9 @@ struct DeliveryHeadlineView: View {
     /// Followed deliveries are checked by the agent without a click (`nil`: no agent).
     var verifiesAutomatically: Binding<Bool>?
     var editNotes: (() -> Void)?
+    /// Tools allowed for AI checks, each with a way to stop allowing it.
+    var allowedTools: [String] = []
+    var stopAllowing: ((String) -> Void)?
     var now = Date.now
 
     var body: some View {
@@ -37,6 +40,13 @@ struct DeliveryHeadlineView: View {
                 Menu {
                     Toggle("Check Followed Deliveries with AI", isOn: verifiesAutomatically)
                     if let editNotes { Button("Monitoring Notes for This Repository…", action: editNotes) }
+                    if !allowedTools.isEmpty, let stopAllowing {
+                        Section("Tools Allowed for AI Checks") {
+                            ForEach(allowedTools, id: \.self) { tool in
+                                Button("Stop Allowing \(ToolName.short(tool))") { stopAllowing(tool) }
+                            }
+                        }
+                    }
                 } label: {
                     Image(systemName: "ellipsis.circle").foregroundStyle(.secondary)
                 }

@@ -22,8 +22,9 @@ struct AgentDeliveryVerifier: DeliveryVerifying {
                     prompt: VerificationPrompt.prompt(for: request), schema: VerificationPrompt.schema,
                     model: settings.models.first ?? "sonnet", effort: settings.effort,
                     language: settings.agentLanguage, workingDirectory: directory,
-                    allowedTools: VerificationPrompt.allowedTools))
-            return try VerificationPrompt.decode(reply.json, for: request, activity: reply.activity)
+                    allowedTools: VerificationPrompt.allowedTools + request.allowedTools))
+            return try VerificationPrompt.decode(
+                reply.json, for: request, activity: reply.activity, deniedTools: reply.deniedTools)
         } catch let error as AgentError {
             throw Failure(message: Self.message(for: error))
         } catch is DecodingError {

@@ -88,6 +88,29 @@ public struct StageVerification: Hashable, Sendable, Codable {
     public var isSecondLook: Bool
     /// What the agent did, in order (tools it called with what), for *What the agent did*.
     public var activity: [String] = []
+    /// Tools the agent tried but Claude Code did not allow (full names, e.g. `mcp__datadog__search_logs`).
+    public var deniedTools: [String] = []
+
+    enum CodingKeys: String, CodingKey {
+        case stageID, stageName, verdict, summary, intent, checks, notChecked, checkedAt, isSecondLook, activity
+        case deniedTools
+    }
+
+    /// Results saved by an earlier version lack the newer fields.
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        stageID = try container.decode(String.self, forKey: .stageID)
+        stageName = try container.decode(String.self, forKey: .stageName)
+        verdict = try container.decode(Verdict.self, forKey: .verdict)
+        summary = try container.decode(String.self, forKey: .summary)
+        intent = try container.decodeIfPresent(String.self, forKey: .intent) ?? ""
+        checks = try container.decodeIfPresent([Check].self, forKey: .checks) ?? []
+        notChecked = try container.decodeIfPresent([String].self, forKey: .notChecked) ?? []
+        checkedAt = try container.decode(Date.self, forKey: .checkedAt)
+        isSecondLook = try container.decodeIfPresent(Bool.self, forKey: .isSecondLook) ?? false
+        activity = try container.decodeIfPresent([String].self, forKey: .activity) ?? []
+        deniedTools = try container.decodeIfPresent([String].self, forKey: .deniedTools) ?? []
+    }
 
     public init(
         stageID: String, stageName: String, verdict: Verdict, summary: String, intent: String = "",
@@ -116,6 +139,8 @@ public struct VerificationRequest: Sendable {
     /// What the user noted about this repository's monitoring (service names, environments, dashboards).
     public let monitoringNotes: String
     public let isSecondLook: Bool
+    /// Tools the user allowed for AI checks in Sylvra (full names), on top of the read-only `gh` / `git` commands.
+    public var allowedTools: [String] = []
 
     public init(
         pullRequest: PullRequestID, title: String, body: String, delivery: Delivery, stage: DeliveryStage,

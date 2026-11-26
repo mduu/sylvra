@@ -52,6 +52,8 @@ public struct InvestigationReply: Sendable {
     public var tokens: TokenUsage?
     /// What the agent did, in order: one line per tool call ("Bash: gh run view 123 --log-failed").
     public var activity: [String]
+    /// Tools the agent tried but its permission rules did not allow (full names), without repeats.
+    public var deniedTools: [String] = []
 
     public init(json: Data, tokens: TokenUsage? = nil, activity: [String] = []) {
         self.json = json

@@ -118,11 +118,11 @@ public enum VerificationPrompt {
     }
 
     /// The agent's answer as the verification of `request`'s stage.
-    /// `activity`: what the agent did, in order.
-    public static func decode(_ json: Data, for request: VerificationRequest, activity: [String] = [], now: Date = .now)
-        throws
-        -> StageVerification
-    {
+    /// `activity`: what the agent did, in order; `deniedTools`: what Claude Code did not allow.
+    public static func decode(
+        _ json: Data, for request: VerificationRequest, activity: [String] = [], deniedTools: [String] = [],
+        now: Date = .now
+    ) throws -> StageVerification {
         let output = try JSONDecoder().decode(Output.self, from: json)
         var result = StageVerification(
             stageID: request.stage.id, stageName: request.stage.name, verdict: output.verdict,
@@ -130,6 +130,7 @@ public enum VerificationPrompt {
             checks: output.checks ?? [], notChecked: output.notChecked ?? [], checkedAt: now,
             isSecondLook: request.isSecondLook)
         result.activity = activity
+        result.deniedTools = deniedTools
         return result
     }
 }
