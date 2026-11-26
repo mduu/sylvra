@@ -14,13 +14,17 @@ struct StageDetailsActions {
     /// `true`: in the external terminal app.
     var openSession: ((Bool) -> Void)?
     var loadLog: (Int) -> Void
+    /// Shows the stage's AI check (its column in the AI check band); `nil`: none.
+    var showAICheck: (() -> Void)?
 }
 
-/// The selected stage's details (pure): on the left its jobs, the AI check and its checks; on the right what
-/// the selected row shows — a job's log, a check's evidence, what the agent did. The selected row and the pane
-/// share their colour and meet without a gap, so they read as one.
+/// The details of the selected band (pure): for a stage its jobs, for the AI check the stage's checks; on the
+/// right what the selected row shows — a job's log, a check's evidence, what the agent did. The selected row and
+/// the pane share their colour and meet without a gap, so they read as one.
 struct StageDetailsView: View {
     let stage: DeliveryStage
+    /// The details are the stage's AI check, not its jobs.
+    var showsAICheck = false
     let item: DeliveryItem?
     let verification: StageVerification?
     var isVerifying = false
@@ -36,7 +40,8 @@ struct StageDetailsView: View {
         HStack(spacing: 0) {
             ScrollView {
                 StageListView(
-                    stage: stage, item: item, verification: verification, isVerifying: isVerifying,
+                    stage: stage, showsAICheck: showsAICheck, item: item, verification: verification,
+                    isVerifying: isVerifying,
                     verificationError: verificationError, isApproving: isApproving, approvalError: approvalError,
                     actions: actions)
             }
@@ -55,6 +60,7 @@ struct StageDetailsView: View {
 /// The left side: header, approval, jobs, AI check rows, actions (pure).
 private struct StageListView: View {
     let stage: DeliveryStage
+    let showsAICheck: Bool
     let item: DeliveryItem?
     let verification: StageVerification?
     let isVerifying: Bool
@@ -66,17 +72,21 @@ private struct StageListView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
             header
-            if stage.state == .needsApproval { approval }
-            if !stage.jobs.isEmpty { sectionTitle("Jobs") }
-            ForEach(stage.jobs) { job in
-                row(.job(job.id), symbol: job.state.symbol, tint: job.state.tint) {
-                    Text(job.name).lineLimit(1)
-                } trailing: {
-                    Text(job.duration.map(deliveryDurationText) ?? job.state.title)
-                        .font(.caption).foregroundStyle(.secondary).monospacedDigit()
+            if showsAICheck {
+                aiCheck
+            } else {
+                if stage.state == .needsApproval { approval }
+                if !stage.jobs.isEmpty { sectionTitle("Jobs") }
+                ForEach(stage.jobs) { job in
+                    row(.job(job.id), symbol: job.state.symbol, tint: job.state.tint) {
+                        Text(job.name).lineLimit(1)
+                    } trailing: {
+                        Text(job.duration.map(deliveryDurationText) ?? job.state.title)
+                            .font(.caption).foregroundStyle(.secondary).monospacedDigit()
+                    }
                 }
+                aiCheckLink
             }
-            aiCheck
             buttons.padding(.top, 12)
         }
         .padding(.leading, 12)
@@ -85,7 +95,8 @@ private struct StageListView: View {
 
     private var header: some View {
         HStack(alignment: .firstTextBaseline, spacing: 8) {
-            Text(stage.name).font(.title3.weight(.semibold))
+            Text(showsAICheck ? String(localized: "AI check · \(stage.name)") : stage.name)
+                .font(.title3.weight(.semibold))
             Text(subtitle).font(.caption).foregroundStyle(.secondary).lineLimit(1)
             Spacer(minLength: 4)
             Button("Open on GitHub") { actions.open(stage.url) }
@@ -133,7 +144,7 @@ private struct StageListView: View {
     }
 
     @ViewBuilder private var aiCheck: some View {
-        if actions.verify != nil || verification != nil || isVerifying {
+        if actions.verify != nil || verification != nil || isVerifying || verificationError != nil {
             HStack(spacing: 6) {
                 Label("AI check", systemImage: "sparkles")
                     .font(.caption.weight(.bold))
@@ -201,6 +212,29 @@ private struct StageListView: View {
                     .padding(.trailing, 12)
             }
             if let verificationError { errorLabel(verificationError).padding(.trailing, 12) }
+        }
+    }
+
+    /// Below the jobs: where the stage's AI check stands, a click shows it.
+    @ViewBuilder private var aiCheckLink: some View {
+        if let show = actions.showAICheck {
+            Button(action: show) {
+                HStack(spacing: 6) {
+                    Label("AI check", systemImage: "sparkles").foregroundStyle(AIAccent.border)
+                    Text(
+                        isVerifying
+                            ? String(localized: "checking…")
+                            : verification?.verdict.title ?? String(localized: "not checked yet")
+                    )
+                    .foregroundStyle(verification?.verdict.tint ?? .secondary)
+                    Image(systemName: "chevron.right").foregroundStyle(.secondary)
+                }
+                .font(.caption.weight(.semibold))
+                .padding(.vertical, 8)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .padding(.top, 8)
         }
     }
 

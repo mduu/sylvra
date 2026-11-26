@@ -66,7 +66,7 @@ struct StagePaneView: View {
             Button("Open on GitHub") { actions.open(job.url) }.buttonStyle(.link).font(.caption)
                 .disabled(job.url == nil)
         }
-        if !job.steps.isEmpty { StepStripView(steps: job.steps) }
+        if !job.steps.isEmpty { StepListView(steps: job.steps, isFinishedFine: job.state == .succeeded) }
         if !job.errors.isEmpty {
             VStack(alignment: .leading, spacing: 3) {
                 ForEach(job.errors, id: \.self) { error in
@@ -92,33 +92,63 @@ struct StagePaneView: View {
     }
 }
 
-/// A job's steps as a strip of segments: done, running, waiting, failed (pure).
-private struct StepStripView: View {
+/// A job's steps as GitHub lists them (pure): state, number, name, duration. A job that went through fine
+/// starts folded ("7 steps · all done"); a running or failed one shows them, its current step marked.
+private struct StepListView: View {
     let steps: [JobStep]
+    let isFinishedFine: Bool
+    @State private var isExpanded: Bool?
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            HStack(spacing: 3) {
-                ForEach(steps, id: \.number) { step in
-                    Capsule()
-                        .fill(color(step.state))
-                        .frame(height: 5)
-                        .help("\(step.number). \(step.name) — \(step.state.title)")
-                }
+        DisclosureGroup(isExpanded: expansion) {
+            VStack(alignment: .leading, spacing: 3) {
+                ForEach(steps, id: \.number) { step in row(step) }
             }
-            if let current = steps.first(where: { $0.state == .running || $0.state == .failed }) {
-                Text("Step \(current.number) of \(steps.count): \(current.name)")
-                    .font(.caption).foregroundStyle(current.state.tint)
-            }
+            .padding(.top, 4)
+        } label: {
+            Text(summary).font(.caption.weight(.medium)).foregroundStyle(.secondary)
         }
-        .accessibilityElement(children: .combine)
     }
 
-    private func color(_ state: StageState) -> Color {
-        switch state {
-        case .waiting, .skipped, .cancelled: Color.secondary.opacity(0.3)
-        default: state.tint
+    private var expansion: Binding<Bool> {
+        Binding(get: { isExpanded ?? !isFinishedFine }, set: { isExpanded = $0 })
+    }
+
+    private var summary: String {
+        let done = steps.count { $0.state == .succeeded }
+        if let failed = steps.first(where: { $0.state == .failed }) {
+            return String(localized: "\(steps.count) steps · step \(failed.number) failed")
         }
+        if let running = steps.first(where: { $0.state == .running }) {
+            return String(localized: "\(steps.count) steps · step \(running.number) running")
+        }
+        return done == steps.count
+            ? String(localized: "\(steps.count) steps · all done")
+            : String(localized: "\(steps.count) steps · \(done) done")
+    }
+
+    private func row(_ step: JobStep) -> some View {
+        let isCurrent = step.state == .running || step.state == .failed
+        return HStack(spacing: 8) {
+            Image(systemName: step.state.symbol)
+                .font(.caption2.weight(.bold))
+                .foregroundStyle(step.state.tint)
+                .frame(width: 14)
+            Text("\(step.number)").font(.caption.monospacedDigit()).foregroundStyle(.secondary)
+                .frame(width: 18, alignment: .trailing)
+            Text(step.name)
+                .font(.caption.weight(isCurrent ? .semibold : .regular))
+                .foregroundStyle(step.state == .waiting || step.state == .skipped ? .secondary : .primary)
+                .lineLimit(1)
+            Spacer(minLength: 4)
+            Text(step.seconds.map { deliveryDurationText(TimeInterval($0)) } ?? step.state.title.lowercased())
+                .font(.caption.monospacedDigit())
+                .foregroundStyle(.secondary)
+        }
+        .padding(.vertical, 1)
+        .padding(.horizontal, 4)
+        .background(isCurrent ? step.state.tint.opacity(0.12) : .clear, in: RoundedRectangle(cornerRadius: 4))
+        .accessibilityElement(children: .combine)
     }
 }
 

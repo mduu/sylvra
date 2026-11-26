@@ -81,7 +81,7 @@ public struct GitHubDeliveryLoader: DeliveryLoading {
                     id databaseId name status conclusion startedAt completedAt detailsUrl
                     deployment { environment }
                     pendingDeploymentRequest { environment { name } }
-                    steps(first: 50) { nodes { name number status conclusion } }
+                    steps(first: 50) { nodes { name number status conclusion secondsToCompletion } }
                     annotations(first: 5) { nodes { message annotationLevel } }
                   } }
                 } }
@@ -199,6 +199,7 @@ struct DeliveryResponse: Decodable, Sendable {
             let number: Int
             let status: String?
             let conclusion: String?
+            let secondsToCompletion: Int?
         }
         struct Annotation: Decodable, Sendable {
             let message: String
@@ -218,7 +219,8 @@ struct DeliveryResponse: Decodable, Sendable {
                     steps: (steps?.values ?? []).sorted { $0.number < $1.number }.map { step in
                         JobStep(
                             number: step.number, name: step.name,
-                            state: Self.state(status: step.status ?? "COMPLETED", conclusion: step.conclusion))
+                            state: Self.state(status: step.status ?? "COMPLETED", conclusion: step.conclusion),
+                            seconds: step.secondsToCompletion)
                     }),
                 environment: deployment?.environment ?? pendingDeploymentRequest?.environment?.name)
         }

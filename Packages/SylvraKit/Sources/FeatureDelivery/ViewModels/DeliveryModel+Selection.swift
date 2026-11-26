@@ -13,6 +13,31 @@ public enum DeliveryItem: Hashable, Sendable {
     case activity
 }
 
+extension DeliveryItem {
+    /// Part of a stage's AI check (not a job).
+    public var isAICheck: Bool {
+        if case .job = self { return false }
+        return true
+    }
+}
+
+/// One column of the AI check band: a stage's check — its result, running, or still to do.
+public struct AICheckColumn: Equatable, Sendable, Identifiable {
+    public let stage: DeliveryStage
+    public let result: StageVerification?
+    public let isRunning: Bool
+    public let error: String?
+    public let isCheckable: Bool
+
+    public var id: String { stage.id }
+
+    /// The boxes of the column: the checks, or one box for the whole column (running, to do, failed).
+    public var boxIDs: [String] {
+        guard let result, !result.checks.isEmpty, !isRunning else { return ["ai#\(stage.id)#check"] }
+        return result.checks.map { "ai#\(stage.id)#\($0.title)" }
+    }
+}
+
 /// A job log being loaded or shown.
 public enum LogState: Equatable, Sendable {
     case loading
@@ -35,6 +60,34 @@ extension DeliveryModel {
 
     public func setShowsDelivery(_ shows: Bool, for id: PullRequestID) {
         if shows { showsDiff.remove(id) } else { showsDiff.insert(id) }
+    }
+
+    /// Marks a selection in the AI check band: `ai#<stage id>`.
+    public static let aiPrefix = "ai#"
+
+    /// The details show a stage's AI check (its column in the AI check band is selected).
+    public func isShowingAICheck(for id: PullRequestID) -> Bool {
+        selectedStage[id]?.hasPrefix(Self.aiPrefix) == true
+    }
+
+    /// Selects a stage's AI check, optionally one of its checks.
+    public func selectAICheck(_ stageID: String, item: DeliveryItem? = nil, of id: PullRequestID) {
+        selectedStage[id] = Self.aiPrefix + stageID
+        selectedItem[id] = item
+    }
+
+    /// The columns of the AI check band, one per stage that can be checked (a deployed environment or a failed
+    /// stage) or was checked; empty without an agent and without results.
+    public func aiColumns(for id: PullRequestID) -> [AICheckColumn] {
+        guard let delivery = deliveries[id] else { return [] }
+        return delivery.stages.compactMap { stage -> AICheckColumn? in
+            let result = verification(of: stage, in: id)
+            let isCheckable = stage.state == .failed || (stage.state == .succeeded && stage.kind == .environment)
+            guard (isCheckable && canVerify) || result != nil else { return nil }
+            return AICheckColumn(
+                stage: stage, result: result, isRunning: isVerifying(stage, in: id),
+                error: verificationError(of: stage, in: id), isCheckable: isCheckable && canVerify)
+        }
     }
 
     /// Selects a stage; its details start with what matters most.
@@ -74,10 +127,15 @@ extension DeliveryModel {
     public func shownItem(for id: PullRequestID) -> DeliveryItem? {
         guard let stage = shownStage(for: id) else { return nil }
         let result = verification(of: stage, in: id)
-        if let item = selectedItem[id], isValid(item, stage: stage, result: result) { return item }
+        let isAI = isShowingAICheck(for: id)
+        if let item = selectedItem[id], isValid(item, stage: stage, result: result), item.isAICheck == isAI {
+            return item
+        }
+        if isAI {
+            if let problem = result?.checks.first(where: { $0.outcome == .problem }) { return .check(problem.title) }
+            return result?.checks.first.map { .check($0.title) }
+        }
         if let failed = stage.jobs.first(where: { $0.state == .failed }) { return .job(failed.id) }
-        if let problem = result?.checks.first(where: { $0.outcome == .problem }) { return .check(problem.title) }
-        if let first = result?.checks.first { return .check(first.title) }
         if let running = stage.jobs.first(where: { $0.state == .running }) { return .job(running.id) }
         return stage.jobs.last.map { .job($0.id) }
     }

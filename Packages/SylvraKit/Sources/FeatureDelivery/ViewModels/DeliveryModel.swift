@@ -205,10 +205,14 @@ public final class DeliveryModel {
 
     // MARK: Stages and approval
 
-    /// The stage whose card is shown: the selected one, else the delivery's current stage.
+    /// The stage whose details are shown: the selected one (also when its AI check is selected), else the
+    /// delivery's current stage.
     public func shownStage(for id: PullRequestID) -> DeliveryStage? {
         guard let delivery = deliveries[id] else { return nil }
-        return delivery.stages.first { $0.id == selectedStage[id] } ?? delivery.currentStage
+        let selected = selectedStage[id].map {
+            $0.hasPrefix(Self.aiPrefix) ? String($0.dropFirst(Self.aiPrefix.count)) : $0
+        }
+        return delivery.stages.first { $0.id == selected } ?? delivery.currentStage
     }
 
     /// Approves a waiting deployment on GitHub (the user's click, confirmed in the view).

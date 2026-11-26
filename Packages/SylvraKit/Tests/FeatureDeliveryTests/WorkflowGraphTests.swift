@@ -88,34 +88,45 @@ struct WorkflowGraphLayoutTests {
         #expect(frame("Integration").midY == frame("Compile").midY)
         #expect(frame("Unit").maxY < frame("Integration").minY)
         // Stages side by side, each in its own band; a stage without jobs is one box.
-        #expect(layout.bands.map(\.stageID) == ["build", "dev", "prod"])
+        #expect(layout.bands.map(\.id) == ["build", "dev", "prod"])
         let firstBand = try #require(layout.bands.first)
         let lastBand = try #require(layout.bands.last)
         #expect(frame("Deploy dev").minX > firstBand.frame.maxX)
-        #expect(layout.nodes.last?.id == "stage#prod" && layout.nodes.last?.job == nil)
+        #expect(layout.nodes.last?.id == "stage#prod")
         #expect(layout.size.width == lastBand.frame.maxX)
     }
 
     @Test func linesRunFromEdgeToEdgeAndJoin() throws {
         let layout = WorkflowGraphLayout(stages: stages)
         let edge = { (id: String) in layout.edges.first { $0.id == id } }
-        // The split inside the build, at right angles.
         let split = try #require(edge("Compile>Unit"))
         let compile = try #require(layout.nodes.first { $0.id == "Compile" }).frame
         let unit = try #require(layout.nodes.first { $0.id == "Unit" }).frame
-        #expect(split.points.first == CGPoint(x: compile.maxX, y: compile.midY))
-        #expect(split.points.last == CGPoint(x: unit.minX, y: unit.midY))
-        #expect(zip(split.points, split.points.dropFirst()).allSatisfy { $0.x == $1.x || $0.y == $1.y })
+        #expect(split.start == CGPoint(x: compile.maxX, y: compile.midY))
+        #expect(split.end == CGPoint(x: unit.minX, y: unit.midY))
         // The join into dev follows `needs` across the stages; prod hangs on dev's last job.
         #expect(["Unit>Deploy dev", "Integration>Deploy dev", "Lint>Deploy dev"].allSatisfy { edge($0) != nil })
         #expect(edge("Deploy dev>stage#prod")?.isWalked == false)
         #expect(edge("Compile>Unit")?.isWalked == true)
     }
 
+    /// The AI check comes last: one column per checked stage, the line from the last stage into its first.
+    @Test func theAICheckBandFollowsTheStages() {
+        let ai = WorkflowGraphLayout.Group(
+            id: "ai", columns: [[.init(id: "a1"), .init(id: "a2")], [.init(id: "b1")]], entries: ["a1", "a2"])
+        let layout = WorkflowGraphLayout(groups: stages.map(WorkflowGraphLayout.group) + [ai])
+        #expect(layout.bands.last?.id == "ai")
+        let into = layout.edges.filter { $0.id.hasSuffix(">a1") || $0.id.hasSuffix(">a2") || $0.id.hasSuffix(">b1") }
+        #expect(into.map(\.id).sorted() == ["stage#prod>a1", "stage#prod>a2"])
+        let a1 = layout.nodes.first { $0.id == "a1" }?.frame ?? .zero
+        let b1 = layout.nodes.first { $0.id == "b1" }?.frame ?? .zero
+        #expect(b1.minX > a1.maxX)
+    }
+
     @Test func withoutNeedsTheJobsOfAStageStandTogether() {
         let plain = DeliveryStage(
             id: "s", name: "Checks", kind: .build, workflow: nil, state: .succeeded, jobs: [job("A"), job("B")])
-        #expect(WorkflowGraphLayout.grid(plain).map(\.count) == [2])
+        #expect(WorkflowGraphLayout.group(plain).columns.map(\.count) == [2])
     }
 }
 

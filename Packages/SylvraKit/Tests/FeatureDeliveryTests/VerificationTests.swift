@@ -205,4 +205,21 @@ struct VerificationModelTests {
                 == "stage")
         #expect(delivery([("build", .succeeded)]).productionStage == nil)
     }
+
+    /// The AI check is a band of its own: selecting it shows the stage's checks, selecting the stage its jobs.
+    @Test func theAICheckIsItsOwnPartOfTheGraph() async throws {
+        let stages = delivery([("build", .succeeded), ("dev", .succeeded), ("prod", .running)])
+        let model = DeliveryModel(loader: ScriptedDeliveries([stages]), verifier: RecordingVerifier())
+        await model.load(id)
+        // Deployed environments can be checked; a running one and a passed build not.
+        #expect(model.aiColumns(for: id).map(\.stage.name) == ["dev"])
+        await model.verify("dev", of: id)
+        model.selectAICheck("dev", of: id)
+        #expect(model.isShowingAICheck(for: id) && model.shownStage(for: id)?.name == "dev")
+        // The recording verifier answers without checks: nothing to show yet but the column.
+        #expect(model.shownItem(for: id) == nil)
+        #expect(model.aiColumns(for: id).first?.result?.verdict == .healthy)
+        model.selectStage("dev", of: id)
+        #expect(!model.isShowingAICheck(for: id))
+    }
 }

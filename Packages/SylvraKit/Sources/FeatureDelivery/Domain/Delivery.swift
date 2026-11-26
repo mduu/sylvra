@@ -31,11 +31,14 @@ public struct JobStep: Hashable, Sendable, Codable {
     public let number: Int
     public let name: String
     public let state: StageState
+    /// How long it took (finished steps; `nil`: unknown).
+    public var seconds: Int?
 
-    public init(number: Int, name: String, state: StageState) {
+    public init(number: Int, name: String, state: StageState, seconds: Int? = nil) {
         self.number = number
         self.name = name
         self.state = state
+        self.seconds = seconds
     }
 }
 

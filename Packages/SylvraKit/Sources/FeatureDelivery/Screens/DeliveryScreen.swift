@@ -87,17 +87,22 @@ public struct DeliveryScreen: View {
             } else {
                 let stage = model.shownStage(for: id)
                 let item = model.shownItem(for: id)
+                let showsAI = model.isShowingAICheck(for: id)
                 WorkflowGraphView(
-                    stages: delivery.stages, selectedStageID: stage?.id,
-                    selectedJobID: item.flatMap { if case .job(let job) = $0 { job } else { nil } },
-                    verdicts: verdicts(delivery, id),
+                    stages: delivery.stages, aiColumns: model.aiColumns(for: id),
+                    selectedBandID: showsAI ? stage.map { DeliveryModel.aiPrefix + $0.id } : stage?.id,
+                    selectedBoxID: selectedBox(item, stage: stage, showsAI: showsAI),
                     selectStage: { stage in withAnimation(.snappy) { model.selectStage(stage.id, of: id) } },
-                    selectJob: { job in withAnimation(.snappy) { model.selectJob(job.id, of: id) } }
+                    selectJob: { job in withAnimation(.snappy) { model.selectJob(job.id, of: id) } },
+                    selectAICheck: { stage, title in
+                        withAnimation(.snappy) { model.selectAICheck(stage.id, item: title.map { .check($0) }, of: id) }
+                    }
                 )
                 .frame(height: WorkflowGraphLayout(stages: delivery.stages).size.height + 12)
                 if let stage {
                     StageDetailsView(
-                        stage: stage, item: item, verification: model.verification(of: stage, in: id),
+                        stage: stage, showsAICheck: showsAI, item: item,
+                        verification: model.verification(of: stage, in: id),
                         isVerifying: model.isVerifying(stage, in: id),
                         verificationError: model.verificationError(of: stage, in: id), isApproving: model.isApproving,
                         approvalError: model.approvalError, logs: model.logs,
@@ -111,12 +116,13 @@ public struct DeliveryScreen: View {
         }
     }
 
-    private func verdicts(_ delivery: Delivery, _ id: PullRequestID) -> [String: StageVerification.Verdict] {
-        var result: [String: StageVerification.Verdict] = [:]
-        for stage in delivery.stages {
-            if let verdict = model.verification(of: stage, in: id)?.verdict { result[stage.id] = verdict }
+    /// The box ringed in the graph: the job shown, or the check shown in the AI check band.
+    private func selectedBox(_ item: DeliveryItem?, stage: DeliveryStage?, showsAI: Bool) -> String? {
+        switch item {
+        case .job(let job): showsAI ? nil : job
+        case .check(let title): stage.map { "ai#\($0.id)#\(title)" }
+        default: nil
         }
-        return result
     }
 
     private func actions(for stage: DeliveryStage, in delivery: Delivery, _ id: PullRequestID) -> StageDetailsActions {
@@ -133,7 +139,9 @@ public struct DeliveryScreen: View {
                 { external in open(DeliveryQuestion.session(about: stage, of: delivery, verification: check), external)
                 }
             },
-            loadLog: { number in Task { await model.loadLog(number, of: id) } })
+            loadLog: { number in Task { await model.loadLog(number, of: id) } },
+            showAICheck: model.aiColumns(for: id).contains { $0.stage.id == stage.id }
+                ? { withAnimation(.snappy) { model.selectAICheck(stage.id, of: id) } } : nil)
     }
 
     /// The details show a job without a log yet (the first item of a stage is chosen, not clicked).
