@@ -17,6 +17,10 @@ struct WorkflowGraphView<Card: View>: View {
     var card: Card?
     var cardHeight: CGFloat = 0
 
+    /// Where the user scrolled to; only ever changed sideways by Sylvra.
+    @State private var position = ScrollPosition()
+    @State private var visible: CGRect = .zero
+
     static var cardID: String { "ai-card" }
     static var cardWidth: CGFloat { 540 }
     static var cardGap: CGFloat { 64 }
@@ -25,40 +29,64 @@ struct WorkflowGraphView<Card: View>: View {
         let layout = WorkflowGraphLayout(stages: stages)
         let height = max(layout.size.height, card == nil ? 0 : cardHeight)
         let width = layout.size.width + (card == nil ? 0 : Self.cardGap + Self.cardWidth)
-        ScrollViewReader { proxy in
-            // Sideways for long pipelines, down for stages with many jobs (the details keep their room).
-            ScrollView([.horizontal, .vertical]) {
-                ZStack(alignment: .topLeading) {
-                    ForEach(layout.bands) { band in bandView(band) }
-                    WorkflowEdgesView(edges: layout.edges)
-                        .frame(width: layout.size.width, height: layout.size.height)
-                        .allowsHitTesting(false)
-                    ForEach(layout.nodes) { node in nodeView(node) }
-                    if let card {
-                        DashedConnector()
-                            .stroke(AIAccent.border.opacity(0.8), style: StrokeStyle(lineWidth: 1.8, dash: [5, 4]))
-                            .frame(width: Self.cardGap, height: 12)
-                            .offset(x: layout.size.width, y: layout.size.height / 2 - 6)
-                            .accessibilityHidden(true)
-                        card
-                            .frame(width: Self.cardWidth, height: height)
-                            .id(Self.cardID)
-                            .offset(x: layout.size.width + Self.cardGap)
-                    }
+        // Sideways for long pipelines, down for stages with many jobs (the details keep their room).
+        ScrollView([.horizontal, .vertical]) {
+            ZStack(alignment: .topLeading) {
+                ForEach(layout.bands) { band in bandView(band) }
+                WorkflowEdgesView(edges: layout.edges)
+                    .frame(width: layout.size.width, height: layout.size.height)
+                    .allowsHitTesting(false)
+                ForEach(layout.nodes) { node in nodeView(node) }
+                if let card {
+                    DashedConnector()
+                        .stroke(AIAccent.border.opacity(0.8), style: StrokeStyle(lineWidth: 1.8, dash: [5, 4]))
+                        .frame(width: Self.cardGap, height: 12)
+                        .offset(x: layout.size.width, y: layout.size.height / 2 - 6)
+                        .accessibilityHidden(true)
+                    card
+                        .frame(width: Self.cardWidth, height: height)
+                        .id(Self.cardID)
+                        .offset(x: layout.size.width + Self.cardGap)
                 }
-                .frame(width: width, height: height, alignment: .topLeading)
-                .padding(.horizontal, 16)
-                .padding(.vertical, 6)
             }
-            .scrollIndicators(.automatic)
-            .onAppear { reveal(proxy) }
-            .onChange(of: selectedBandID) { withAnimation(.snappy) { reveal(proxy) } }
+            .frame(width: width, height: height, alignment: .topLeading)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 6)
         }
+        .scrollIndicators(.automatic)
+        .scrollPosition($position)
+        .onScrollGeometryChange(for: CGRect.self) {
+            $0.visibleRect
+        } action: { _, rect in
+            visible = rect
+        }
+        .onAppear { reveal(in: layout, animated: false) }
+        .onChange(of: selectedBandID) { reveal(in: layout, animated: true) }
     }
 
-    private func reveal(_ proxy: ScrollViewProxy) {
+    /// Brings the selected stage (or the AI check's card) into view sideways — only when it is not visible
+    /// already, and never up or down: the user's vertical position stays.
+    private func reveal(in layout: WorkflowGraphLayout, animated: Bool) {
         guard let selectedBandID else { return }
-        proxy.scrollTo(selectedBandID.hasPrefix(DeliveryModel.aiPrefix) ? Self.cardID : selectedBandID, anchor: .center)
+        let padding: CGFloat = 16
+        let frame: CGRect
+        if selectedBandID.hasPrefix(DeliveryModel.aiPrefix) {
+            frame = CGRect(x: layout.size.width + Self.cardGap, y: 0, width: Self.cardWidth, height: 1)
+        } else if let band = layout.bands.first(where: { $0.id == selectedBandID }) {
+            frame = band.frame
+        } else {
+            return
+        }
+        let left = frame.minX + padding
+        let right = frame.maxX + padding
+        guard visible.width > 0, left < visible.minX || right > visible.maxX else { return }
+        let target = max(0, left - max(0, (visible.width - frame.width) / 2))
+        let point = CGPoint(x: target, y: visible.minY)
+        if animated {
+            withAnimation(.snappy) { position.scrollTo(point: point) }
+        } else {
+            position.scrollTo(point: point)
+        }
     }
 
     private func bandView(_ band: WorkflowGraphLayout.Band) -> some View {
