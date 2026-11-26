@@ -3,6 +3,7 @@ import FeatureActivity
 import FeatureCustomTools
 import FeatureDelivery
 import FeatureDiff
+import FeatureFeedback
 import FeatureInbox
 import FeatureOpenInIDE
 import FeaturePullRequest
@@ -66,6 +67,8 @@ final class AppEnvironment {
     let notifications = NotificationRouter()
     let review: ReviewScreenModel
     let conversation: ConversationModel
+    /// Feedback to the Sylvra project (Help → Send Feedback).
+    let feedback: FeedbackModel
     /// Merged pull requests on their way to production.
     let delivery: DeliveryModel
     let terminal = TerminalModel()
@@ -140,6 +143,15 @@ final class AppEnvironment {
             defaults: isDemo ? nil : .standard, cache: isDemo ? nil : JSONCache())
         delivery.pullRequestInfo = { id in
             details.detail.flatMap { $0.summary.id == id ? .init(title: $0.summary.title, body: $0.body) : nil }
+        }
+        feedback = FeedbackModel(
+            sender: isDemo
+                ? DemoFeedbackSender()
+                : GitHubFeedbackSender(
+                    client: gitHub, owner: FeedbackWindow.owner, repository: FeedbackWindow.repository))
+        feedback.systemInfo = {
+            if reviews.agentVersion == nil { await reviews.detectAgent() }
+            return SystemInfo.current(extras: reviews.agentVersion.map { [.init("Claude Code", $0)] } ?? [])
         }
         conversation = ConversationModel(
             service: isDemo ? DemoConversationService() : GitHubConversationService(client: gitHub))

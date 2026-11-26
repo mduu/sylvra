@@ -143,7 +143,7 @@ public actor GitHubClient {
     }
 
     /// How a request appears in the Commands panel.
-    private struct LogContext: Sendable {
+    struct LogContext: Sendable {
         let title: String
         let request: String?
         let showsResponse: Bool
@@ -191,7 +191,7 @@ public actor GitHubClient {
 
     // MARK: - Private
 
-    private func authorizedRequest(path: String, query: [URLQueryItem] = []) async throws -> URLRequest {
+    func authorizedRequest(path: String, query: [URLQueryItem] = []) async throws -> URLRequest {
         let token = try await token()
         var url = baseURL.appending(path: path)
         if !query.isEmpty { url.append(queryItems: query) }
@@ -212,7 +212,7 @@ public actor GitHubClient {
     }
 
     /// Sends the request; transient gateway errors are retried with the configured back-off.
-    private func perform(_ request: URLRequest, retryTransient: Bool, log: LogContext) async throws -> Data {
+    func perform(_ request: URLRequest, retryTransient: Bool, log: LogContext) async throws -> Data {
         let started = Date.now
         do {
             let data = try await performWithRetries(request, retryTransient: retryTransient)

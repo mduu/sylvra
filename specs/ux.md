@@ -337,6 +337,15 @@ stateDiagram-v2
 
 *Sylvra → About Sylvra* opens Sylvra's own About window instead of the standard panel (deviation, §2: the standard panel's plain credits text fell far behind the rest of the app). Fixed size, no title bar, on a brand canvas like a splash (dark: deep violet with lavender glows; light: pale lavender with violet ink, violet labels instead of gold for contrast) with a violet glow behind the large app icon; the glows drift slowly (still with Reduce Motion). It shows the name, the tagline, the version as type alone (large, thin figures, the build number below), *View on GitHub* (`github.com/mduu/sylvra`) and *Check for Updates*. Below, *Open source* lists the software Sylvra ships with (today SwiftTerm, MIT) as cards: name, purpose, license chip; a click unfolds the full license text and the project link. The footer names the author (*Made by Marc Dürst*) above the copyright and a link to Sylvra's MIT License. *Help → Sylvra on GitHub* opens the project page. The About window and the review window of the two-window layout are not listed in the Window menu (`commandsRemoved`): About is in the Sylvra menu, the review window is opened by its layout and the toolbar's *Review window* button. A new bundled dependency gets an entry in `Acknowledgement.all` (`FeatureUpdates`).
 
+### 13.05 Feedback
+
+*Help → Send Feedback…* opens a small window: kind (*Problem · Idea · Question*), a title, details, and two switches.
+
+- **Attach a screenshot of the Sylvra window** (off by default): the picture of the window the user worked in, taken the moment the command is chosen and drawn by Sylvra itself — it cannot show another app and needs no screen recording permission. It is shown before sending, with the note that everyone can see it, with all the code, names and comments in it (the repository is public).
+- **Include version information** (on): Sylvra's version and build, macOS, Mac model and architecture, language, Claude Code's version — shown as it is sent; nothing about the user's repositories or pull requests.
+
+*Send* creates an issue in Sylvra's repository with the user's GitHub account (labels `feedback` plus `bug` / `enhancement` / `question`) and shows its number with *Open Issue*. Nothing is sent before that click. GitHub's API has no upload for issue attachments: the screenshot is committed to the repository's `feedback-attachments` branch and linked, which needs write access. Without it the issue goes out without the picture and the window offers *Copy Screenshot* to paste it on GitHub. A failure is shown in the window; the draft stays.
+
 ### 13.1 Updates
 
 Sylvra updates itself from the GitHub Releases of `mduu/sylvra` (no Sparkle, no appcast; see architecture §14.3).

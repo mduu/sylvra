@@ -80,6 +80,7 @@ sylvra/
 │   │   ├── FeatureUpdates/     # Self-update from GitHub Releases: check, download, verify, swap, relaunch
 │   │   ├── FeatureDelivery/    # A merged pull request's way to production: stages from GitHub, following,
 │   │   │                       # approving deployments (see delivery.md)
+│   │   ├── FeatureFeedback/    # Feedback to the Sylvra project: form, window snapshot, issue in its repository
 │   │   ├── FeatureSettings/    # Settings screens
 │   │   ├── LocalReview/        # Composition shared by the app and the CLI: diff → reviewable files, local
 │   │   │                       # reviews (git changes, settings, run, Markdown / JSON output), see §8.8

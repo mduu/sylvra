@@ -70,6 +70,7 @@ struct SylvraApp: App {
             CommandLogCommands(panel: environment.bottomPanel)
             WindowLayoutCommands()
             DiagnosticCommands()
+            FeedbackCommands(model: environment.feedback)
             WorktreeCommands(worktrees: environment.worktrees)
         }
 
@@ -87,6 +88,9 @@ struct SylvraApp: App {
         .commandsRemoved()
 
         DiagnosticLogWindow()
+        FeedbackWindow(
+            model: environment.feedback,
+            colorScheme: launchAppearance?.colorScheme ?? AppearanceSetting(rawValue: appearance)?.colorScheme)
         AboutWindow(
             updates: environment.updates,
             colorScheme: launchAppearance?.colorScheme ?? AppearanceSetting(rawValue: appearance)?.colorScheme)
