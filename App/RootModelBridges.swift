@@ -110,7 +110,9 @@ extension RootModelBridges {
             ActivityJob(
                 id: "delivery-\(id)", kind: .delivery,
                 title: String(localized: "Delivery · \(id.repository) #\(id.number)"),
-                detail: environment.delivery.delivery(for: id)?.headline(), pullRequest: id,
+                detail: environment.delivery.verifying.contains { $0.hasPrefix("\(id)|") }
+                    ? String(localized: "AI check running") : environment.delivery.delivery(for: id)?.headline(),
+                pullRequest: id,
                 // Stable, or every reload would count as a new job.
                 startedAt: environment.delivery.delivery(for: id)?.mergedAt ?? .distantPast)
         }

@@ -26,8 +26,27 @@ public final class DeliveryModel {
     /// for notifications).
     @ObservationIgnored public var onEvent: ((DeliveryEvent) -> Void)?
 
+    // Verification (see DeliveryModel+Verification).
+    /// What the agent found per stage (`stage.id`), per pull request (persisted).
+    public internal(set) var verifications: [PullRequestID: [String: StageVerification]] = [:]
+    /// The stages being verified right now (`verificationKey`).
+    public internal(set) var verifying: Set<String> = []
+    /// Why the last verification of a stage failed (`verificationKey`).
+    public internal(set) var verificationErrors: [String: String] = [:]
+    /// Followed deliveries are verified without a click: each deployed stage after a settling time, a failed
+    /// one at once (persisted; off by default).
+    public var verifiesAutomatically: Bool {
+        didSet { defaults?.set(verifiesAutomatically, forKey: Self.autoVerifyKey) }
+    }
+    /// Title and description of a pull request for the agent (wired by the app).
+    @ObservationIgnored public var pullRequestInfo: ((PullRequestID) async -> DeliveryPullRequestInfo?)?
+    /// Verifications that are due later (in memory: a restart drops them).
+    @ObservationIgnored var scheduled: [ScheduledVerification] = []
+    let verifier: (any DeliveryVerifying)?
+    let cache: JSONCache?
+
     private let loader: any DeliveryLoading
-    private let defaults: UserDefaults?
+    let defaults: UserDefaults?
     /// Since when a followed delivery has had nothing left to do (a chained workflow may still start).
     @ObservationIgnored private var settledSince: [PullRequestID: Date] = [:]
     private static let logger = SylvraLog.logger("delivery")
@@ -39,9 +58,24 @@ public final class DeliveryModel {
     /// Followed at most this long after the merge.
     static let followLimit: TimeInterval = 86_400
 
-    public init(loader: any DeliveryLoading, defaults: UserDefaults? = nil) {
+    /// - Parameters:
+    ///   - verifier: checks stages with an AI agent; `nil` hides everything about verification.
+    ///   - cache: keeps the verifications across launches.
+    public init(
+        loader: any DeliveryLoading, verifier: (any DeliveryVerifying)? = nil, defaults: UserDefaults? = nil,
+        cache: JSONCache? = nil
+    ) {
         self.loader = loader
+        self.verifier = verifier
         self.defaults = defaults
+        self.cache = cache
+        verifiesAutomatically = defaults?.bool(forKey: Self.autoVerifyKey) ?? false
+        if let saved = cache?.load([String: [StageVerification]].self, key: Self.verificationsKey) {
+            for (text, results) in saved {
+                guard let id = PullRequestID(text) else { continue }
+                verifications[id] = Dictionary(results.map { ($0.stageID, $0) }, uniquingKeysWith: { $1 })
+            }
+        }
         followed = (defaults?.stringArray(forKey: Self.followedKey) ?? []).compactMap(PullRequestID.init)
     }
 
@@ -83,6 +117,7 @@ public final class DeliveryModel {
         if old != loaded { deliveries[id] = loaded }
         guard let loaded, isFollowing(id) else { return }
         for event in DeliveryEvent.changes(from: old, to: loaded) { onEvent?(event) }
+        scheduleVerifications(from: old, to: loaded, now: now)
     }
 
     // MARK: Following
@@ -99,6 +134,7 @@ public final class DeliveryModel {
     public func unfollow(_ id: PullRequestID) {
         followed.removeAll { $0 == id }
         settledSince[id] = nil
+        scheduled.removeAll { $0.pullRequest == id }
         saveFollowed()
     }
 
@@ -123,6 +159,7 @@ public final class DeliveryModel {
             }
             // Not merged (yet), e.g. auto-merge still waiting: keep following.
             guard let delivery = deliveries[id] else { continue }
+            await runDueVerifications(for: id, now: now)
             guard delivery.isFinished(at: now) else {
                 settledSince[id] = nil
                 if now.timeIntervalSince(delivery.mergedAt ?? now) > Self.followLimit { unfollow(id) }
@@ -132,6 +169,8 @@ public final class DeliveryModel {
             settledSince[id] = since
             // A delivery that ends in a failure or without any stage is over at once.
             let isOver = delivery.stages.isEmpty || delivery.overallState(at: now) == .failed
+            // A verification still to come keeps the delivery followed.
+            guard !scheduled.contains(where: { $0.pullRequest == id }) else { continue }
             guard isOver || now.timeIntervalSince(since) >= Self.settleTime else { continue }
             unfollow(id)
             let kind: DeliveryEvent.Kind = delivery.stages.isEmpty ? .nothingStarted : .complete

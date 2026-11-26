@@ -438,7 +438,7 @@ Rider keeps every opened folder in its *recent projects*; deleted worktrees rema
 - No telemetry by default. No third-party analytics.
 - Tokens only in Keychain; never logged.
 - Code is only sent to an AI provider via the user's own agent CLI, and only when an AI review or chat is explicitly started.
-- AI agents run with read-only tools.
+- AI agents run with read-only tools. Reviews and chat use no MCP servers. Only the delivery check (see `delivery.md` §7) sees the user's own MCP servers, and there every tool call needs the user's own permission rules.
 - All `Process` invocations use argument arrays (no shell string interpolation) to avoid injection via branch names, paths or PR titles. Custom tools are the only place where user-configured shell commands run.
 
 ## 14. Quality: linting and CI

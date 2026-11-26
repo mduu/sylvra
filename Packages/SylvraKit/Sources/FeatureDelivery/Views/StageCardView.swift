@@ -9,6 +9,8 @@ struct StageCardView: View {
     /// Approves the waiting deployment (`nil`: not possible for the signed-in user).
     var approve: (() -> Void)?
     var askAI: (() -> Void)?
+    /// The AI check of the stage (`nil`: no agent available).
+    var verification: VerificationState?
     let open: (URL?) -> Void
     var now = Date.now
 
@@ -23,6 +25,7 @@ struct StageCardView: View {
                     }
                 }
             }
+            if let verification { VerificationView(state: verification) }
             HStack(spacing: 10) {
                 Button {
                     open(stage.url)

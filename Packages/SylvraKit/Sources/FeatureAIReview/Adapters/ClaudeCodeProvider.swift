@@ -8,7 +8,7 @@ import Platform
 /// PR), uses no MCP servers and only the read-only tools Read, Grep and Glob (`--permission-mode dontAsk`).
 public struct ClaudeCodeProvider: AgentProvider {
     public let name = "Claude Code"
-    private let runner: any ProcessRunning
+    let runner: any ProcessRunning
     /// Receives the subscription's limits Claude Code reports with every call.
     private let onUsage: (@Sendable (ClaudeUsage) -> Void)?
 
@@ -37,7 +37,7 @@ public struct ClaudeCodeProvider: AgentProvider {
         ] + isolationArguments(workspace: nil)
 
     /// Passes on the limits and returns the result line (stream-json prints one JSON object per line).
-    private func handle(_ result: ProcessResult) -> ProcessResult {
+    func handle(_ result: ProcessResult) -> ProcessResult {
         if let usage = ClaudeUsage.parse(streamJSON: result.standardOutput) { onUsage?(usage) }
         return ProcessResult(
             exitCode: result.exitCode, standardOutput: Self.resultLine(of: result.standardOutput),

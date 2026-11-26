@@ -129,9 +129,18 @@ final class AppEnvironment {
             workspace: { id in try await checkout?.prepareWorktree(for: id, purpose: .agent) }
         )
         review = ReviewScreenModel(service: isDemo ? DemoReviewService() : GitHubReviewService(client: gitHub))
+        let verifier: any DeliveryVerifying =
+            isDemo
+            ? DemoDeliveryVerifier()
+            : AgentDeliveryVerifier(
+                provider: agent, settings: { reviews.defaultSettings },
+                workspace: { id in try await checkout?.prepareWorktree(for: id, purpose: .agent) })
         delivery = DeliveryModel(
-            loader: isDemo ? DemoDeliveryLoader() : GitHubDeliveryLoader(client: gitHub),
-            defaults: isDemo ? nil : .standard)
+            loader: isDemo ? DemoDeliveryLoader() : GitHubDeliveryLoader(client: gitHub), verifier: verifier,
+            defaults: isDemo ? nil : .standard, cache: isDemo ? nil : JSONCache())
+        delivery.pullRequestInfo = { id in
+            details.detail.flatMap { $0.summary.id == id ? .init(title: $0.summary.title, body: $0.body) : nil }
+        }
         conversation = ConversationModel(
             service: isDemo ? DemoConversationService() : GitHubConversationService(client: gitHub))
         Self.configureCommentRewriting(review, agent: agent, isDemo: isDemo)

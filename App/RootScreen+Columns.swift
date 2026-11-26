@@ -146,9 +146,9 @@ extension RootScreen {
                 _ = await (conversation, threads, commits, inbox)
             },
             delivery: AnyView(
-                DeliveryPanel(model: environment.delivery, pullRequestID: selection?.id) { question in
-                    askAI(question)
-                }),
+                DeliveryPanel(
+                    model: environment.delivery, pullRequestID: selection?.id, askAI: { askAI($0) },
+                    openSession: { openClaudeSession($0) })),
             shareSummary: { selection.flatMap { environment.aiReview.results[$0.id]?.summary } },
             summary: {
                 AISummaryPanel(model: environment.aiReview, pullRequestID: selection?.id) { path in

@@ -8,6 +8,53 @@ public protocol AgentProvider: Sendable {
     func review(_ request: ReviewRequest) async throws -> AgentReviewOutput
     /// One chat turn; `sessionID` continues an earlier conversation.
     func chat(_ request: ChatRequest) async throws -> ChatReply
+    /// A read-only investigation with structured output (e.g. checking a deployment in logs and monitoring).
+    func investigate(_ request: InvestigationRequest) async throws -> InvestigationReply
+}
+
+extension AgentProvider {
+    public func investigate(_ request: InvestigationRequest) async throws -> InvestigationReply {
+        throw AgentError.failed("\(name) cannot run investigations")
+    }
+}
+
+/// A read-only task beyond the code: the agent may use what the user set up and allowed in their own agent
+/// configuration (MCP servers such as a monitoring tool) plus the tools named here. Nothing is edited.
+public struct InvestigationRequest: Sendable {
+    public let prompt: String
+    /// JSON schema of the answer.
+    public let schema: String
+    public let model: String
+    public let effort: String
+    public let language: String
+    /// The repository checkout the agent may read (its guidelines name the tools to use).
+    public let workingDirectory: URL?
+    /// Permission rules allowed on top of the user's own, e.g. `Bash(gh run view:*)`.
+    public let allowedTools: [String]
+
+    public init(
+        prompt: String, schema: String, model: String, effort: String, language: String, workingDirectory: URL?,
+        allowedTools: [String] = []
+    ) {
+        self.prompt = prompt
+        self.schema = schema
+        self.model = model
+        self.effort = effort
+        self.language = language
+        self.workingDirectory = workingDirectory
+        self.allowedTools = allowedTools
+    }
+}
+
+public struct InvestigationReply: Sendable {
+    /// The answer as JSON matching the request's schema.
+    public let json: Data
+    public var tokens: TokenUsage?
+
+    public init(json: Data, tokens: TokenUsage? = nil) {
+        self.json = json
+        self.tokens = tokens
+    }
 }
 
 /// A chat turn (see specs/architecture.md §8.6).

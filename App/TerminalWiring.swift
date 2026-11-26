@@ -53,7 +53,7 @@ enum TerminalWiring {
     }
 
     /// The existing review worktree, or a freshly prepared one (demo mode uses the home directory).
-    private static func checkout(for id: PullRequestID, environment: AppEnvironment) async throws -> URL {
+    static func checkout(for id: PullRequestID, environment: AppEnvironment) async throws -> URL {
         let existing = directory(for: id)
         if existing != FileManager.default.homeDirectoryForCurrentUser || environment.isDemo { return existing }
         let job = "tool-worktree"

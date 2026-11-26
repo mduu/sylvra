@@ -160,6 +160,15 @@ public struct Delivery: Hashable, Sendable {
         stages.first { $0.state == .failed } ?? stages.first { !$0.state.isFinished } ?? stages.last
     }
 
+    /// The stage that is production: the last environment named like it, else the last environment.
+    public var productionStage: DeliveryStage? {
+        let environments = stages.filter { $0.kind == .environment }
+        return environments.last { stage in
+            let name = stage.name.lowercased()
+            return ["prod", "prd", "live"].contains { name.contains($0) }
+        } ?? environments.last
+    }
+
     /// One line for the whole delivery, e.g. "prod failed" or "Deployed to prod".
     public func headline(at now: Date = .now) -> String {
         if let failed = stages.first(where: { $0.state == .failed }) {
@@ -194,6 +203,8 @@ public struct Delivery: Hashable, Sendable {
 public struct DeliveryEvent: Hashable, Sendable {
     public enum Kind: Hashable, Sendable {
         case stageSucceeded(String), stageFailed(String), needsApproval(String)
+        /// The AI check of a stage is through.
+        case verified(String, StageVerification.Verdict)
         /// Every stage is through and nothing new started.
         case complete
         /// Nothing started for the merge commit.
@@ -209,6 +220,12 @@ public struct DeliveryEvent: Hashable, Sendable {
         case .stageSucceeded(let name): String(localized: "\(name) done")
         case .stageFailed(let name): String(localized: "\(name) failed")
         case .needsApproval(let name): String(localized: "\(name) waits for approval")
+        case .verified(let name, let verdict):
+            switch verdict {
+            case .healthy: String(localized: "\(name) checked: healthy")
+            case .problems: String(localized: "\(name) checked: problems found")
+            case .unchecked: String(localized: "\(name) could not be checked")
+            }
         case .complete: String(localized: "Delivery complete")
         case .nothingStarted: String(localized: "No deployment started")
         }
