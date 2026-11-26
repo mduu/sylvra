@@ -24,6 +24,8 @@ public struct PullRequestDetail: Sendable, Equatable {
     public var discussion: [DiscussionItem] = []
     /// Approval rules of the base branch; `nil` when they aren't visible to the viewer.
     public var approvalRules: ApprovalRules?
+    /// How the signed-in user may merge it (`nil`: unknown, e.g. demo data).
+    public var mergeOptions: MergeOptions?
 
     /// Comments in total, replies included.
     public var commentCount: Int { discussion.reduce(0) { $0 + $1.commentCount } }

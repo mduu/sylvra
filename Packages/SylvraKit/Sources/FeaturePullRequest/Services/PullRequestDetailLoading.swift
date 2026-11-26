@@ -14,3 +14,12 @@ extension PullRequestDetailLoading {
     public func loadCheckReport(nodeID: String) async throws -> CheckReport { CheckReport() }
     public func loadStack(for detail: PullRequestDetail) async throws -> StackStatus? { nil }
 }
+
+/// Merges a pull request on GitHub — only ever on the user's click.
+public protocol PullRequestMerging: Sendable {
+    /// Merges now. `expectedHeadSHA`: the head the user saw; GitHub refuses when it moved.
+    func merge(_ options: MergeOptions, method: MergeMethod, expectedHeadSHA: String) async throws
+    /// Lets GitHub merge once reviews and checks are through.
+    func enableAutoMerge(_ options: MergeOptions, method: MergeMethod) async throws
+    func disableAutoMerge(_ options: MergeOptions) async throws
+}

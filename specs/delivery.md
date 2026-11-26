@@ -94,7 +94,7 @@ Notifications are posted when Sylvra is not active or shows another pull request
 
 ## 9. Steps
 
-1. **Notifications for my pull requests and Merge** — small, useful on their own.
+1. **Notifications for my pull requests and Merge** — small, useful on their own. *(built: see `ux.md` §6.1 and §13; merge queues not yet handled)*
 2. **Delivery tab without AI** — pipeline strip, stage cards from GitHub, stage notifications, approve deployment.
 3. **Verification** — plan, verify per stage, results in the cards, *Ask AI about this*, *Open Claude session*.
 4. **Automatic for my own pull requests** — the option, catch-up after a restart, inbox dots.

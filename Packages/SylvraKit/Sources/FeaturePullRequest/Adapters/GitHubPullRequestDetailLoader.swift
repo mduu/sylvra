@@ -21,6 +21,7 @@ public struct GitHubPullRequestDetailLoader: PullRequestDetailLoading {
         }
         async let rules = loadApprovalRules(for: id)
         var detail = node.detail
+        detail.mergeOptions = node.mergeOptions
         detail.discussion = node.discussion
         detail.approvalRules = await rules
         if let login = response.viewer?.login {
@@ -35,10 +36,11 @@ public struct GitHubPullRequestDetailLoader: PullRequestDetailLoading {
           viewer { login }
           repository(owner: $owner, name: $name) {
             pullRequest(number: $number) {
-              number title url isDraft createdAt updatedAt additions deletions changedFiles
+              id number title url isDraft createdAt updatedAt additions deletions changedFiles
+              viewerCanEnableAutoMerge autoMergeRequest { mergeMethod }
               headRefName baseRefName headRefOid baseRefOid reviewDecision mergeable mergeStateStatus state
               body
-              repository { name owner { login } }
+              repository { name owner { login } viewerPermission viewerDefaultMergeMethod mergeCommitAllowed squashMergeAllowed rebaseMergeAllowed }
               headRepositoryOwner { login }
               author { login avatarUrl ... on User { name } }
               labels(first: 20) { nodes { name color } }
@@ -80,6 +82,9 @@ struct DetailResponse: Decodable, Sendable {
 }
 
 struct DetailNode: Decodable, Sendable {
+    let id: String?
+    let viewerCanEnableAutoMerge: Bool?
+    let autoMergeRequest: AutoMergeNode?
     let number: Int
     let title: String
     let url: URL?
@@ -180,6 +185,11 @@ struct DetailNode: Decodable, Sendable {
     struct RepositoryNode: Decodable, Sendable {
         let name: String
         let owner: LoginNode
+        let viewerPermission: String?
+        let viewerDefaultMergeMethod: String?
+        let mergeCommitAllowed: Bool?
+        let squashMergeAllowed: Bool?
+        let rebaseMergeAllowed: Bool?
     }
 
     struct LoginNode: Decodable, Sendable { let login: String }
@@ -333,7 +343,6 @@ struct DetailNode: Decodable, Sendable {
             commits: commits.values.map(\.commit.model)
         )
     }
-
 }
 
 extension DetailNode.CommitNode {

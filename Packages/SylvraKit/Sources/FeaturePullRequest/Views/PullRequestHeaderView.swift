@@ -8,6 +8,9 @@ struct PullRequestHeaderView: View {
     var isRefreshing = false
     var lastUpdated: Date?
     var refresh: (() -> Void)?
+    /// What the merge button offers (`nil`: no button).
+    var mergeAction: MergeOptions.Action?
+    var merge: (() -> Void)?
     let openOnGitHub: () -> Void
 
     var body: some View {
@@ -54,6 +57,26 @@ struct PullRequestHeaderView: View {
                     "+\(detail.summary.additions) −\(detail.summary.deletions) · \(detail.changedFiles) files",
                     systemImage: "plusminus", tint: .secondary)
             }
+            if let mergeAction, let merge { mergeButton(mergeAction, merge) }
+        }
+    }
+
+    /// Merging is one click away, then confirmed in a sheet.
+    @ViewBuilder private func mergeButton(_ action: MergeOptions.Action, _ merge: @escaping () -> Void) -> some View {
+        switch action {
+        case .merge:
+            Button(action: merge) { Label("Merge…", systemImage: "arrow.triangle.merge") }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.small)
+                .help("Merge this pull request on GitHub")
+        case .enableAutoMerge:
+            Button(action: merge) { Label("Auto-Merge…", systemImage: "arrow.triangle.merge") }
+                .controlSize(.small)
+                .help("Let GitHub merge once reviews and checks are through")
+        case .disableAutoMerge:
+            Button(action: merge) { Label("Auto-merge is on", systemImage: "checkmark.circle") }
+                .controlSize(.small)
+                .help("GitHub merges once reviews and checks are through. Click to switch it off.")
         }
     }
 

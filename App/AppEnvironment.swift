@@ -91,7 +91,8 @@ final class AppEnvironment {
         inbox = Self.makeInbox(loader: inboxLoader, gitHub: gitHub, isDemo: isDemo, arguments: arguments)
         let detailLoader: any PullRequestDetailLoading =
             isDemo ? DemoPullRequestDetailLoader() : GitHubPullRequestDetailLoader(client: gitHub)
-        pullRequest = PullRequestScreenModel(loader: detailLoader)
+        pullRequest = PullRequestScreenModel(
+            loader: detailLoader, merger: detailLoader as? any PullRequestMerging, defaults: isDemo ? nil : .standard)
         openInIDE =
             isDemo
             ? OpenInIDEModel(checkout: DemoCheckout(), opener: DemoIDEOpener())

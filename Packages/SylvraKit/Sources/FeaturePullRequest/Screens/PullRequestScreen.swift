@@ -62,6 +62,11 @@ public struct PullRequestScreen<Files: View, OverviewTop: View, Summary: View, C
             await model.load(pullRequest?.id)
             await model.keepRefreshing()
         }
+        .sheet(isPresented: $model.isMergeSheetPresented) {
+            if let detail = model.detail, let action = model.mergeAction {
+                MergeSheet(model: model, detail: detail, action: action)
+            }
+        }
         .sheet(item: $model.openedCheck) { check in
             CheckReportSheet(
                 check: check, load: { try await model.report(for: check) }, openOnGitHub: { open(check.url) })
@@ -74,7 +79,8 @@ public struct PullRequestScreen<Files: View, OverviewTop: View, Summary: View, C
             VStack(alignment: .leading, spacing: 12) {
                 PullRequestHeaderView(
                     detail: detail, isRefreshing: model.isRefreshing, lastUpdated: model.lastUpdated,
-                    refresh: { Task { await refresh() } }, openOnGitHub: { open(detail.summary.url) })
+                    refresh: { Task { await refresh() } }, mergeAction: model.mergeAction,
+                    merge: { model.startMerge() }, openOnGitHub: { open(detail.summary.url) })
                 if let stack = model.stack, let openPullRequest {
                     StackBarView(status: stack, open: openPullRequest)
                 }

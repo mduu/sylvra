@@ -30,7 +30,18 @@ public final class PullRequestScreenModel {
     /// The check whose report is shown (sheet).
     public var openedCheck: PullRequestDetail.CheckRun?
 
+    /// The merge sheet is shown.
+    public var isMergeSheetPresented = false
+    /// A merge (or auto-merge change) is being sent to GitHub.
+    public internal(set) var isMerging = false
+    /// Why GitHub refused the last merge action (shown in the sheet).
+    public internal(set) var mergeError: String?
+    /// The method chosen in the sheet.
+    public var mergeMethod: MergeMethod = .merge
+
     private let loader: any PullRequestDetailLoading
+    let merger: (any PullRequestMerging)?
+    let defaults: UserDefaults?
     private static let logger = SylvraLog.logger("pullRequest")
     /// Resolves or reopens a code thread on GitHub (wired by the app; `nil` hides *Resolve*). `false` on failure.
     @ObservationIgnored public var resolveThread: ((_ id: String, _ resolved: Bool) async -> Bool)?
@@ -58,8 +69,15 @@ public final class PullRequestScreenModel {
         return try await loader.loadCheckReport(nodeID: nodeID)
     }
 
-    public init(loader: any PullRequestDetailLoading) {
+    /// - Parameters:
+    ///   - merger: merges on GitHub; `nil` hides the merge button.
+    ///   - defaults: remembers the merge method per repository.
+    public init(
+        loader: any PullRequestDetailLoading, merger: (any PullRequestMerging)? = nil, defaults: UserDefaults? = nil
+    ) {
         self.loader = loader
+        self.merger = merger
+        self.defaults = defaults
     }
 
     public func load(_ id: PullRequestID?) async {
