@@ -8,6 +8,8 @@ import SylvraCore
 /// summary), `overviewTop` (e.g. the change map), `files` (file navigator) and `conversation` (the comments on
 /// the pull request itself, with writing). Selecting a commit reviews it on its own (`selectCommit`, `nil` = all
 /// changes). `openPullRequest` opens another layer of the pull request's stack (`nil` hides the stack bar).
+/// `shareSummary` gives one or two sentences about the pull request for *Copy Link with Description* (e.g. the
+/// AI summary; `nil`: taken from its description).
 /// `delivery` is the Delivery tab of a merged pull request (`nil`: no such tab).
 /// The details reload every minute and with the header's refresh button; `refreshOthers` reloads what the app
 /// shows next to them (comments, threads, new commits).
@@ -24,6 +26,7 @@ public struct PullRequestScreen<Files: View, OverviewTop: View, Summary: View, C
     private let openPullRequest: ((PullRequestSummary) -> Void)?
     private let refreshOthers: (() async -> Void)?
     private let delivery: AnyView?
+    private let shareSummary: (() -> String?)?
     @Environment(\.openURL) private var openURL
 
     public init(
@@ -33,6 +36,7 @@ public struct PullRequestScreen<Files: View, OverviewTop: View, Summary: View, C
         openPullRequest: ((PullRequestSummary) -> Void)? = nil,
         refreshOthers: (() async -> Void)? = nil,
         delivery: AnyView? = nil,
+        shareSummary: (() -> String?)? = nil,
         @ViewBuilder summary: () -> Summary,
         @ViewBuilder overviewTop: () -> OverviewTop,
         @ViewBuilder files: () -> Files,
@@ -48,6 +52,7 @@ public struct PullRequestScreen<Files: View, OverviewTop: View, Summary: View, C
         self.openPullRequest = openPullRequest
         self.refreshOthers = refreshOthers
         self.delivery = delivery
+        self.shareSummary = shareSummary
         self.overviewTop = overviewTop()
         self.files = files()
     }
@@ -84,7 +89,8 @@ public struct PullRequestScreen<Files: View, OverviewTop: View, Summary: View, C
                 PullRequestHeaderView(
                     detail: detail, isRefreshing: model.isRefreshing, lastUpdated: model.lastUpdated,
                     refresh: { Task { await refresh() } }, mergeAction: model.mergeAction,
-                    merge: { model.startMerge() }, openOnGitHub: { open(detail.summary.url) })
+                    merge: { model.startMerge() }, copyLink: { copyLink(detail, withDescription: $0) },
+                    openOnGitHub: { open(detail.summary.url) })
                 if let stack = model.stack, let openPullRequest {
                     StackBarView(status: stack, open: openPullRequest)
                 }
@@ -198,6 +204,15 @@ public struct PullRequestScreen<Files: View, OverviewTop: View, Summary: View, C
 
     private func open(_ url: URL?) {
         if let url { openURL(url) }
+    }
+
+    private func copyLink(_ detail: PullRequestDetail, withDescription: Bool) {
+        guard let url = detail.summary.url?.absoluteString else { return }
+        guard withDescription else { return Clipboard.copy(url) }
+        let summary = shareSummary?()
+        Clipboard.copy(
+            PullRequestShareText.text(for: detail, summary: summary),
+            html: PullRequestShareText.html(for: detail, summary: summary))
     }
 
     private func copy(_ text: String) {

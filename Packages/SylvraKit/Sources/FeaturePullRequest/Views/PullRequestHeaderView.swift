@@ -11,6 +11,9 @@ struct PullRequestHeaderView: View {
     /// What the merge button offers (`nil`: no button).
     var mergeAction: MergeOptions.Action?
     var merge: (() -> Void)?
+    /// Copies the pull request's link; `true`: with its title and a short description.
+    var copyLink: ((_ withDescription: Bool) -> Void)?
+    @State private var didCopy = false
     let openOnGitHub: () -> Void
 
     var body: some View {
@@ -43,6 +46,7 @@ struct PullRequestHeaderView: View {
                     .help(refreshHelp)
                     .accessibilityLabel("Refresh pull request")
                 }
+                if copyLink != nil { copyLinkMenu }
                 Button(action: openOnGitHub) {
                     Image(systemName: "arrow.up.right.square")
                 }
@@ -58,6 +62,34 @@ struct PullRequestHeaderView: View {
                     systemImage: "plusminus", tint: .secondary)
             }
             if let mergeAction, let merge { mergeButton(mergeAction, merge) }
+        }
+    }
+
+    /// A click copies the link; the menu also offers it with title and description (for a review request).
+    private var copyLinkMenu: some View {
+        Menu {
+            Button("Copy Link", systemImage: "link") { copy(withDescription: false) }
+            Button("Copy Link with Description", systemImage: "text.bubble") { copy(withDescription: true) }
+        } label: {
+            Image(systemName: didCopy ? "checkmark" : "link")
+                .foregroundStyle(didCopy ? AnyShapeStyle(.green) : AnyShapeStyle(.secondary))
+                .contentTransition(.symbolEffect(.replace))
+        } primaryAction: {
+            copy(withDescription: false)
+        }
+        .menuStyle(.borderlessButton)
+        .menuIndicator(.hidden)
+        .fixedSize()
+        .help("Copy the pull request's link — hold for the link with title and description")
+        .accessibilityLabel("Copy link")
+    }
+
+    private func copy(withDescription: Bool) {
+        copyLink?(withDescription)
+        withAnimation(.snappy) { didCopy = true }
+        Task {
+            try? await Task.sleep(for: .seconds(1.2))
+            withAnimation(.snappy) { didCopy = false }
         }
     }
 

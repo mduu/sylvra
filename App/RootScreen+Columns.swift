@@ -149,6 +149,7 @@ extension RootScreen {
                 DeliveryPanel(model: environment.delivery, pullRequestID: selection?.id) { question in
                     askAI(question)
                 }),
+            shareSummary: { selection.flatMap { environment.aiReview.results[$0.id]?.summary } },
             summary: {
                 AISummaryPanel(model: environment.aiReview, pullRequestID: selection?.id) { path in
                     Task { await environment.diff.reveal(path) }

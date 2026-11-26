@@ -8,6 +8,14 @@ public enum Clipboard {
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString(text, forType: .string)
     }
+
+    /// Text with an HTML version next to it: apps that take rich text (chat, mail) paste the HTML, e.g. a
+    /// title as a link.
+    @MainActor
+    public static func copy(_ text: String, html: String?) {
+        copy(text)
+        if let html { NSPasteboard.general.setString(html, forType: .html) }
+    }
 }
 
 /// A small copy button (two squares) that shows a checkmark for a moment after copying. The text is built only
