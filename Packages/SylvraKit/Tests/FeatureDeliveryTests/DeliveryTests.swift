@@ -154,6 +154,8 @@ private final class ScriptedLoader: DeliveryLoading, @unchecked Sendable {
         if let refusal { throw GitHubError.graphQL([refusal]) }
         approved.append(approval)
     }
+
+    func loadLog(jobID: Int, in id: PullRequestID) async throws -> String { "log of \(jobID)" }
 }
 
 @MainActor

@@ -21,6 +21,8 @@ public final class InboxScreenModel {
     /// Called after a refresh with what happened on the user's own pull requests (wired by the app for
     /// notifications).
     @ObservationIgnored public var onOwnPullRequestEvents: (([OwnPullRequestEvent]) -> Void)?
+    /// A merged pull request's delivery in short (wired by the app; read while rows render, so they update).
+    @ObservationIgnored public var deliveryBadge: ((PullRequestID) -> DeliveryBadge?)?
     public private(set) var loadState: LoadState = .idle
     /// A refresh runs (manual or periodic); the refresh button shows a spinner meanwhile.
     public var isRefreshing: Bool { runningRefreshes > 0 }

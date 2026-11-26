@@ -2,6 +2,7 @@ import FeatureAIReview
 import FeatureActivity
 import FeatureDelivery
 import FeatureDiff
+import FeatureInbox
 import FeatureOpenInIDE
 import SwiftUI
 import SylvraCore
@@ -93,6 +94,12 @@ struct RootModelBridges: View {
                     environment.activity.finish(job.id, message: nil)
                 }
                 for job in jobs { environment.activity.start(job) }
+            }
+            .onChange(of: environment.inbox.snapshot, initial: true) { _, snapshot in
+                // Merged pull requests in the inbox show their delivery without being opened.
+                guard role == .main else { return }
+                let closed = snapshot.pullRequests(in: .recentlyClosed).map(\.id)
+                Task { await environment.delivery.preload(closed) }
             }
             // Initial too: an inbox restored from the cache is there before this view observes it.
             .onChange(of: environment.inbox.snapshot, initial: true) {

@@ -6,6 +6,8 @@ public protocol DeliveryLoading: Sendable {
     func loadDelivery(for id: PullRequestID) async throws -> Delivery?
     /// Approves a deployment that waits for the signed-in user — only ever on their click.
     func approve(_ approval: DeliveryStage.Approval) async throws
+    /// The whole log of a job (GitHub Actions' job number).
+    func loadLog(jobID: Int, in id: PullRequestID) async throws -> String
 }
 
 /// Checks a stage of a delivery with an AI agent (read-only; see specs/delivery.md §3).

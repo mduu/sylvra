@@ -48,4 +48,18 @@ struct InvestigationTests {
                 ProcessResult(exitCode: 1, standardOutput: "", standardError: "not logged in"))
         }
     }
+
+    /// *What the agent did*: every tool call, with what it was called with.
+    @Test func listsTheAgentsToolCalls() {
+        let output = [
+            #"{"type":"system","subtype":"init"}"#,
+            #"{"type":"assistant","message":{"content":[{"type":"text","text":"Looking"},{"type":"tool_use","name":"Bash","input":{"command":"gh run view 1 --log-failed"}}]}}"#,
+            #"{"type":"assistant","message":{"content":[{"type":"tool_use","name":"mcp__datadog__search_logs","input":{"query":"service:api status:error"}}]}}"#,
+            #"{"type":"result","result":"done"}"#,
+        ].joined(separator: "\n")
+        #expect(
+            ClaudeCodeProvider.toolCalls(in: output) == [
+                "Bash: gh run view 1 --log-failed", "datadog · search_logs: service:api status:error",
+            ])
+    }
 }

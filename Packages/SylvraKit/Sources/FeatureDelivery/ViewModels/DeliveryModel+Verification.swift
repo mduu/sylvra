@@ -73,11 +73,30 @@ extension DeliveryModel {
                 onEvent?(
                     DeliveryEvent(pullRequest: id, title: delivery.title, kind: .verified(stage.name, result.verdict)))
             }
+        } catch is CancellationError {
+            return
         } catch {
+            guard !Task.isCancelled else { return }
             verificationErrors[key] =
                 (error as? LocalizedError)?.errorDescription
                 ?? (error as NSError).userInfo[NSLocalizedDescriptionKey] as? String ?? String(describing: error)
         }
+    }
+
+    /// Starts a check from the view (*Check with AI*); `stopVerifying` ends it.
+    public func startVerifying(_ stageID: String, of id: PullRequestID) {
+        let key = Self.verificationKey(id, stageID)
+        guard verificationTasks[key] == nil else { return }
+        verificationTasks[key] = Task {
+            await verify(stageID, of: id)
+            verificationTasks[key] = nil
+        }
+    }
+
+    /// Stops a running check: the agent process is terminated, the earlier result (if any) stays.
+    public func stopVerifying(_ stageID: String, of id: PullRequestID) {
+        let key = Self.verificationKey(id, stageID)
+        verificationTasks.removeValue(forKey: key)?.cancel()
     }
 
     // MARK: Automatic verification of followed deliveries

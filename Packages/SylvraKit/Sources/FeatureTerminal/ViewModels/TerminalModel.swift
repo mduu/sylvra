@@ -117,6 +117,16 @@ public final class TerminalModel {
 
     // MARK: External terminal
 
+    /// Opens a folder or a script in the configured external terminal (a `.command` file runs there).
+    public func openInExternalTerminal(_ item: URL) async {
+        let app = externalTerminal
+        do {
+            try await opener.open(item, bundleIdentifier: app.bundleIdentifier)
+        } catch {
+            errorMessage = String(localized: "Could not open \(app.name): \(error.localizedDescription)")
+        }
+    }
+
     /// Opens the selected tab's directory (or the default directory) in the configured external terminal.
     public func openInExternalTerminal() async {
         let app = externalTerminal

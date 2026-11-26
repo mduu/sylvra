@@ -12,7 +12,7 @@ public final class DeliveryModel {
         case idle, loading, loaded, failed(String)
     }
 
-    public private(set) var deliveries: [PullRequestID: Delivery] = [:]
+    public internal(set) var deliveries: [PullRequestID: Delivery] = [:]
     public private(set) var loadState: LoadState = .idle
     /// The pull requests whose deliveries are followed in the background (persisted).
     public private(set) var followed: [PullRequestID] = []
@@ -25,6 +25,15 @@ public final class DeliveryModel {
     /// Called for followed deliveries when a stage finishes, fails or waits for approval (wired by the app
     /// for notifications).
     @ObservationIgnored public var onEvent: ((DeliveryEvent) -> Void)?
+
+    // The delivery view (see DeliveryModel+Selection).
+    /// What the details show per pull request: a job's log, a check's evidence … (`nil`: the first problem, else
+    /// the first job of the stage).
+    public var selectedItem: [PullRequestID: DeliveryItem] = [:]
+    /// Job logs by GitHub's job number.
+    public internal(set) var logs: [Int: LogState] = [:]
+    /// Merged pull requests whose main area shows the diff instead of the delivery.
+    public var showsDiff: Set<PullRequestID> = []
 
     // Verification (see DeliveryModel+Verification).
     /// What the agent found per stage (`stage.id`), per pull request (persisted).
@@ -40,12 +49,16 @@ public final class DeliveryModel {
     }
     /// Title and description of a pull request for the agent (wired by the app).
     @ObservationIgnored public var pullRequestInfo: ((PullRequestID) async -> DeliveryPullRequestInfo?)?
+    /// Pull requests whose delivery was looked for in this launch (closed without merging ones have none).
+    @ObservationIgnored var preloaded: Set<PullRequestID> = []
+    /// Running checks started from the view, so they can be stopped (`verificationKey`).
+    @ObservationIgnored var verificationTasks: [String: Task<Void, Never>] = [:]
     /// Verifications that are due later (in memory: a restart drops them).
     @ObservationIgnored var scheduled: [ScheduledVerification] = []
     let verifier: (any DeliveryVerifying)?
     let cache: JSONCache?
 
-    private let loader: any DeliveryLoading
+    let loader: any DeliveryLoading
     let defaults: UserDefaults?
     /// Since when a followed delivery has had nothing left to do (a chained workflow may still start).
     @ObservationIgnored private var settledSince: [PullRequestID: Date] = [:]
@@ -70,6 +83,7 @@ public final class DeliveryModel {
         self.defaults = defaults
         self.cache = cache
         verifiesAutomatically = defaults?.bool(forKey: Self.autoVerifyKey) ?? false
+        deliveries = Self.restoredDeliveries(from: cache)
         if let saved = cache?.load([String: [StageVerification]].self, key: Self.verificationsKey) {
             for (text, results) in saved {
                 guard let id = PullRequestID(text) else { continue }
@@ -114,7 +128,10 @@ public final class DeliveryModel {
     private func reload(_ id: PullRequestID, now: Date = .now) async throws {
         let loaded = try await loader.loadDelivery(for: id)
         let old = deliveries[id]
-        if old != loaded { deliveries[id] = loaded }
+        if old != loaded {
+            deliveries[id] = loaded
+            saveDeliveries()
+        }
         guard let loaded, isFollowing(id) else { return }
         for event in DeliveryEvent.changes(from: old, to: loaded) { onEvent?(event) }
         scheduleVerifications(from: old, to: loaded, now: now)
@@ -140,6 +157,7 @@ public final class DeliveryModel {
 
     /// Reloads the followed deliveries every `interval` until the task is cancelled (run once by the app).
     public func keepFollowing(every interval: Duration = refreshInterval) async {
+        await refreshRestored()
         while !Task.isCancelled {
             await refreshFollowed()
             try? await Task.sleep(for: interval)

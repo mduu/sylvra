@@ -5,6 +5,8 @@ import SylvraCore
 /// Loads the workflow runs, jobs and deployments of a pull request's merge commit with one GraphQL request.
 public struct GitHubDeliveryLoader: DeliveryLoading {
     let client: GitHubClient
+    /// Workflow files per path and commit: they never change, and the delivery reloads every 30 s.
+    private let workflows = WorkflowFileCache()
 
     public init(client: GitHubClient) {
         self.client = client
@@ -15,7 +17,37 @@ public struct GitHubDeliveryLoader: DeliveryLoading {
             Self.query,
             variables: ["owner": .string(id.owner), "name": .string(id.repository), "number": .int(id.number)],
             as: DeliveryResponse.self)
-        return response.repository?.pullRequest?.delivery(for: id)
+        guard let pullRequest = response.repository?.pullRequest, let commit = pullRequest.mergeCommit else {
+            return nil
+        }
+        let paths = Set((commit.checkSuites?.values ?? []).compactMap { $0.workflowRun?.file?.path })
+        var files: [String: WorkflowFile] = [:]
+        for path in paths {
+            files[path] = await workflowFile(path, at: commit.oid, in: id)
+        }
+        return pullRequest.delivery(for: id, workflows: files)
+    }
+
+    /// The workflow file as of the merge commit (`nil`: not readable — the graph then has no dependencies).
+    private func workflowFile(_ path: String, at sha: String, in id: PullRequestID) async -> WorkflowFile? {
+        let key = "\(id.owner)/\(id.repository)/\(path)@\(sha)"
+        if let cached = await workflows.file(for: key) { return cached }
+        guard
+            let data = try? await client.rest(
+                path: "repos/\(id.owner)/\(id.repository)/contents/\(path)",
+                query: [URLQueryItem(name: "ref", value: sha)],
+                accept: "application/vnd.github.raw"),
+            let text = String(data: data, encoding: .utf8)
+        else { return nil }
+        let file = WorkflowFile(yaml: text)
+        await workflows.store(file, for: key)
+        return file
+    }
+
+    public func loadLog(jobID: Int, in id: PullRequestID) async throws -> String {
+        let data = try await client.rest(
+            path: "repos/\(id.owner)/\(id.repository)/actions/jobs/\(jobID)/logs", accept: "application/vnd.github.raw")
+        return String(decoding: data, as: UTF8.self)
     }
 
     public func approve(_ approval: DeliveryStage.Approval) async throws {
@@ -41,14 +73,15 @@ public struct GitHubDeliveryLoader: DeliveryLoading {
                 checkSuites(first: 30) { nodes {
                   workflowRun {
                     id url event createdAt
+                    file { path }
                     workflow { name }
                     pendingDeploymentRequests(first: 10) { nodes { currentUserCanApprove environment { id name } } }
                   }
                   checkRuns(first: 50) { nodes {
-                    id name status conclusion startedAt completedAt detailsUrl
+                    id databaseId name status conclusion startedAt completedAt detailsUrl
                     deployment { environment }
                     pendingDeploymentRequest { environment { name } }
-                    steps(first: 30) { nodes { name number conclusion } }
+                    steps(first: 50) { nodes { name number status conclusion } }
                     annotations(first: 5) { nodes { message annotationLevel } }
                   } }
                 } }
@@ -81,10 +114,14 @@ struct DeliveryResponse: Decodable, Sendable {
         let mergedAt: Date?
         let mergeCommit: Commit?
 
-        /// `nil` while the pull request is not merged.
-        func delivery(for id: PullRequestID) -> Delivery? {
+        /// `nil` while the pull request is not merged. `workflows`: the workflow files by path.
+        func delivery(for id: PullRequestID, workflows: [String: WorkflowFile] = [:]) -> Delivery? {
             guard state == "MERGED", let mergeCommit else { return nil }
-            let runs = (mergeCommit.checkSuites?.values ?? []).compactMap(\.run)
+            let runs = (mergeCommit.checkSuites?.values ?? []).compactMap { suite -> StagePlanner.Run? in
+                var run = suite.run
+                run?.workflow = suite.workflowRun?.file.flatMap { workflows[$0.path] }
+                return run
+            }
             let deployments = (mergeCommit.deployments?.values ?? []).map(\.model)
             return Delivery(
                 pullRequest: id, title: title, mergeCommitSHA: mergeCommit.oid, mergedAt: mergedAt,
@@ -127,7 +164,9 @@ struct DeliveryResponse: Decodable, Sendable {
         let event: String?
         let createdAt: Date?
         let workflow: Named?
+        let file: File?
         let pendingDeploymentRequests: Nodes<DeploymentRequest>?
+        struct File: Decodable, Sendable { let path: String }
     }
 
     struct Named: Decodable, Sendable { let name: String }
@@ -142,6 +181,7 @@ struct DeliveryResponse: Decodable, Sendable {
 
     struct CheckRun: Decodable, Sendable {
         let id: String
+        let databaseId: Int?
         let name: String
         let status: String
         let conclusion: String?
@@ -157,6 +197,7 @@ struct DeliveryResponse: Decodable, Sendable {
         struct Step: Decodable, Sendable {
             let name: String
             let number: Int
+            let status: String?
             let conclusion: String?
         }
         struct Annotation: Decodable, Sendable {
@@ -172,7 +213,13 @@ struct DeliveryResponse: Decodable, Sendable {
             return StagePlanner.Job(
                 job: DeliveryJob(
                     id: id, name: name, state: state, startedAt: startedAt, finishedAt: completedAt, url: detailsUrl,
-                    failedSteps: state == .failed ? failedSteps : [], errors: state == .failed ? errors : []),
+                    failedSteps: state == .failed ? failedSteps : [], errors: state == .failed ? errors : [],
+                    jobID: databaseId,
+                    steps: (steps?.values ?? []).sorted { $0.number < $1.number }.map { step in
+                        JobStep(
+                            number: step.number, name: step.name,
+                            state: Self.state(status: step.status ?? "COMPLETED", conclusion: step.conclusion))
+                    }),
                 environment: deployment?.environment ?? pendingDeploymentRequest?.environment?.name)
         }
 
@@ -222,5 +269,17 @@ struct DeliveryResponse: Decodable, Sendable {
             default: .waiting
             }
         }
+    }
+}
+
+/// Workflow files already read, per path and commit.
+actor WorkflowFileCache {
+    private var files: [String: WorkflowFile] = [:]
+
+    func file(for key: String) -> WorkflowFile? { files[key] }
+
+    func store(_ file: WorkflowFile, for key: String) {
+        if files.count > 50 { files.removeAll() }
+        files[key] = file
     }
 }

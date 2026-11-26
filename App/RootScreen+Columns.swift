@@ -145,10 +145,6 @@ extension RootScreen {
                 async let inbox: Void = environment.inbox.refresh()
                 _ = await (conversation, threads, commits, inbox)
             },
-            delivery: AnyView(
-                DeliveryPanel(
-                    model: environment.delivery, pullRequestID: selection?.id, askAI: { askAI($0) },
-                    openSession: { openClaudeSession($0) })),
             shareSummary: { selection.flatMap { environment.aiReview.results[$0.id]?.summary } },
             summary: {
                 AISummaryPanel(model: environment.aiReview, pullRequestID: selection?.id) { path in
@@ -170,7 +166,33 @@ extension RootScreen {
         )
     }
 
+    /// The selected pull request is merged: the main area can show its delivery instead of the diff.
+    var isSelectionMerged: Bool {
+        guard let detail = environment.pullRequest.detail, detail.summary.id == selection?.id else { return false }
+        return detail.state == .merged
+    }
+
+    /// The main area shows the delivery (merged, and not switched to the diff).
+    var showsDelivery: Bool {
+        environment.delivery.showsDelivery(selection?.id, isMerged: isSelectionMerged)
+    }
+
     var reviewColumn: some View {
+        Group {
+            if showsDelivery {
+                DeliveryScreen(
+                    model: environment.delivery, pullRequestID: selection?.id, askAI: { askAI($0) },
+                    openSession: { openClaudeSession($0, external: $1) })
+            } else {
+                diffColumn
+            }
+        }
+        .panelHandle(.trailing, isVisible: hasAIPanel && !isInspectorPresented) { aiHandle }
+        .terminalPanel(environment, selection: selection, isEnabled: hostsBottomPanel)
+        .stableColumn()
+    }
+
+    private var diffColumn: some View {
         ReviewScreen(model: environment.review, pullRequestID: selection?.id) {
             DiffScreen(
                 model: environment.diff,
@@ -201,9 +223,6 @@ extension RootScreen {
             .animation(.snappy, value: floatingInspectorInset)
             .closesFloatingPanel(inspectorBinding, isEnabled: !layout.docksInspector && isInspectorPresented)
         }
-        .panelHandle(.trailing, isVisible: hasAIPanel && !isInspectorPresented) { aiHandle }
-        .terminalPanel(environment, selection: selection, isEnabled: hostsBottomPanel)
-        .stableColumn()
     }
 
     /// Only one window shows the terminal: each session has a single AppKit view, and a second

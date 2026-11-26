@@ -7,6 +7,8 @@ struct InboxRowView: View {
     let pullRequest: PullRequestSummary
     /// The reviewer acted last: the row steps back and says so.
     var isWaitingOnOthers = false
+    /// A merged pull request's delivery (`nil`: none known).
+    var delivery: DeliveryBadge?
 
     var body: some View {
         HStack(alignment: .top, spacing: 10) {
@@ -49,6 +51,7 @@ struct InboxRowView: View {
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
                 activityLabel
+                if let delivery { DeliveryBadgeView(badge: delivery) }
             }
         }
         .padding(.vertical, 3)

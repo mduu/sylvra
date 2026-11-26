@@ -352,8 +352,9 @@ extension RootScreen {
         // Delivery: a merge through Sylvra is followed to production; each stage raises a notification.
         environment.pullRequest.onMerged = { id in
             environment.delivery.follow(id)
-            environment.pullRequest.tab = .delivery
+            environment.delivery.setShowsDelivery(true, for: id)
         }
+        environment.inbox.deliveryBadge = { id in environment.delivery.badge(for: id) }
         environment.delivery.onEvent = { event in
             environment.activity.notify(
                 .delivery, about: event.pullRequest, title: event.title, message: event.message)

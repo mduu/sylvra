@@ -140,7 +140,8 @@ public struct InboxScreen: View {
             ForEach(entry.pullRequests) { pullRequest in
                 InboxRowView(
                     pullRequest: pullRequest,
-                    isWaitingOnOthers: InboxScreenModel.showsWaiting(pullRequest, in: entry.section)
+                    isWaitingOnOthers: InboxScreenModel.showsWaiting(pullRequest, in: entry.section),
+                    delivery: model.deliveryBadge?(pullRequest.id)
                 )
                 .tag(pullRequest.id)
                 .contextMenu { rowMenu(pullRequest) }

@@ -37,6 +37,8 @@ private final class ScriptedDeliveries: DeliveryLoading, @unchecked Sendable {
         script.count > 1 ? script.removeFirst() : script.first
     }
     func approve(_ approval: DeliveryStage.Approval) async throws {}
+
+    func loadLog(jobID: Int, in id: PullRequestID) async throws -> String { "log of \(jobID)" }
 }
 
 struct VerificationPromptTests {
@@ -114,6 +116,26 @@ struct VerificationModelTests {
         #expect(verifier.requests.first?.monitoringNotes == "Datadog service:billing-api")
         #expect(verifier.requests.first?.body == "Rounds per invoice.")
         #expect(!model.isVerifying(stage, in: id))
+    }
+
+    @Test func aRunningCheckCanBeStopped() async throws {
+        final class SlowVerifier: DeliveryVerifying, @unchecked Sendable {
+            func verify(_ request: VerificationRequest) async throws -> StageVerification {
+                try await Task.sleep(for: .seconds(30))
+                return StageVerification(stageID: "prod", stageName: "prod", verdict: .healthy, summary: "late")
+            }
+        }
+        let model = DeliveryModel(
+            loader: ScriptedDeliveries([delivery([("prod", .succeeded)])]), verifier: SlowVerifier())
+        await model.load(id)
+        let stage = try #require(model.delivery(for: id)?.stages.first)
+        model.startVerifying("prod", of: id)
+        for _ in 0..<50 where !model.isVerifying(stage, in: id) { await Task.yield() }
+        #expect(model.isVerifying(stage, in: id))
+        model.stopVerifying("prod", of: id)
+        for _ in 0..<200 where model.isVerifying(stage, in: id) { try await Task.sleep(for: .milliseconds(5)) }
+        #expect(!model.isVerifying(stage, in: id))
+        #expect(model.verification(of: stage, in: id) == nil && model.verificationError(of: stage, in: id) == nil)
     }
 
     @Test func aFailedCheckShowsItsReason() async throws {

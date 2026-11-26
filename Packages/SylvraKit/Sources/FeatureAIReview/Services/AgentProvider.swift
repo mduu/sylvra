@@ -50,10 +50,13 @@ public struct InvestigationReply: Sendable {
     /// The answer as JSON matching the request's schema.
     public let json: Data
     public var tokens: TokenUsage?
+    /// What the agent did, in order: one line per tool call ("Bash: gh run view 123 --log-failed").
+    public var activity: [String]
 
-    public init(json: Data, tokens: TokenUsage? = nil) {
+    public init(json: Data, tokens: TokenUsage? = nil, activity: [String] = []) {
         self.json = json
         self.tokens = tokens
+        self.activity = activity
     }
 }
 

@@ -60,8 +60,10 @@ public enum VerificationPrompt {
             under `notChecked` with the reason (e.g. "Datadog tools are not allowed in Claude Code's settings").
             - First state in `intent` what the change is meant to fix or introduce (one or two sentences, from \
             the description and, if needed, the diff via `gh pr diff`).
-            - Every check names its evidence: the tool, the query or command, the time window and the figures \
-            (before and after the deployment where that makes sense). No evidence, no claim.
+            - Every check names its evidence: the tool and time window in `evidence`, the exact query or command \
+            in `query`, the figures in `before` and `after` (e.g. "14 matches" / "0 matches") where comparing \
+            makes sense, and up to 12 telling lines of the log or output in `excerpt` (keep timestamps; leave \
+            out secrets, tokens and personal data). No evidence, no claim.
             - Do not check user interface behaviour or anything that leaves no trace in logs or metrics; list \
             such points under `notChecked`.
             - `verdict`: "problems" if the stage failed or the deployed change shows errors; "healthy" if it \
@@ -101,7 +103,9 @@ public enum VerificationPrompt {
         "summary":{"type":"string"},"intent":{"type":"string"},
         "checks":{"type":"array","items":{"type":"object","required":["title","outcome","finding"],"properties":{
         "title":{"type":"string"},"outcome":{"type":"string","enum":["ok","problem","unchecked"]},
-        "finding":{"type":"string"},"evidence":{"type":"string"}}}},
+        "finding":{"type":"string"},"evidence":{"type":"string"},"query":{"type":"string"},
+        "before":{"type":"string"},"after":{"type":"string"},
+        "excerpt":{"type":"array","items":{"type":"string"},"maxItems":12}}}},
         "notChecked":{"type":"array","items":{"type":"string"}}}}
         """
 
@@ -114,14 +118,18 @@ public enum VerificationPrompt {
     }
 
     /// The agent's answer as the verification of `request`'s stage.
-    public static func decode(_ json: Data, for request: VerificationRequest, now: Date = .now) throws
+    /// `activity`: what the agent did, in order.
+    public static func decode(_ json: Data, for request: VerificationRequest, activity: [String] = [], now: Date = .now)
+        throws
         -> StageVerification
     {
         let output = try JSONDecoder().decode(Output.self, from: json)
-        return StageVerification(
+        var result = StageVerification(
             stageID: request.stage.id, stageName: request.stage.name, verdict: output.verdict,
             summary: output.summary.trimmingCharacters(in: .whitespacesAndNewlines), intent: output.intent ?? "",
             checks: output.checks ?? [], notChecked: output.notChecked ?? [], checkedAt: now,
             isSecondLook: request.isSecondLook)
+        result.activity = activity
+        return result
     }
 }

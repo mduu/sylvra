@@ -1,6 +1,7 @@
 import AppKit
 import FeatureAIReview
 import FeatureActivity
+import FeatureDelivery
 import FeatureDiff
 import FeatureOpenInIDE
 import FeaturePullRequest
@@ -18,6 +19,24 @@ extension RootScreen {
         // How the window is arranged, next to how the diff is shown.
         ToolbarItem(placement: .navigation) {
             WindowLayoutMenu(selection: $layoutMode, resolved: layout)
+        }
+        // A merged pull request: its delivery or its diff in the main area.
+        if isSelectionMerged, let id = selection?.id {
+            ToolbarItem(placement: .navigation) {
+                Picker(
+                    "Main area",
+                    selection: Binding(
+                        get: { environment.delivery.showsDelivery(id, isMerged: true) },
+                        set: { shows in withAnimation(.snappy) { environment.delivery.setShowsDelivery(shows, for: id) }
+                        })
+                ) {
+                    Text("Diff").tag(false)
+                    Text("Delivery").tag(true)
+                }
+                .pickerStyle(.segmented)
+                .labelsHidden()
+                .help("Show the delivery of the merged pull request, or its diff")
+            }
         }
         ToolbarItem(placement: .principal) {
             PullRequestTitleView(

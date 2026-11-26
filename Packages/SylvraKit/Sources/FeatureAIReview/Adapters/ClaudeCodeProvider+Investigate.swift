@@ -8,11 +8,35 @@ extension ClaudeCodeProvider {
     /// the built-in tools are limited to reading (and Bash only for the request's rules).
     public func investigate(_ request: InvestigationRequest) async throws -> InvestigationReply {
         guard let claude = ExecutableLocator.locate("claude") else { throw AgentError.notInstalled(name) }
-        let result = handle(
-            try await runner.run(
-                claude, arguments: Self.investigationArguments(for: request),
-                workingDirectory: try Self.isolatedDirectory(), input: Data(request.prompt.utf8)))
-        return try Self.decodeInvestigation(result)
+        let raw = try await runner.run(
+            claude, arguments: Self.investigationArguments(for: request),
+            workingDirectory: try Self.isolatedDirectory(), input: Data(request.prompt.utf8))
+        var reply = try Self.decodeInvestigation(handle(raw))
+        reply.activity = Self.toolCalls(in: raw.standardOutput)
+        return reply
+    }
+
+    /// The tool calls in stream-json output, one line each: the tool and what it was called with.
+    static func toolCalls(in output: String) -> [String] {
+        output.split(whereSeparator: \.isNewline).flatMap { line -> [String] in
+            guard line.contains("\"tool_use\""), let data = line.data(using: .utf8),
+                let event = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                let message = event["message"] as? [String: Any],
+                let content = message["content"] as? [[String: Any]]
+            else { return [] }
+            return content.compactMap { part -> String? in
+                guard part["type"] as? String == "tool_use", let name = part["name"] as? String else { return nil }
+                let input = part["input"] as? [String: Any] ?? [:]
+                let detail =
+                    ["command", "query", "pattern", "file_path", "path", "description"].lazy
+                    .compactMap { input[$0] as? String }.first
+                    ?? (try? JSONSerialization.data(withJSONObject: input, options: [.sortedKeys]))
+                    .map { String(decoding: $0, as: UTF8.self) } ?? ""
+                let tool =
+                    name.hasPrefix("mcp__") ? name.dropFirst(5).replacingOccurrences(of: "__", with: " · ") : name
+                return detail.isEmpty ? tool : "\(tool): \(detail.prefix(300))"
+            }
+        }
     }
 
     static func investigationArguments(for request: InvestigationRequest) -> [String] {

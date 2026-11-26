@@ -26,8 +26,28 @@ public enum StageState: String, Sendable, Codable {
     }
 }
 
+/// One step of a job (`run:` or `uses:` in the workflow).
+public struct JobStep: Hashable, Sendable, Codable {
+    public let number: Int
+    public let name: String
+    public let state: StageState
+
+    public init(number: Int, name: String, state: StageState) {
+        self.number = number
+        self.name = name
+        self.state = state
+    }
+}
+
+/// Finished steps of all, and the step that runs.
+public struct JobProgress: Hashable, Sendable {
+    public let done: Int
+    public let total: Int
+    public let current: String?
+}
+
 /// One job of a workflow run.
-public struct DeliveryJob: Identifiable, Hashable, Sendable {
+public struct DeliveryJob: Identifiable, Hashable, Sendable, Codable {
     public let id: String
     public var name: String
     public let state: StageState
@@ -38,10 +58,16 @@ public struct DeliveryJob: Identifiable, Hashable, Sendable {
     public var failedSteps: [String]
     /// What the job reported as errors (its failure annotations).
     public var errors: [String]
+    /// GitHub Actions' number for the job (its log is loaded with it).
+    public var jobID: Int?
+    /// The jobs (their `id`s) this one waits for — the workflow's `needs:`.
+    public var needs: [String]
+    public var steps: [JobStep]
 
     public init(
         id: String, name: String, state: StageState, startedAt: Date? = nil, finishedAt: Date? = nil,
-        url: URL? = nil, failedSteps: [String] = [], errors: [String] = []
+        url: URL? = nil, failedSteps: [String] = [], errors: [String] = [], jobID: Int? = nil, needs: [String] = [],
+        steps: [JobStep] = []
     ) {
         self.id = id
         self.name = name
@@ -51,6 +77,17 @@ public struct DeliveryJob: Identifiable, Hashable, Sendable {
         self.url = url
         self.failedSteps = failedSteps
         self.errors = errors
+        self.jobID = jobID
+        self.needs = needs
+        self.steps = steps
+    }
+
+    /// How far a running job got (`nil`: not running, or no steps known).
+    public var progress: JobProgress? {
+        guard state == .running, !steps.isEmpty else { return nil }
+        return JobProgress(
+            done: steps.count { $0.state.isFinished }, total: steps.count,
+            current: steps.first { $0.state == .running }?.name)
     }
 
     public var duration: TimeInterval? {
@@ -60,8 +97,8 @@ public struct DeliveryJob: Identifiable, Hashable, Sendable {
 }
 
 /// One step of the way to production: the build, or a deployment to an environment.
-public struct DeliveryStage: Identifiable, Hashable, Sendable {
-    public enum Kind: String, Sendable {
+public struct DeliveryStage: Identifiable, Hashable, Sendable, Codable {
+    public enum Kind: String, Sendable, Codable {
         /// The jobs of a workflow that deploy nowhere (build, tests, packaging).
         case build
         /// A deployment to an environment (dev, test, prod …).
@@ -69,7 +106,7 @@ public struct DeliveryStage: Identifiable, Hashable, Sendable {
     }
 
     /// A deployment that waits for someone's approval on GitHub.
-    public struct Approval: Hashable, Sendable {
+    public struct Approval: Hashable, Sendable, Codable {
         public let workflowRunID: String
         public let environmentID: String
         /// The signed-in user is one of the reviewers of the environment.
@@ -129,7 +166,7 @@ public struct DeliveryStage: Identifiable, Hashable, Sendable {
 }
 
 /// A merged pull request on its way to production: the stages GitHub knows for its merge commit.
-public struct Delivery: Hashable, Sendable {
+public struct Delivery: Hashable, Sendable, Codable {
     public let pullRequest: PullRequestID
     public let title: String
     public let mergeCommitSHA: String
@@ -196,6 +233,43 @@ public struct Delivery: Hashable, Sendable {
     public func overallState(at now: Date = .now) -> StageState {
         if stages.isEmpty { return isFinished(at: now) ? .skipped : .waiting }
         return DeliveryStage.state(of: stages.map(\.state))
+    }
+}
+
+extension Delivery {
+    /// In short for the inbox: a dot per stage, and the outcome with the AI checks' verdicts (`stage.id`).
+    public func badge(verdicts: [String: StageVerification.Verdict] = [:], at now: Date = .now) -> DeliveryBadge {
+        let dots = stages.map { stage -> DeliveryBadge.Dot in
+            switch stage.state {
+            case .succeeded: .done
+            case .running: .running
+            case .waiting: .waiting
+            case .needsApproval: .needsApproval
+            case .failed: .failed
+            case .cancelled, .skipped: .skipped
+            }
+        }
+        let problem = verdicts.values.contains(.problems)
+        let state = overallState(at: now)
+        if state == .failed || (stages.isEmpty && isFinished(at: now)) {
+            return DeliveryBadge(dots: dots, outcome: .problem, text: headline(at: now))
+        }
+        guard isFinished(at: now) else {
+            return DeliveryBadge(
+                dots: dots, outcome: problem ? .problem : .inProgress,
+                text: problem ? String(localized: "\(headline(at: now)) · problems found") : headline(at: now))
+        }
+        if problem {
+            return DeliveryBadge(dots: dots, outcome: .problem, text: String(localized: "Live · problems found"))
+        }
+        // Cancelled or skipped on the way: not live, but no failure either.
+        guard state == .succeeded else {
+            return DeliveryBadge(dots: dots, outcome: .inProgress, text: headline(at: now))
+        }
+        let checked = verdicts.values.contains(.healthy)
+        return DeliveryBadge(
+            dots: dots, outcome: .healthy,
+            text: checked ? String(localized: "Live · checked healthy") : String(localized: "Live"))
     }
 }
 

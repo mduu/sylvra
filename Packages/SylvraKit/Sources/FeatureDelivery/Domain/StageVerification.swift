@@ -34,12 +34,42 @@ public struct StageVerification: Hashable, Sendable, Codable {
         public let finding: String
         /// What was looked at: tool, query, time window, figures before and after.
         public let evidence: String?
+        /// The query or command, as run (shown in a code box).
+        public var query: String?
+        /// The figure before and after the deployment, e.g. "14 matches" / "0 matches".
+        public var before: String?
+        public var after: String?
+        /// The lines of the log or output that show it (a short excerpt).
+        public var excerpt: [String]
 
-        public init(title: String, outcome: Outcome, finding: String, evidence: String? = nil) {
+        public init(
+            title: String, outcome: Outcome, finding: String, evidence: String? = nil, query: String? = nil,
+            before: String? = nil, after: String? = nil, excerpt: [String] = []
+        ) {
             self.title = title
             self.outcome = outcome
             self.finding = finding
             self.evidence = evidence
+            self.query = query
+            self.before = before
+            self.after = after
+            self.excerpt = excerpt
+        }
+
+        enum CodingKeys: String, CodingKey {
+            case title, outcome, finding, evidence, query, before, after, excerpt
+        }
+
+        public init(from decoder: any Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            title = try container.decode(String.self, forKey: .title)
+            outcome = try container.decode(Outcome.self, forKey: .outcome)
+            finding = try container.decode(String.self, forKey: .finding)
+            evidence = try container.decodeIfPresent(String.self, forKey: .evidence)
+            query = try container.decodeIfPresent(String.self, forKey: .query)
+            before = try container.decodeIfPresent(String.self, forKey: .before)
+            after = try container.decodeIfPresent(String.self, forKey: .after)
+            excerpt = try container.decodeIfPresent([String].self, forKey: .excerpt) ?? []
         }
     }
 
@@ -56,6 +86,8 @@ public struct StageVerification: Hashable, Sendable, Codable {
     public let checkedAt: Date
     /// A later look at the same stage (production gets one after a while).
     public var isSecondLook: Bool
+    /// What the agent did, in order (tools it called with what), for *What the agent did*.
+    public var activity: [String] = []
 
     public init(
         stageID: String, stageName: String, verdict: Verdict, summary: String, intent: String = "",

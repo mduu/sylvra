@@ -15,6 +15,8 @@ public enum StagePlanner {
         public var jobs: [Job]
         /// Environments that wait for an approval before their jobs start.
         public var pending: [Pending]
+        /// The workflow file: tells which job waits for which (`nil`: unknown, the jobs stand side by side).
+        public var workflow: WorkflowFile?
 
         public init(
             id: String, name: String, event: String, url: URL? = nil, createdAt: Date? = nil, jobs: [Job] = [],
@@ -84,7 +86,8 @@ public enum StagePlanner {
         var stages: [DeliveryStage] = []
         let delivering = runs.filter { deliveringEvents.contains($0.event) }
             .sorted { ($0.createdAt ?? .distantFuture) < ($1.createdAt ?? .distantFuture) }
-        for run in delivering {
+        for var run in delivering {
+            run.jobs = linked(run.jobs, by: run.workflow)
             let build = run.jobs.filter { $0.environment == nil }.map(\.job)
             if !build.isEmpty {
                 let own = stage(id: "\(run.id)#build", name: run.name, kind: .build, run: run, jobs: build)
@@ -115,7 +118,11 @@ public enum StagePlanner {
                 stages.append(stage)
             }
         }
-        // Deployments no workflow job stands for (another system reported them): the latest per environment.
+        return stages + external(deployments, besides: stages)
+    }
+
+    /// Deployments no workflow job stands for (another system reported them): the latest per environment.
+    private static func external(_ deployments: [Deployment], besides stages: [DeliveryStage]) -> [DeliveryStage] {
         let known = Set(stages.filter { $0.kind == .environment }.map { $0.name.lowercased() })
         var external: [String: Deployment] = [:]
         for deployment in deployments where !known.contains(deployment.environment.lowercased()) {
@@ -124,7 +131,7 @@ public enum StagePlanner {
                 external[key] = deployment
             }
         }
-        stages += external.values
+        return external.values
             .sorted { ($0.createdAt ?? .distantFuture) < ($1.createdAt ?? .distantFuture) }
             .map { deployment in
                 DeliveryStage(
@@ -132,7 +139,20 @@ public enum StagePlanner {
                     workflow: nil, state: deployment.state, startedAt: deployment.createdAt,
                     finishedAt: deployment.state.isFinished ? deployment.finishedAt : nil, url: deployment.url)
             }
-        return stages
+    }
+
+    /// Fills in each job's `needs` from the workflow file: the jobs (all matrix instances) of the keys it needs.
+    static func linked(_ jobs: [Job], by workflow: WorkflowFile?) -> [Job] {
+        guard let workflow else { return jobs }
+        let keys = jobs.map { workflow.job(forCheckRun: $0.job.name)?.key }
+        return jobs.enumerated().map { index, job in
+            guard let key = keys[index], let spec = workflow.jobs.first(where: { $0.key == key }) else { return job }
+            var linked = job
+            linked.job.needs = jobs.indices.filter { other in
+                keys[other].map(spec.needs.contains) == true
+            }.map { jobs[$0].job.id }
+            return linked
+        }
     }
 
     /// Two build stages as one; the jobs say which workflow they belong to.

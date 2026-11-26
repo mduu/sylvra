@@ -23,7 +23,7 @@ struct AgentDeliveryVerifier: DeliveryVerifying {
                     model: settings.models.first ?? "sonnet", effort: settings.effort,
                     language: settings.agentLanguage, workingDirectory: directory,
                     allowedTools: VerificationPrompt.allowedTools))
-            return try VerificationPrompt.decode(reply.json, for: request)
+            return try VerificationPrompt.decode(reply.json, for: request, activity: reply.activity)
         } catch let error as AgentError {
             throw Failure(message: Self.message(for: error))
         } catch is DecodingError {
@@ -48,7 +48,7 @@ struct AgentDeliveryVerifier: DeliveryVerifying {
 extension RootScreen {
     /// *Open Claude Session*: an interactive Claude Code session in the terminal panel, in the pull request's
     /// worktree, opened with the stage and its check as context. Whatever is changed there, the user drives.
-    func openClaudeSession(_ prompt: String) {
+    func openClaudeSession(_ prompt: String, external: Bool = false) {
         guard let id = selection?.id else { return }
         Task {
             do {
@@ -57,9 +57,18 @@ extension RootScreen {
                     path: "sylvra-session-\(UUID().uuidString).txt")
                 try prompt.write(to: file, atomically: true, encoding: .utf8)
                 let directory = try await TerminalWiring.checkout(for: id, environment: environment)
-                environment.terminal.openTab(
-                    title: String(localized: "Claude · #\(id.number)"), directory: directory,
-                    command: "claude \"$(cat '\(file.path)')\"")
+                let command = "claude \"$(cat '\(file.path)')\""
+                guard external else {
+                    environment.terminal.openTab(
+                        title: String(localized: "Claude · #\(id.number)"), directory: directory, command: command)
+                    return
+                }
+                // External terminals take no command, but they run a `.command` script.
+                let script = file.deletingPathExtension().appendingPathExtension("command")
+                try "#!/bin/zsh -l\ncd '\(directory.path)' && \(command)\n".write(
+                    to: script, atomically: true, encoding: .utf8)
+                try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: script.path)
+                await environment.terminal.openInExternalTerminal(script)
             } catch {
                 environment.terminal.errorMessage = String(
                     localized: "Could not open a Claude session: \(error.localizedDescription)")
