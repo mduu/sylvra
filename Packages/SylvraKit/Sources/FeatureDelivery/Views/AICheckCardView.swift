@@ -26,11 +26,17 @@ struct AICheckCardView: View {
     var blockedTools: [String] = []
     let actions: AICheckCardActions
 
-    static let rowHeight: CGFloat = 86
-    static let headerHeight: CGFloat = 132
+    static let headerHeight: CGFloat = 110
 
-    /// The height the card wants for its rows (the graph grows to fit it).
-    static func height(rows: Int) -> CGFloat { headerHeight + CGFloat(rows) * rowHeight }
+    /// The height the card wants for its result sentence, rows and checks (the graph grows to fit it, up to its
+    /// share of the screen).
+    static func height(columns: [AICheckColumn]) -> CGFloat {
+        // About 48 characters of the title font fit on a line of the card.
+        let summary = columns.last { $0.result != nil }?.result?.summary.count ?? 60
+        let headline = CGFloat(max(1, Int((Double(summary) / 48).rounded(.up)))) * 26
+        return headerHeight + headline
+            + columns.map { 60 + CGFloat($0.result?.checks.count ?? 0) * 30 }.reduce(0, +)
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -38,7 +44,7 @@ struct AICheckCardView: View {
             Text(headline)
                 .aiFont(.title3, weight: .semibold)
                 .fixedSize(horizontal: false, vertical: true)
-                .lineLimit(2)
+                .textSelection(.enabled)
             if !blockedTools.isEmpty { blockedLine }
             ScrollView {
                 VStack(spacing: 8) {
@@ -96,12 +102,12 @@ struct AICheckCardView: View {
     }
 
     private var blockedLine: some View {
-        HStack(spacing: 6) {
+        HStack(alignment: .firstTextBaseline, spacing: 6) {
             Image(systemName: "lock.fill").foregroundStyle(SylvraColor.statusWarning)
             Text("Claude Code blocked \(blockedTools.joined(separator: ", "))")
                 .foregroundStyle(.secondary)
-                .lineLimit(1)
-                .truncationMode(.middle)
+                .lineLimit(2)
+                .fixedSize(horizontal: false, vertical: true)
             if let allow = actions.allowBlockedTools {
                 Button("Allow…", action: allow)
                     .buttonStyle(.link)
@@ -207,13 +213,12 @@ private struct FlowChips: View {
                     HStack(spacing: 5) {
                         Image(systemName: check.outcome == .unchecked ? "circle" : "circle.fill")
                             .font(.system(size: 6, weight: .bold))
-                        Text(check.title).lineLimit(1)
+                        Text(check.title).lineLimit(2).fixedSize(horizontal: false, vertical: true)
                     }
                     .font(.caption)
                     .foregroundStyle(chipColor(check))
                     .padding(.horizontal, 9)
                     .padding(.vertical, 3)
-                    .frame(maxWidth: 200, alignment: .leading)
                     .background(chipColor(check).opacity(0.14), in: Capsule())
                     .overlay {
                         if check.title == selected { Capsule().strokeBorder(SylvraColor.brandPrimary, lineWidth: 1.2) }
@@ -250,12 +255,19 @@ private struct ChipFlow: Layout {
         for line in arrange(subviews, width: bounds.width) {
             var x = bounds.minX
             for index in line.indices {
-                let size = subviews[index].sizeThatFits(.unspecified)
+                let size = Self.size(of: subviews[index], in: bounds.width)
                 subviews[index].place(at: CGPoint(x: x, y: y), proposal: ProposedViewSize(size))
                 x += size.width + spacing
             }
             y += line.height + spacing
         }
+    }
+
+    /// A chip as wide as its text, at most the whole line (a longer title wraps).
+    private static func size(of subview: LayoutSubview, in width: CGFloat) -> CGSize {
+        let ideal = subview.sizeThatFits(.unspecified)
+        guard width.isFinite, ideal.width > width else { return ideal }
+        return subview.sizeThatFits(ProposedViewSize(width: width, height: nil))
     }
 
     private struct Line {
@@ -267,7 +279,7 @@ private struct ChipFlow: Layout {
     private func arrange(_ subviews: Subviews, width: CGFloat) -> [Line] {
         var lines: [Line] = [Line()]
         for index in subviews.indices {
-            let size = subviews[index].sizeThatFits(.unspecified)
+            let size = Self.size(of: subviews[index], in: width)
             let needed =
                 lines[lines.count - 1].indices.isEmpty
                 ? size.width : lines[lines.count - 1].width + spacing + size.width
@@ -299,6 +311,6 @@ private struct ChipFlow: Layout {
         actions: AICheckCardActions(
             select: { _, _ in }, verify: { _ in }, stop: { _ in }, verifyAll: {}, allowBlockedTools: {})
     )
-    .frame(width: 460, height: AICheckCardView.height(rows: 2))
+    .frame(width: 520, height: 520)
     .padding()
 }

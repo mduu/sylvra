@@ -18,7 +18,7 @@ struct WorkflowGraphView<Card: View>: View {
     var cardHeight: CGFloat = 0
 
     static var cardID: String { "ai-card" }
-    static var cardWidth: CGFloat { 460 }
+    static var cardWidth: CGFloat { 540 }
     static var cardGap: CGFloat { 64 }
 
     var body: some View {

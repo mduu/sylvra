@@ -128,7 +128,7 @@ public struct DeliveryScreen: View {
     /// The graph and, below it, the details of what is selected in it; a handle between them sets the split.
     private func stagesView(_ delivery: Delivery, _ id: PullRequestID) -> some View {
         let columns = model.aiColumns(for: id)
-        let cardHeight = AICheckCardView.height(rows: columns.count)
+        let cardHeight = AICheckCardView.height(columns: columns)
         let natural =
             max(WorkflowGraphLayout(stages: delivery.stages).size.height, columns.isEmpty ? 0 : cardHeight) + 12
         return GeometryReader { proxy in
@@ -212,8 +212,8 @@ public struct DeliveryScreen: View {
 
     /// The details show a job without a log yet (the first item of a stage is chosen, not clicked).
     private func loadLogIfNeeded(_ item: DeliveryItem?, stage: DeliveryStage, id: PullRequestID) {
-        guard case .job(let jobID) = item, let number = stage.jobs.first(where: { $0.id == jobID })?.jobID,
-            model.logs[number] == nil
+        guard case .job(let jobID) = item, let job = stage.jobs.first(where: { $0.id == jobID }), job.hasLog,
+            let number = job.jobID, model.logs[number] == nil
         else { return }
         Task { await model.loadLog(number, of: id) }
     }
