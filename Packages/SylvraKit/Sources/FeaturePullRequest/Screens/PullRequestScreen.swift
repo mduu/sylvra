@@ -10,7 +10,6 @@ import SylvraCore
 /// changes). `openPullRequest` opens another layer of the pull request's stack (`nil` hides the stack bar).
 /// `shareSummary` gives one or two sentences about the pull request for *Copy Link with Description* (e.g. the
 /// AI summary; `nil`: taken from its description).
-/// `delivery` is the Delivery tab of a merged pull request (`nil`: no such tab).
 /// The details reload every minute and with the header's refresh button; `refreshOthers` reloads what the app
 /// shows next to them (comments, threads, new commits).
 public struct PullRequestScreen<Files: View, OverviewTop: View, Summary: View, Conversation: View>: View {
@@ -25,7 +24,6 @@ public struct PullRequestScreen<Files: View, OverviewTop: View, Summary: View, C
     private let showInCode: ((String, Int?) -> Void)?
     private let openPullRequest: ((PullRequestSummary) -> Void)?
     private let refreshOthers: (() async -> Void)?
-    private let delivery: AnyView?
     private let shareSummary: (() -> String?)?
     @Environment(\.openURL) private var openURL
 
@@ -35,7 +33,6 @@ public struct PullRequestScreen<Files: View, OverviewTop: View, Summary: View, C
         showInCode: ((String, Int?) -> Void)? = nil,
         openPullRequest: ((PullRequestSummary) -> Void)? = nil,
         refreshOthers: (() async -> Void)? = nil,
-        delivery: AnyView? = nil,
         shareSummary: (() -> String?)? = nil,
         @ViewBuilder summary: () -> Summary,
         @ViewBuilder overviewTop: () -> OverviewTop,
@@ -51,7 +48,6 @@ public struct PullRequestScreen<Files: View, OverviewTop: View, Summary: View, C
         self.showInCode = showInCode
         self.openPullRequest = openPullRequest
         self.refreshOthers = refreshOthers
-        self.delivery = delivery
         self.shareSummary = shareSummary
         self.overviewTop = overviewTop()
         self.files = files()
@@ -72,7 +68,7 @@ public struct PullRequestScreen<Files: View, OverviewTop: View, Summary: View, C
             await model.keepRefreshing()
         }
         .sheet(isPresented: $model.isMergeSheetPresented) {
-            if let detail = model.detail, let action = model.mergeAction {
+            if let detail = model.detail, let action = model.pendingMergeAction {
                 MergeSheet(model: model, detail: detail, action: action)
             }
         }
@@ -89,16 +85,16 @@ public struct PullRequestScreen<Files: View, OverviewTop: View, Summary: View, C
                 PullRequestHeaderView(
                     detail: detail, isRefreshing: model.isRefreshing, lastUpdated: model.lastUpdated,
                     refresh: { Task { await refresh() } }, mergeAction: model.mergeAction,
-                    merge: { model.startMerge() }, copyLink: { copyLink(detail, withDescription: $0) },
+                    merge: { model.startMerge() },
+                    bypassRules: model.canBypassRules ? { model.startMerge(bypassingRules: true) } : nil,
+                    copyLink: { copyLink(detail, withDescription: $0) },
                     openOnGitHub: { open(detail.summary.url) })
                 if let stack = model.stack, let openPullRequest {
                     StackBarView(status: stack, open: openPullRequest)
                 }
                 summary
                 // All tabs side by side; narrow columns get smaller text or symbols, never a menu.
-                SectionTabBar(
-                    items: PullRequestTabItem.items(for: detail, hasDelivery: delivery != nil).map(\.barItem),
-                    selection: $model.tab)
+                SectionTabBar(items: PullRequestTabItem.items(for: detail).map(\.barItem), selection: $model.tab)
             }
             .padding([.horizontal, .top], 16)
             .padding(.bottom, 10)
@@ -114,11 +110,7 @@ public struct PullRequestScreen<Files: View, OverviewTop: View, Summary: View, C
     }
 
     @ViewBuilder private func tabContent(_ detail: PullRequestDetail) -> some View {
-        // The Delivery tab only exists for merged pull requests: another one shows its overview instead.
-        let hasDelivery = delivery != nil && detail.state == .merged
-        switch model.tab == .delivery && !hasDelivery ? .overview : model.tab {
-        case .delivery:
-            delivery
+        switch model.tab {
         case .overview:
             overviewTop
             OverviewView(detail: detail, open: open)

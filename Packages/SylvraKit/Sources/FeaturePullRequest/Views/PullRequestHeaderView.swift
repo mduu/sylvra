@@ -11,6 +11,8 @@ struct PullRequestHeaderView: View {
     /// What the merge button offers (`nil`: no button).
     var mergeAction: MergeOptions.Action?
     var merge: (() -> Void)?
+    /// Merges past the branch rules (`nil`: not possible).
+    var bypassRules: (() -> Void)?
     /// Copies the pull request's link; `true`: with its title and a short description.
     var copyLink: ((_ withDescription: Bool) -> Void)?
     @State private var didCopy = false
@@ -61,7 +63,16 @@ struct PullRequestHeaderView: View {
                     "+\(detail.summary.additions) −\(detail.summary.deletions) · \(detail.changedFiles) files",
                     systemImage: "plusminus", tint: .secondary)
             }
-            if let mergeAction, let merge { mergeButton(mergeAction, merge) }
+            if (mergeAction != nil && merge != nil) || bypassRules != nil {
+                HStack(spacing: 8) {
+                    if let mergeAction, let merge { mergeButton(mergeAction, merge) }
+                    if let bypassRules {
+                        Button(action: bypassRules) { Label("Bypass Rules…", systemImage: "exclamationmark.shield") }
+                            .controlSize(.small)
+                            .help("Merge now although required reviews or checks are missing")
+                    }
+                }
+            }
         }
     }
 
@@ -105,6 +116,8 @@ struct PullRequestHeaderView: View {
             Button(action: merge) { Label("Auto-Merge…", systemImage: "arrow.triangle.merge") }
                 .controlSize(.small)
                 .help("Let GitHub merge once reviews and checks are through")
+        case .bypassRules:
+            EmptyView()
         case .disableAutoMerge:
             Button(action: merge) { Label("Auto-merge is on", systemImage: "checkmark.circle") }
                 .controlSize(.small)

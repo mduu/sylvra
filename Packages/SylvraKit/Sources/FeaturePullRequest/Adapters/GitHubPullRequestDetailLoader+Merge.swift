@@ -22,6 +22,7 @@ extension DetailNode {
             pullRequestNodeID: id, methods: methods,
             viewerCanMerge: ["WRITE", "MAINTAIN", "ADMIN"].contains(repository.viewerPermission ?? ""),
             viewerCanEnableAutoMerge: viewerCanEnableAutoMerge ?? false,
+            viewerCanBypassRules: viewerCanMergeAsAdmin ?? false,
             autoMerge: autoMergeRequest?.mergeMethod.flatMap(MergeMethod.init(rawValue:)))
     }
 }

@@ -133,6 +133,39 @@ struct MergeModelTests {
         #expect(merger.calls == ["auto MERGE"])
     }
 
+    /// Hotfixes and trivial changes: an admin merges past missing reviews and checks, on a separate button.
+    @Test func bypassingTheRulesMergesABlockedPullRequest() async throws {
+        let merger = RecordingMerger()
+        var loader = MergeableLoader(state: "BLOCKED")
+        loader.options.viewerCanBypassRules = true
+        let model = PullRequestScreenModel(loader: loader, merger: merger)
+        await model.load(id)
+        // No regular action (auto-merge isn't allowed here), but the bypass.
+        #expect(model.mergeAction == nil && model.canBypassRules)
+        var merged: [PullRequestID] = []
+        model.onMerged = { merged.append($0) }
+        model.startMerge(bypassingRules: true)
+        #expect(model.pendingMergeAction == .bypassRules && merger.calls.isEmpty)
+        await model.confirmMerge()
+        let head = try #require(model.detail?.headSHA)
+        #expect(merger.calls == ["merge MERGE \(head)"] && merged == [id])
+    }
+
+    @Test func noBypassWithoutTheRightOrWhenNothingBlocks() async {
+        let blocked = PullRequestScreenModel(loader: MergeableLoader(state: "BLOCKED"), merger: RecordingMerger())
+        await blocked.load(id)
+        blocked.startMerge(bypassingRules: true)
+        #expect(!blocked.canBypassRules && !blocked.isMergeSheetPresented)
+
+        var loader = MergeableLoader()
+        loader.options.viewerCanBypassRules = true
+        let ready = PullRequestScreenModel(loader: loader, merger: RecordingMerger())
+        await ready.load(id)
+        #expect(!ready.canBypassRules && ready.mergeAction == .merge)
+        // Conflicts cannot be bypassed.
+        #expect(!loader.options.canBypassRules(for: MergeStatus(kind: .conflicts)))
+    }
+
     @Test func noButtonWithoutAMerger() async {
         let model = PullRequestScreenModel(loader: MergeableLoader())
         await model.load(id)

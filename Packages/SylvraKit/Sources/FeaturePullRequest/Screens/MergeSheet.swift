@@ -26,6 +26,8 @@ struct MergeSheetView: View {
     var error: String?
     let confirm: () -> Void
     let cancel: () -> Void
+    /// Bypassing the rules is confirmed twice: by this checkbox and by the button.
+    @State private var acknowledgesBypass = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
@@ -42,6 +44,7 @@ struct MergeSheetView: View {
             } else {
                 methodPicker
                 if action == .enableAutoMerge { waitingFor }
+                if action == .bypassRules { bypassWarning }
             }
             if let error {
                 Label(error, systemImage: "exclamationmark.triangle.fill")
@@ -55,7 +58,7 @@ struct MergeSheetView: View {
                 Button("Cancel", role: .cancel, action: cancel).keyboardShortcut(.cancelAction)
                 Button(confirmTitle, action: confirm)
                     .keyboardShortcut(.defaultAction)
-                    .disabled(isWorking)
+                    .disabled(isWorking || (action == .bypassRules && !acknowledgesBypass))
             }
         }
         .padding(20)
@@ -92,11 +95,26 @@ struct MergeSheetView: View {
         }
     }
 
+    /// What is skipped, and the checkbox that owns up to it.
+    private var bypassWarning: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Label("The branch rules are not met:", systemImage: "exclamationmark.shield.fill")
+                .font(.callout.weight(.medium))
+                .foregroundStyle(SylvraColor.statusWarning)
+            ForEach(detail.mergeStatus.reasons, id: \.self) { reason in
+                Text("· \(reason)").font(.callout).foregroundStyle(.secondary)
+            }
+            Toggle("Merge without waiting for these requirements", isOn: $acknowledgesBypass)
+                .toggleStyle(.checkbox)
+        }
+    }
+
     private var title: String {
         switch action {
         case .merge: String(localized: "Merge pull request?")
         case .enableAutoMerge: String(localized: "Enable auto-merge?")
         case .disableAutoMerge: String(localized: "Disable auto-merge?")
+        case .bypassRules: String(localized: "Merge and bypass the branch rules?")
         }
     }
 
@@ -105,6 +123,7 @@ struct MergeSheetView: View {
         case .merge: String(localized: "Merge")
         case .enableAutoMerge: String(localized: "Enable Auto-Merge")
         case .disableAutoMerge: String(localized: "Disable Auto-Merge")
+        case .bypassRules: String(localized: "Bypass Rules and Merge")
         }
     }
 }

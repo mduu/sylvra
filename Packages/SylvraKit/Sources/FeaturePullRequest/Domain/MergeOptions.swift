@@ -36,13 +36,16 @@ public struct MergeOptions: Sendable, Equatable {
     public var viewerCanMerge: Bool
     /// GitHub would merge on its own once the requirements are met (branch protection with auto-merge allowed).
     public var viewerCanEnableAutoMerge: Bool
+    /// The viewer may merge although the branch rules are not met (GitHub: "bypass rules", merge as admin).
+    public var viewerCanBypassRules: Bool
     /// Auto-merge is on, with this method.
     public var autoMerge: MergeMethod?
 
     public init(
         pullRequestNodeID: String, methods: [MergeMethod], viewerCanMerge: Bool,
-        viewerCanEnableAutoMerge: Bool = false, autoMerge: MergeMethod? = nil
+        viewerCanEnableAutoMerge: Bool = false, viewerCanBypassRules: Bool = false, autoMerge: MergeMethod? = nil
     ) {
+        self.viewerCanBypassRules = viewerCanBypassRules
         self.pullRequestNodeID = pullRequestNodeID
         self.methods = methods
         self.viewerCanMerge = viewerCanMerge
@@ -58,6 +61,18 @@ public struct MergeOptions: Sendable, Equatable {
         case enableAutoMerge
         /// Auto-merge is on: it can be switched off.
         case disableAutoMerge
+        /// Merge now although required reviews or checks are missing (hotfixes, trivial changes).
+        case bypassRules
+    }
+
+    /// Whether merging past the branch rules is offered next to the regular action: only when the rules block
+    /// the merge and the viewer may bypass them. Conflicts and drafts cannot be bypassed.
+    public func canBypassRules(for status: MergeStatus) -> Bool {
+        guard viewerCanMerge, viewerCanBypassRules, !methods.isEmpty else { return false }
+        switch status.kind {
+        case .blocked, .behind, .unstable, .unknown: return action(for: status) != .merge
+        case .ready, .conflicts, .draft, .merged, .closed: return false
+        }
     }
 
     /// The action for the pull request's state; `nil`: no button (merged, closed, no rights, nothing possible).

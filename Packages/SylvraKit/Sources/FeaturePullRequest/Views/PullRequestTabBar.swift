@@ -17,7 +17,6 @@ struct PullRequestTabItem: Identifiable {
         case .commits: String(localized: "Commits")
         case .checks: String(localized: "Checks")
         case .comments: String(localized: "Comments")
-        case .delivery: String(localized: "Delivery")
         }
     }
 
@@ -28,14 +27,12 @@ struct PullRequestTabItem: Identifiable {
         case .commits: "arrow.triangle.branch"
         case .checks: "checkmark.seal"
         case .comments: "bubble.left.and.bubble.right"
-        case .delivery: "shippingbox"
         }
     }
 
     /// The tabs of a pull request with their counts. While checks fail, the checks badge turns red and
     /// counts the failing ones (a red total would read as "all failing").
-    /// `hasDelivery`: the app shows a merged pull request's delivery (its tab comes last).
-    static func items(for detail: PullRequestDetail, hasDelivery: Bool = false) -> [PullRequestTabItem] {
+    static func items(for detail: PullRequestDetail) -> [PullRequestTabItem] {
         let failing = detail.checks.count { $0.state == .failure || $0.state == .error }
         return [
             PullRequestTabItem(tab: .overview),
@@ -44,7 +41,7 @@ struct PullRequestTabItem: Identifiable {
             PullRequestTabItem(
                 tab: .checks, count: failing > 0 ? failing : detail.checks.count, isAlert: failing > 0),
             PullRequestTabItem(tab: .comments, count: detail.commentCount),
-        ] + (hasDelivery && detail.state == .merged ? [PullRequestTabItem(tab: .delivery)] : [])
+        ]
     }
 
     /// ⌘1 … ⌘5 in tab order.

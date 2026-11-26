@@ -9,8 +9,6 @@ import SylvraCore
 public final class PullRequestScreenModel {
     public enum Tab: String, CaseIterable, Identifiable {
         case overview, files, commits, checks, comments
-        /// A merged pull request's way to production (only when the app provides the view).
-        case delivery
         public var id: String { rawValue }
     }
 
@@ -38,6 +36,8 @@ public final class PullRequestScreenModel {
     public internal(set) var isMerging = false
     /// Why GitHub refused the last merge action (shown in the sheet).
     public internal(set) var mergeError: String?
+    /// What the open merge sheet is about to do.
+    public internal(set) var pendingMergeAction: MergeOptions.Action?
     /// The method chosen in the sheet.
     public var mergeMethod: MergeMethod = .merge
 

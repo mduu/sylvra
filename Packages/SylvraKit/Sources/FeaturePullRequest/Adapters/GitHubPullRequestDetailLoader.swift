@@ -37,7 +37,7 @@ public struct GitHubPullRequestDetailLoader: PullRequestDetailLoading {
           repository(owner: $owner, name: $name) {
             pullRequest(number: $number) {
               id number title url isDraft createdAt updatedAt additions deletions changedFiles
-              viewerCanEnableAutoMerge autoMergeRequest { mergeMethod }
+              viewerCanEnableAutoMerge viewerCanMergeAsAdmin autoMergeRequest { mergeMethod }
               headRefName baseRefName headRefOid baseRefOid reviewDecision mergeable mergeStateStatus state
               body
               repository { name owner { login } viewerPermission viewerDefaultMergeMethod mergeCommitAllowed squashMergeAllowed rebaseMergeAllowed }
@@ -83,7 +83,7 @@ struct DetailResponse: Decodable, Sendable {
 
 struct DetailNode: Decodable, Sendable {
     let id: String?
-    let viewerCanEnableAutoMerge: Bool?
+    let viewerCanEnableAutoMerge, viewerCanMergeAsAdmin: Bool?
     let autoMergeRequest: AutoMergeNode?
     let number: Int
     let title: String
