@@ -29,7 +29,7 @@ public enum LocalReviewOutput {
             parts.append(
                 AIReviewClipboard.summary(
                     result.summary, risk: result.risk, mergeability: result.mergeability, slop: result.slop,
-                    readingOrder: result.readingOrder))
+                    knowledge: result.knowledge, readingOrder: result.readingOrder))
         }
         if !result.hints.isEmpty { parts.append(AIReviewClipboard.hints(result.hints)) }
         if result.findings.isEmpty, result.overall.isEmpty {

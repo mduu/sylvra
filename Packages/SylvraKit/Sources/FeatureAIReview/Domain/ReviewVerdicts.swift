@@ -54,3 +54,29 @@ public struct SlopAssessment: Hashable, Sendable, Codable {
     /// Worth sending the findings back to the author before reviewing in depth.
     public var suggestsSendingBack: Bool { level == .many }
 }
+
+/// Whether a change is worth remembering — for the team's knowledge of the system, independent of its risk.
+public enum KnowledgeLevel: String, Codable, Sendable, CaseIterable, Comparable {
+    // Least first: with several shards or models the highest rating wins.
+    /// Nothing to remember: cleanups, formatting, renames without effect, dependency bumps, tests only.
+    case routine
+    /// A small detail worth knowing (a default, a message, an edge case).
+    case minor
+    /// Changes how the system behaves or is used: logic, rules, contracts, data, configuration, operations.
+    case notable
+
+    var rank: Int { Self.allCases.firstIndex(of: self) ?? 0 }
+    public static func < (lhs: Self, rhs: Self) -> Bool { lhs.rank < rhs.rank }
+}
+
+/// Whether to remember the change, and what exactly: the takeaways someone who didn't review it should know.
+public struct KnowledgeAssessment: Hashable, Sendable, Codable {
+    public var level: KnowledgeLevel
+    /// What to remember, one sentence each (empty for routine changes).
+    public var takeaways: [String]
+
+    public init(level: KnowledgeLevel, takeaways: [String] = []) {
+        self.level = level
+        self.takeaways = takeaways
+    }
+}

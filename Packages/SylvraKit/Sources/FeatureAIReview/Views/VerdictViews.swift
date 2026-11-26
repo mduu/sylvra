@@ -61,6 +61,82 @@ extension SlopLevel {
     }
 }
 
+extension KnowledgeLevel {
+    var title: String {
+        switch self {
+        case .notable: String(localized: "Worth knowing")
+        case .minor: String(localized: "Minor detail")
+        case .routine: String(localized: "Routine")
+        }
+    }
+
+    var symbol: String {
+        switch self {
+        case .notable: "lightbulb.fill"
+        case .minor: "lightbulb"
+        case .routine: "broom"
+        }
+    }
+
+    var tint: Color {
+        switch self {
+        case .notable: SylvraColor.accentGold
+        case .minor: .teal
+        case .routine: .secondary
+        }
+    }
+
+    /// What it means for the reader.
+    var advice: String {
+        switch self {
+        case .notable: String(localized: "Changes how the system behaves or is used: worth remembering.")
+        case .minor: String(localized: "A small detail worth knowing.")
+        case .routine: String(localized: "Nothing to remember: cleanup, formatting or upkeep.")
+        }
+    }
+}
+
+/// "Worth knowing" capsule for the AI summary (pure).
+struct KnowledgeBadge: View {
+    let level: KnowledgeLevel
+
+    var body: some View {
+        HStack(spacing: 4) {
+            Image(systemName: level.symbol)
+            Text(level.title)
+        }
+        .aiFont(.caption2, weight: .bold)
+        .foregroundStyle(level.tint)
+        .padding(.horizontal, 7)
+        .padding(.vertical, 2)
+        .background(level.tint.opacity(0.15), in: Capsule())
+    }
+}
+
+/// What to remember about the change, with a copy button for notes or a changelog (pure).
+struct KnowledgeTakeawaysView: View {
+    let knowledge: KnowledgeAssessment
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 3) {
+            HStack(spacing: 6) {
+                Label("What to remember", systemImage: knowledge.level.symbol)
+                    .aiFont(.caption, weight: .semibold)
+                    .foregroundStyle(knowledge.level.tint)
+                CopyButton("Copy what to remember") {
+                    knowledge.takeaways.map { "- \($0)" }.joined(separator: "\n")
+                }
+            }
+            ForEach(knowledge.takeaways, id: \.self) { takeaway in
+                Text(verbatim: "· \(takeaway)")
+                    .aiFont(.caption)
+                    .textSelection(.enabled)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+    }
+}
+
 /// "Good" capsule with the merge verdict for the AI summary (pure).
 struct MergeabilityBadge: View {
     let level: Mergeability

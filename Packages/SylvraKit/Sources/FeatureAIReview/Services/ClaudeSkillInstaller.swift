@@ -119,7 +119,8 @@ public struct ClaudeSkillInstaller: Sendable {
         ## Use the result
 
         1. Give the user the summary, the mergeability verdict and the merge risk (and the signs of unreviewed \
-        code, if any), then what the reviewers say about each hint (section \
+        code, if any), whether the change is worth remembering and what (section *Worth remembering*: useful \
+        for notes, a changelog or the commit message), then what the reviewers say about each hint (section \
         *Reviewer hints*, if you passed any), then the findings, most severe first — short.
         2. The findings are suggestions from AI reviewers. Check each one against the code before you act on it, \
         and say which you agree with and which not, and why.

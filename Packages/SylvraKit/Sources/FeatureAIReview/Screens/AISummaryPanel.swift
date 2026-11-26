@@ -21,6 +21,7 @@ public struct AISummaryPanel: View {
         if let id = pullRequestID, let result = model.results[id], !result.summary.isEmpty {
             AISummaryCardView(
                 summary: result.summary, risk: result.risk, mergeability: result.mergeability, slop: result.slop,
+                knowledge: result.knowledge,
                 readingOrder: result.readingOrder, isExpanded: $isExpanded, showsReadingOrder: $showsReadingOrder,
                 openFile: openFile, pullRequest: AIReviewClipboard.pullRequestLine(id),
                 copyFindings: copyFindings(for: result, id: id))
@@ -46,6 +47,7 @@ struct AISummaryCardView: View {
     var risk: RiskAssessment?
     var mergeability: MergeabilityAssessment?
     var slop: SlopAssessment?
+    var knowledge: KnowledgeAssessment?
     let readingOrder: [ReadingStep]
     @Binding var isExpanded: Bool
     @Binding var showsReadingOrder: Bool
@@ -70,7 +72,7 @@ struct AISummaryCardView: View {
                     .buttonStyle(.link)
                     .aiFont(.caption)
             }
-            if risk != nil || mergeability != nil || slop != nil {
+            if risk != nil || mergeability != nil || slop != nil || knowledge != nil {
                 badges
             }
             // Expanded content scrolls inside the card (at most `maxExpandedHeight`): the card sits in the PR
@@ -88,6 +90,9 @@ struct AISummaryCardView: View {
                     if isExpanded, let mergeability, !mergeability.reasons.isEmpty {
                         reasons(
                             String(localized: "Why \(mergeability.level.title.lowercased())"), mergeability.reasons)
+                    }
+                    if isExpanded, let knowledge, !knowledge.takeaways.isEmpty {
+                        KnowledgeTakeawaysView(knowledge: knowledge)
                     }
                     if isExpanded, let slop {
                         SlopSignsView(
@@ -134,6 +139,10 @@ struct AISummaryCardView: View {
                 SlopBadge(level: slop.level)
                     .help(tooltip(slop.level.advice, slop.signs.map(\.title)))
             }
+            if let knowledge {
+                KnowledgeBadge(level: knowledge.level)
+                    .help(tooltip(knowledge.level.advice, knowledge.takeaways))
+            }
         }
     }
 
@@ -153,7 +162,8 @@ struct AISummaryCardView: View {
 
     private func copyText() -> String {
         AIReviewClipboard.summary(
-            summary, risk: risk, mergeability: mergeability, slop: slop, readingOrder: readingOrder,
+            summary, risk: risk, mergeability: mergeability, slop: slop, knowledge: knowledge,
+            readingOrder: readingOrder,
             pullRequest: pullRequest)
     }
 }

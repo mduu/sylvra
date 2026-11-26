@@ -14,7 +14,8 @@ public enum AIReviewClipboard {
 
     public static func summary(
         _ summary: String, risk: RiskAssessment?, mergeability: MergeabilityAssessment? = nil,
-        slop: SlopAssessment? = nil, readingOrder: [ReadingStep], pullRequest: String? = nil
+        slop: SlopAssessment? = nil, knowledge: KnowledgeAssessment? = nil, readingOrder: [ReadingStep],
+        pullRequest: String? = nil
     ) -> String {
         var parts = header("AI summary", pullRequest)
         parts.append(summary.trimmingCharacters(in: .whitespacesAndNewlines))
@@ -28,6 +29,11 @@ public enum AIReviewClipboard {
                 (["Merge risk: \(risk.level.rawValue)"] + risk.reasons.map { "- \($0)" }).joined(separator: "\n"))
         }
         if let slop { parts.append(slopBody(slop)) }
+        if let knowledge {
+            parts.append(
+                (["Worth remembering: \(knowledge.level.label)"] + knowledge.takeaways.map { "- \($0)" })
+                    .joined(separator: "\n"))
+        }
         if !readingOrder.isEmpty {
             let steps = readingOrder.enumerated().map { index, step in
                 let risky = step.isRisky ? " (risky)" : ""
@@ -179,6 +185,17 @@ public enum AIReviewClipboard {
             "xml": "xml", "md": "markdown",
         ]
         return languages[(path as NSString).pathExtension.lowercased()] ?? ""
+    }
+}
+
+extension KnowledgeLevel {
+    /// English label for copied text and the command line tool.
+    public var label: String {
+        switch self {
+        case .notable: "notable — changes behaviour or usage"
+        case .minor: "minor detail"
+        case .routine: "routine — nothing to remember"
+        }
     }
 }
 

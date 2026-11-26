@@ -86,11 +86,20 @@ public struct ReviewRequest: Sendable {
             and `signs`: only clear ones, each with a short `title`, a `rationale` and one to three places on lines \
             of the diff as `evidence`. An empty list with none is fine.
 
+            Judge whether this change is worth remembering for the people who work on the system (`knowledge`), \
+            independent of its risk: `level` notable (changes how the system behaves or is used — logic, business \
+            rules, contracts and APIs, data and schemas, configuration, permissions, operations), minor (a small \
+            detail worth knowing, such as a changed default, limit or message) or routine (nothing to remember: \
+            cleanups, formatting, renames without effect, dependency bumps, tests only). For notable and minor give \
+            one to three `takeaways`: what someone who did not review it should know afterwards, one plain sentence \
+            each ("Invoices now round VAT per invoice, not per line."); none for routine.
+
             Keep the `summary` short and to the point: two or three sentences on what the change does and why, \
             and what matters most for merging it (the main risk or the biggest problem). Leave out file lists, \
             details the findings already carry, and praise — but nothing essential.
 
-            Write summary, titles, rationales, risk and mergeability reasons, slop signs, reading-order reasons, \
+            Write summary, titles, rationales, risk and mergeability reasons, slop signs, knowledge takeaways, \
+            reading-order reasons, \
             overall points and pattern explanations in \
             \(language). Keep code, identifiers and \
             suggestions unchanged.
@@ -132,13 +141,16 @@ public struct ReviewRequest: Sendable {
 
     /// JSON schema of the structured output.
     public static let outputSchema = """
-        {"type":"object","required":["summary","risk","mergeability","slop","findings","overall","patterns"],"properties":{\
+        {"type":"object","required":["summary","risk","mergeability","slop","knowledge","findings","overall","patterns"],"properties":{\
         "summary":{"type":"string"},\
         "risk":{"type":"object","required":["level","reasons"],"properties":{\
         "level":{"type":"string","enum":["low","medium","high"]},"reasons":{"type":"array","items":{"type":"string"}}}},\
         "mergeability":{"type":"object","required":["level","reasons"],"properties":{\
         "level":{"type":"string","enum":["excellent","good","acceptable","notMergeable"]},\
         "reasons":{"type":"array","items":{"type":"string"}}}},\
+        "knowledge":{"type":"object","required":["level","takeaways"],"properties":{\
+        "level":{"type":"string","enum":["notable","minor","routine"]},\
+        "takeaways":{"type":"array","items":{"type":"string"}}}},\
         "slop":{"type":"object","required":["level","signs"],"properties":{\
         "level":{"type":"string","enum":["none","some","many"]},\
         "signs":{"type":"array","items":{"type":"object","required":["title","rationale","evidence"],"properties":{\
@@ -210,6 +222,11 @@ public struct AgentReviewOutput: Decodable, Sendable {
         let reasons: [String]?
     }
 
+    public struct Knowledge: Decodable, Sendable {
+        let level: KnowledgeLevel
+        let takeaways: [String]?
+    }
+
     public struct Slop: Decodable, Sendable {
         let level: SlopLevel
         let signs: [Sign]?
@@ -257,6 +274,7 @@ public struct AgentReviewOutput: Decodable, Sendable {
     let risk: Risk?
     let mergeability: MergeVerdict?
     let slop: Slop?
+    let knowledge: Knowledge?
     let readingOrder: [Step]?
     let findings: [Finding]
     let overall: [Overall]?

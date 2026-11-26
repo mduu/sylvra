@@ -162,6 +162,8 @@ public struct ReviewResult: Hashable, Sendable, Codable {
     public var mergeability: MergeabilityAssessment?
     /// Signs of unreviewed, low-effort code (`nil` for older reviews).
     public var slop: SlopAssessment?
+    /// Whether the change is worth remembering, and what (`nil` for older reviews).
+    public var knowledge: KnowledgeAssessment?
     /// Answers to the author's hints, in the order given (empty without hints).
     public var hints: [HintAnswer] = []
     /// How long the review took, from start to result (`nil` for older reviews).
@@ -183,7 +185,7 @@ public struct ReviewResult: Hashable, Sendable, Codable {
 
     private enum CodingKeys: String, CodingKey {
         case summary, findings, patterns, overall, history, readingOrder, headSHA, reviewedAt, risk, hints
-        case duration, tokens, mergeability, slop
+        case duration, tokens, mergeability, slop, knowledge
     }
 
     // Results cached before reading orders (or head commits) were recorded decode without them.
@@ -200,6 +202,7 @@ public struct ReviewResult: Hashable, Sendable, Codable {
         risk = try container.decodeIfPresent(RiskAssessment.self, forKey: .risk)
         mergeability = try container.decodeIfPresent(MergeabilityAssessment.self, forKey: .mergeability)
         slop = try container.decodeIfPresent(SlopAssessment.self, forKey: .slop)
+        knowledge = try container.decodeIfPresent(KnowledgeAssessment.self, forKey: .knowledge)
         hints = try container.decodeIfPresent([HintAnswer].self, forKey: .hints) ?? []
         duration = try container.decodeIfPresent(TimeInterval.self, forKey: .duration)
         tokens = try container.decodeIfPresent(TokenUsage.self, forKey: .tokens)

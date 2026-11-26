@@ -92,6 +92,7 @@ To try it without a GitHub account, start it with sample data: `open -a Sylvra -
 - **New commits pushed?** Sylvra offers to run the review again on the new code; the old findings are replaced.
 - **Risk**: the review rates the PR as a whole (low / medium / high, with reasons) and every finding by impact and likelihood.
 - **Mergeability and slop**: a verdict whether the PR can be merged as it is (excellent / good / acceptable / not mergeable) and the signs of unreviewed, low-effort code — to decide how much careful review is worth, or whether to send the findings back first.
+- **Worth remembering**: whether a change is worth knowing (logic, rules, contracts) or routine (cleanups, bumps), with what to remember in a sentence or two — for notes, a changelog or the commit message.
 - **Patterns**: which conventions the change follows, violates or introduces.
 - **Discuss code privately**: ask Claude about selected lines, a finding or a review thread (*Ask AI*) in a private chat. Each topic gets its own chat, earlier chats stay selectable, and you choose model and effort per question. Answers are formatted (headings, lists, code, tables), code references are clickable, and a suggested reply can go straight into the thread.
 - **Copy for an agent**: the summary, every finding, pattern and chat answer — or all of them at once — copy as Markdown made for pasting into Claude Code: full paths and lines, severity, impact, likelihood, which models found it, suggestions as code blocks.

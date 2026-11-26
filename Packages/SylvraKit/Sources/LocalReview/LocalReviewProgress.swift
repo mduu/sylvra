@@ -89,6 +89,7 @@ final class LocalReviewProgress {
         if let risk = result.risk { text += ", merge risk \(risk.level.rawValue)" }
         if let mergeability = result.mergeability { text += ", \(mergeability.level.label)" }
         if let slop = result.slop, slop.level != .none { text += ", slop \(slop.level.rawValue)" }
+        if let knowledge = result.knowledge, knowledge.level == .notable { text += ", worth remembering" }
         return text
     }
 

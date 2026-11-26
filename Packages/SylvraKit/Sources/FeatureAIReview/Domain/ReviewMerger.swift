@@ -34,16 +34,10 @@ public enum ReviewMerger {
         var summaries: [String] = []
         var history: [String] = []
         var readingOrder: [ReadingStep] = []
-        var risks: [AgentReviewOutput.Risk] = []
-        var verdicts: [AgentReviewOutput.MergeVerdict] = []
-        var slops: [AgentReviewOutput.Slop] = []
 
         for (output, source) in outputs {
             // Models that say the same thing don't repeat it.
             if !summaries.contains(output.summary) { summaries.append(output.summary) }
-            if let risk = output.risk { risks.append(risk) }
-            if let verdict = output.mergeability { verdicts.append(verdict) }
-            if let slop = output.slop { slops.append(slop) }
             history += output.history ?? []
             // Shards cover different files: keep each agent's order, first mention wins; only files of the PR.
             for step in output.readingOrder ?? [] where byPath[step.path] != nil {
@@ -69,10 +63,12 @@ public enum ReviewMerger {
         findings.sort { ($0.severity, $0.path, $0.startLine) < ($1.severity, $1.path, $1.startLine) }
         var result = ReviewResult(
             summary: summaries.filter { !$0.isEmpty }.joined(separator: "\n\n"), findings: findings, patterns: patterns,
-            history: Array(Set(history)).sorted(), readingOrder: readingOrder, risk: overallRisk(risks))
+            history: Array(Set(history)).sorted(), readingOrder: readingOrder,
+            risk: overallRisk(outputs.compactMap(\.0.risk)))
         result.overall = overall
-        result.mergeability = overallMergeability(verdicts)
-        result.slop = overallSlop(slops, files: byPath)
+        result.mergeability = overallMergeability(outputs.compactMap(\.0.mergeability))
+        result.slop = overallSlop(outputs.compactMap(\.0.slop), files: byPath)
+        result.knowledge = overallKnowledge(outputs.compactMap(\.0.knowledge))
         return result
     }
 
@@ -140,6 +136,20 @@ public enum ReviewMerger {
             }
         }
         return MergeabilityAssessment(level: level, reasons: Array(reasons.prefix(4)))
+    }
+
+    /// The highest knowledge rating of all shards and models (one shard's notable change makes the change
+    /// notable); takeaways said in other words by another agent once, at most four.
+    static func overallKnowledge(_ ratings: [AgentReviewOutput.Knowledge]) -> KnowledgeAssessment? {
+        guard let level = ratings.map(\.level).max() else { return nil }
+        var takeaways: [String] = []
+        for rating in ratings.sorted(by: { $0.level > $1.level }) where rating.level != .routine {
+            for takeaway in rating.takeaways ?? []
+            where !takeaway.isEmpty && !takeaways.contains(where: { overlap(stems($0), stems(takeaway)) >= 0.6 }) {
+                takeaways.append(takeaway)
+            }
+        }
+        return KnowledgeAssessment(level: level, takeaways: level == .routine ? [] : Array(takeaways.prefix(4)))
     }
 
     /// The highest slop level of all shards and models; signs named in other words by another agent are merged
