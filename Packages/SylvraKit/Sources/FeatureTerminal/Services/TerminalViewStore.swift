@@ -11,16 +11,14 @@ final class TerminalViewStore: TerminalProcessHosting {
     private var views: [TerminalSession.ID: LocalProcessTerminalView] = [:]
     private var delegates: [TerminalSession.ID: SessionDelegate] = [:]
     private let logger = SylvraLog.logger("terminal")
-    private lazy var scrolling = TerminalScrollMonitor { [weak self] in self.map { Array($0.views.values) } ?? [] }
 
     /// The session's terminal view; the shell is started on first access.
     func view(for session: TerminalSession, in model: TerminalModel) -> LocalProcessTerminalView {
         if let view = views[session.id] { return view }
-        scrolling.install()
         let view = LocalProcessTerminalView(frame: NSRect(x: 0, y: 0, width: 640, height: 240))
         view.font = TerminalFonts.preferred(
             size: TerminalPreferences.fontSize(UserDefaults.standard.double(forKey: TerminalPreferences.fontSizeKey)))
-        view.getTerminal().changeHistorySize(ShellLaunch.scrollback)
+        Self.configure(view)
         let delegate = SessionDelegate(id: session.id, model: model)
         view.processDelegate = delegate
         views[session.id] = view
@@ -33,6 +31,16 @@ final class TerminalViewStore: TerminalProcessHosting {
             executable: launch.executable, args: launch.arguments, environment: launch.environment,
             execName: launch.execName, currentDirectory: session.directory.path)
         return view
+    }
+
+    /// Scrollback and keyboard for every session. Left Option is Meta (⌥B, ⌥F, ⌥⏎ for Claude Code and shells);
+    /// right Option types what the layout puts on the key — `@ [ ] { } |` on Swiss and German keyboards. Arrows,
+    /// Backspace and Enter stay Meta on both sides.
+    static func configure(_ view: TerminalView) {
+        view.changeScrollback(ShellLaunch.scrollback)
+        view.optionAsMetaKey = true
+        view.optionAsMetaSide = .left
+        view.optionAsMetaKeyForFunctionalKeys = true
     }
 
     func terminate(_ id: TerminalSession.ID) {

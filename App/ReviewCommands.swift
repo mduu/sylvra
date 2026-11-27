@@ -31,7 +31,7 @@ struct ReviewCommands: Commands {
     var body: some Commands {
         CommandMenu("Review") {
             Button("Command Palette…") { actions?.showPalette() }.keyboardShortcut("k", modifiers: .command)
-            Button("Find in Diff…") { actions?.find() }.keyboardShortcut("f", modifiers: .command)
+            Button("Find…") { actions?.find() }.keyboardShortcut("f", modifiers: .command)
             Divider()
             Button("Next File") { actions?.nextFile() }.keyboardShortcut("]", modifiers: .command)
             Button("Previous File") { actions?.previousFile() }.keyboardShortcut("[", modifiers: .command)

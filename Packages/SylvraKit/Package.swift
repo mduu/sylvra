@@ -42,7 +42,7 @@ let package = Package(
         .executable(name: "sylvra", targets: ["SylvraCLI"]),
     ],
     dependencies: [
-        .package(url: "https://github.com/migueldeicaza/SwiftTerm", exact: "1.10.0")
+        .package(url: "https://github.com/migueldeicaza/SwiftTerm", exact: "1.99.4")
     ],
     targets: [
         .target(name: "SylvraCore"),

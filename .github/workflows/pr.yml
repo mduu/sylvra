@@ -50,4 +50,4 @@ jobs:
       - name: Package tests
         run: swift test --package-path Packages/SylvraKit
       - name: Build app
-        run: xcodebuild -project Sylvra.xcodeproj -scheme Sylvra -destination 'platform=macOS' build CODE_SIGNING_ALLOWED=NO -quiet
+        run: xcodebuild -project Sylvra.xcodeproj -scheme Sylvra -destination 'platform=macOS' -skipPackagePluginValidation build CODE_SIGNING_ALLOWED=NO -quiet
