@@ -126,7 +126,8 @@ struct ConversationWritingTests {
         await model.load(id)
         model.draft = "Danke"
         model.draftLanguage = "German"
-        try await Task.sleep(for: .milliseconds(100))
+        // The translation runs in a task of its own: wait for it (generously, CI runners are slow).
+        for _ in 0..<300 where model.draft != "[German] Danke" { try await Task.sleep(for: .milliseconds(10)) }
         #expect(model.draft == "[German] Danke")
         UserDefaults.standard.removeObject(forKey: ReviewScreenModel.languageKey(id))
     }
