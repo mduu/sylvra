@@ -75,6 +75,9 @@ public final class AIChatModel {
     /// Stops the question being answered (set while sending).
     @ObservationIgnored private var cancelSending: (() -> Void)?
     public var draft = ""
+    /// Continues a chat in an interactive Claude Code session, with the chat as its opening context
+    /// (wired by the app; `nil` hides it). `external`: in the external terminal instead of Sylvra's.
+    public var continueInSession: ((_ prompt: String, _ external: Bool) -> Void)?
     public var context = Context()
 
     /// Choices made in the chat; without one the PR's review settings apply.

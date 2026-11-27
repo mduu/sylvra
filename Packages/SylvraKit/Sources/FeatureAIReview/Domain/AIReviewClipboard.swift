@@ -110,6 +110,16 @@ public enum AIReviewClipboard {
         return joined(parts)
     }
 
+    /// The opening prompt of a Claude Code session that continues a chat: the conversation so far, then a
+    /// request to pick it up and wait before changing anything.
+    public static func chatHandoff(_ messages: [AIChatModel.Message], pullRequest: String? = nil) -> String {
+        joined([
+            "Context from Sylvra: I discussed this pull request with an AI in Sylvra and continue here.",
+            chat(messages, pullRequest: pullRequest),
+            "Pick up the conversation from its last answer. Wait for my instructions before changing anything.",
+        ])
+    }
+
     // MARK: - Parts
 
     private static func findingBody(_ finding: ReviewFinding) -> String {

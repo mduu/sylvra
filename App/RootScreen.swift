@@ -350,6 +350,7 @@ extension RootScreen {
             }
         }
         // Delivery: a merge through Sylvra is followed to production; each stage raises a notification.
+        environment.chat.continueInSession = { prompt, external in openClaudeSession(prompt, external: external) }
         environment.pullRequest.onMerged = { id in
             environment.delivery.follow(id)
             environment.delivery.setShowsDelivery(true, for: id)

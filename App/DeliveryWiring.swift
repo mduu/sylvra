@@ -48,7 +48,8 @@ struct AgentDeliveryVerifier: DeliveryVerifying {
 
 extension RootScreen {
     /// *Open Claude Session*: an interactive Claude Code session in the terminal panel, in the pull request's
-    /// worktree, opened with the stage and its check as context. Whatever is changed there, the user drives.
+    /// worktree, opened with context (a delivery stage and its check, or a chat). Whatever is changed there, the user
+    /// drives.
     func openClaudeSession(_ prompt: String, external: Bool = false) {
         guard let id = selection?.id else { return }
         Task {

@@ -34,6 +34,13 @@ struct ChatSwitcher: View {
                         .foregroundStyle(.secondary)
                 }
                 Spacer(minLength: 4)
+                if let messages = active?.messages, !messages.isEmpty, let open = model.continueInSession {
+                    ContinueInSessionMenu {
+                        open(
+                            AIReviewClipboard.chatHandoff(
+                                messages, pullRequest: AIReviewClipboard.pullRequestLine(pullRequestID)), $0)
+                    }
+                }
                 if let messages = active?.messages, !messages.isEmpty {
                     CopyButton("Copy the whole chat for an agent") {
                         AIReviewClipboard.chat(messages, pullRequest: AIReviewClipboard.pullRequestLine(pullRequestID))
@@ -50,4 +57,29 @@ struct ChatSwitcher: View {
             .padding(.trailing, 12)
         }
     }
+}
+
+/// *Continue in Claude Code*: the chat in an interactive session, in Sylvra's terminal or the external one (pure).
+struct ContinueInSessionMenu: View {
+    let open: (_ external: Bool) -> Void
+
+    var body: some View {
+        Menu {
+            Button("In Sylvra's Terminal", systemImage: "terminal") { open(false) }
+            Button("In the External Terminal", systemImage: "macwindow") { open(true) }
+        } label: {
+            Label("Continue in Claude Code", systemImage: "apple.terminal")
+        } primaryAction: {
+            open(false)
+        }
+        .menuStyle(.button)
+        .buttonStyle(.borderless)
+        .labelStyle(.iconOnly)
+        .fixedSize()
+        .help("Continue this chat in an interactive Claude Code session, with the chat as context")
+    }
+}
+
+#Preview {
+    ContinueInSessionMenu { _ in }.padding()
 }

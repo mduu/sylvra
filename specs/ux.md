@@ -310,6 +310,7 @@ stateDiagram-v2
 - Questions are bubbles on the right; answers use the full width with the AI accent border. Round send button (↩ or ⌘↩; ⇧↩ or ⌥↩ starts a new line). While the agent answers, it becomes a stop button (⌘.): the agent process is terminated and the question goes back into the input (unless something new was typed meanwhile) to be edited and sent again.
 - Below the input two small menus choose the **model** and **effort** of the next question (per PR; defaults to the PR's AI review settings).
 - **Several chats per PR**: *New chat* starts a fresh agent conversation; the earlier chats stay in a menu above the chat (titled by their first question) and continue where they left off. *Ask in chat* on a finding opens its own chat unless the current one is about that finding or still empty; *Discuss* on other code does the same.
+- **Continue in Claude Code**: next to *Copy the whole chat*, a menu opens an interactive Claude Code session (in Sylvra's terminal by a click, or the external terminal) in the pull request's worktree, opened with the whole chat as context and asked to wait for instructions — e.g. to keep digging into a delivery stage after *Ask AI about this*.
 - **Ask AI on a review thread** asks about the discussion; an answer with a *Suggested reply:* section can fill the thread's reply field.
 - Quick prompts: *Explain this change*, *Is this tested?*, *What could break?*, *Which patterns does this follow?*, *Summarize discussion*.
 
