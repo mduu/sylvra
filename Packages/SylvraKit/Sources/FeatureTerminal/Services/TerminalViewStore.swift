@@ -1,4 +1,5 @@
 import AppKit
+import DesignSystem
 import Foundation
 import OSLog
 import Platform
@@ -33,7 +34,7 @@ final class TerminalViewStore: TerminalProcessHosting {
         return view
     }
 
-    /// Scrollback and keyboard for every session. Left Option is Meta (⌥B, ⌥F, ⌥⏎ for Claude Code and shells);
+    /// Scrollback, keyboard and the ANSI colors (`TerminalPalette`) for every session. Left Option is Meta (⌥B, ⌥F, ⌥⏎ for Claude Code and shells);
     /// right Option types what the layout puts on the key — `@ [ ] { } |` on Swiss and German keyboards. Arrows,
     /// Backspace and Enter stay Meta on both sides.
     static func configure(_ view: TerminalView) {
@@ -41,6 +42,11 @@ final class TerminalViewStore: TerminalProcessHosting {
         view.optionAsMetaKey = true
         view.optionAsMetaSide = .left
         view.optionAsMetaKeyForFunctionalKeys = true
+        view.installColors(
+            TerminalPalette.ansi.map { color in
+                let parts = TerminalPalette.components(color)
+                return SwiftTerm.Color(red8: parts.red, green8: parts.green, blue8: parts.blue)
+            })
     }
 
     func terminate(_ id: TerminalSession.ID) {

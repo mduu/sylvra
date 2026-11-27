@@ -1,4 +1,5 @@
 import AppKit
+import DesignSystem
 import SwiftTerm
 import Testing
 
@@ -74,5 +75,12 @@ struct TerminalKeyboardTests {
                 left, ignoringModifiers: left, code: 123, flags: [.option, .numericPad, .function],
                 device: Self.rightOption))
         #expect(recorder.sent.first == 0x1b)
+    }
+
+    @Test func sessionsUseSylvrasColors() throws {
+        let (view, _) = view()
+        let snapshot = try #require(view.terminalContentSnapshot(region: .viewport))
+        let blue = TerminalPalette.components(TerminalPalette.ansi[4])
+        #expect(snapshot.palette[4] == SwiftTerm.Color(red8: blue.red, green8: blue.green, blue8: blue.blue))
     }
 }
