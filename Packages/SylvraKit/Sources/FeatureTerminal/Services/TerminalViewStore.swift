@@ -11,10 +11,12 @@ final class TerminalViewStore: TerminalProcessHosting {
     private var views: [TerminalSession.ID: LocalProcessTerminalView] = [:]
     private var delegates: [TerminalSession.ID: SessionDelegate] = [:]
     private let logger = SylvraLog.logger("terminal")
+    private lazy var scrolling = TerminalScrollMonitor { [weak self] in self.map { Array($0.views.values) } ?? [] }
 
     /// The session's terminal view; the shell is started on first access.
     func view(for session: TerminalSession, in model: TerminalModel) -> LocalProcessTerminalView {
         if let view = views[session.id] { return view }
+        scrolling.install()
         let view = LocalProcessTerminalView(frame: NSRect(x: 0, y: 0, width: 640, height: 240))
         view.font = TerminalFonts.preferred(
             size: TerminalPreferences.fontSize(UserDefaults.standard.double(forKey: TerminalPreferences.fontSizeKey)))

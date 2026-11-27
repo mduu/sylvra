@@ -84,16 +84,7 @@ struct TerminalSplit<Content: View>: View {
             content
                 .frame(maxHeight: .infinity)
             if isPanelPresented {
-                Rectangle()
-                    .fill(.separator)
-                    .frame(height: 1)
-                    .padding(.vertical, 2)
-                    .contentShape(Rectangle())
-                    .onHover { inside in if inside { NSCursor.resizeUpDown.push() } else { NSCursor.pop() } }
-                    .gesture(
-                        DragGesture().onChanged { value in
-                            terminalHeight = min(max(terminalHeight - value.translation.height, 120), 600)
-                        })
+                PanelResizeHandle(height: $terminalHeight)
                 Group {
                     if environment.bottomPanel.showsCommands {
                         CommandLogPanel {
@@ -269,5 +260,38 @@ struct TerminalToolsSettingsPane: View {
             CustomToolsSettingsView(store: customTools)
         }
         .formStyle(.grouped)
+    }
+}
+
+/// The bar above the bottom panel to drag it taller or shorter: a hairline with a grip, easy to hit.
+private struct PanelResizeHandle: View {
+    @Binding var height: CGFloat
+    @State private var startHeight: CGFloat?
+    @State private var isHovering = false
+
+    var body: some View {
+        ZStack {
+            Rectangle().fill(.separator).frame(height: 1)
+            Capsule()
+                .fill(isHovering || startHeight != nil ? Color.secondary : Color.secondary.opacity(0.45))
+                .frame(width: 36, height: 4)
+        }
+        .frame(maxWidth: .infinity)
+        .frame(height: 10)
+        .contentShape(Rectangle())
+        .onHover { inside in
+            isHovering = inside
+            if inside { NSCursor.resizeUpDown.push() } else { NSCursor.pop() }
+        }
+        .gesture(
+            DragGesture(minimumDistance: 1, coordinateSpace: .global)
+                .onChanged { value in
+                    let start = startHeight ?? height
+                    startHeight = start
+                    height = min(max(start - value.translation.height, 120), 800)
+                }
+                .onEnded { _ in startHeight = nil }
+        )
+        .accessibilityLabel("Resize the panel")
     }
 }
