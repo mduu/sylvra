@@ -95,7 +95,8 @@ public struct ReviewRequest: Sendable {
             edge case) or routine (anything else, however risky: cleanups, formatting, renames, bug fixes that add \
             no new rule, dependency bumps, tests only). For notable and minor give one to three `takeaways`, each \
             with its `kind` (domain or technical) and a `text`: what someone who did not review it should know \
-            afterwards, one plain sentence ("Invoices now round VAT per invoice, not per line."); none for routine.
+            afterwards, one short plain sentence of at most about 20 words, the essence without the how \
+            ("Invoices now round VAT per invoice, not per line."); none for routine.
 
             Keep the `summary` short and to the point: two or three sentences on what the change does and why, \
             and what matters most for merging it (the main risk or the biggest problem). Leave out file lists, \

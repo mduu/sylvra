@@ -121,22 +121,6 @@ extension TakeawayKind {
     }
 }
 
-/// "Domain" or "Technical" before a takeaway (pure).
-struct TakeawayKindTag: View {
-    let kind: TakeawayKind
-
-    var body: some View {
-        Label(kind.title, systemImage: kind.symbol)
-            .labelStyle(.titleAndIcon)
-            .aiFont(.caption2, weight: .semibold)
-            .foregroundStyle(.secondary)
-            .padding(.horizontal, 5)
-            .padding(.vertical, 1)
-            .background(Color.secondary.opacity(0.12), in: Capsule())
-            .fixedSize()
-    }
-}
-
 /// What to remember about the change, with a copy button for notes or a changelog (pure).
 struct KnowledgeTakeawaysView: View {
     let knowledge: KnowledgeAssessment
@@ -151,15 +135,34 @@ struct KnowledgeTakeawaysView: View {
                     knowledge.takeaways.map { "- \($0.line)" }.joined(separator: "\n")
                 }
             }
-            ForEach(knowledge.takeaways, id: \.self) { takeaway in
-                HStack(alignment: .firstTextBaseline, spacing: 6) {
-                    if let kind = takeaway.kind { TakeawayKindTag(kind: kind) } else { Text(verbatim: "·") }
-                    Text(takeaway.text)
+            ForEach(groups, id: \.kind) { group in
+                VStack(alignment: .leading, spacing: 2) {
+                    if let kind = group.kind {
+                        Label(kind.title, systemImage: kind.symbol)
+                            .aiFont(.caption2, weight: .semibold)
+                            .foregroundStyle(.secondary)
+                    }
+                    ForEach(group.takeaways, id: \.self) { takeaway in
+                        HStack(alignment: .firstTextBaseline, spacing: 5) {
+                            Text(verbatim: "•").foregroundStyle(.secondary)
+                            Text(takeaway.text)
+                                .textSelection(.enabled)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
                         .aiFont(.caption)
-                        .textSelection(.enabled)
-                        .fixedSize(horizontal: false, vertical: true)
+                    }
                 }
+                .padding(.top, 2)
             }
+        }
+    }
+
+    /// Domain first, then technical, then untagged takeaways of older reviews — each under its own heading.
+    private var groups: [(kind: TakeawayKind?, takeaways: [Takeaway])] {
+        let kinds: [TakeawayKind?] = TakeawayKind.allCases + [nil]
+        return kinds.compactMap { kind in
+            let takeaways = knowledge.takeaways.filter { $0.kind == kind }
+            return takeaways.isEmpty ? nil : (kind, takeaways)
         }
     }
 }
