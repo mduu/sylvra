@@ -11,8 +11,14 @@ public enum TerminalPalette {
     /// The terminal backgrounds the palette is checked against (light and dark appearance).
     public static let backgrounds: [UInt32] = [0x1F_1240, 0x0B_051A]
 
-    /// `(red, green, blue)` in 0…255.
-    public static func components(_ color: UInt32) -> (red: UInt16, green: UInt16, blue: UInt16) {
-        (UInt16((color >> 16) & 0xFF), UInt16((color >> 8) & 0xFF), UInt16(color & 0xFF))
+    /// A color's channels in 0…255.
+    public struct Components: Equatable, Sendable {
+        public let red: UInt16
+        public let green: UInt16
+        public let blue: UInt16
+    }
+
+    public static func components(_ color: UInt32) -> Components {
+        Components(red: UInt16((color >> 16) & 0xFF), green: UInt16((color >> 8) & 0xFF), blue: UInt16(color & 0xFF))
     }
 }
