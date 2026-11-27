@@ -19,7 +19,8 @@ final class TerminalViewStore: TerminalProcessHosting {
         let view = SylvraTerminalView(frame: NSRect(x: 0, y: 0, width: 640, height: 240))
         view.font = TerminalFonts.preferred(
             size: TerminalPreferences.fontSize(UserDefaults.standard.double(forKey: TerminalPreferences.fontSizeKey)))
-        Self.configure(view)
+        Self.configure(
+            view, leftOptionIsMeta: UserDefaults.standard.bool(forKey: TerminalPreferences.leftOptionIsMetaKey))
         let delegate = SessionDelegate(id: session.id, model: model)
         view.processDelegate = delegate
         views[session.id] = view
@@ -34,19 +35,24 @@ final class TerminalViewStore: TerminalProcessHosting {
         return view
     }
 
-    /// Scrollback, keyboard and the ANSI colors (`TerminalPalette`) for every session. Left Option is Meta (⌥B, ⌥F, ⌥⏎ for Claude Code and shells);
-    /// right Option types what the layout puts on the key — `@ [ ] { } |` on Swiss and German keyboards. Arrows,
-    /// Backspace and Enter stay Meta on both sides.
-    static func configure(_ view: TerminalView) {
+    /// Scrollback, keyboard and the ANSI colors (`TerminalPalette`) for every session. Option types what the layout
+    /// puts on the key (`~ @ [ ] { } |` on Swiss and German keyboards) — on the left too unless the user made it
+    /// Meta (`TerminalPreferences.leftOptionIsMetaKey`). With arrows, Backspace and Enter it is Meta on both sides
+    /// (word jumps, ⌥⏎).
+    static func configure(_ view: TerminalView, leftOptionIsMeta: Bool) {
         view.changeScrollback(ShellLaunch.scrollback)
-        view.optionAsMetaKey = true
-        view.optionAsMetaSide = .left
-        view.optionAsMetaKeyForFunctionalKeys = true
+        applyOption(leftOptionIsMeta: leftOptionIsMeta, to: view)
         view.installColors(
             TerminalPalette.ansi.map { color in
                 let parts = TerminalPalette.components(color)
                 return SwiftTerm.Color(red8: parts.red, green8: parts.green, blue8: parts.blue)
             })
+    }
+
+    static func applyOption(leftOptionIsMeta: Bool, to view: TerminalView) {
+        view.optionAsMetaKey = leftOptionIsMeta
+        view.optionAsMetaSide = .left
+        view.optionAsMetaKeyForFunctionalKeys = true
     }
 
     func terminate(_ id: TerminalSession.ID) {

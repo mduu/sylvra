@@ -32,6 +32,9 @@ public enum TerminalPreferences {
     public static let shellKey = "terminal.shell"
     /// Bundle identifier of the external terminal app; empty = Terminal.
     public static let externalTerminalKey = "terminal.externalApp"
+    /// Whether the left Option key is Meta (⌥B → ESC b) instead of typing the layout's characters. Off by default:
+    /// on Swiss and German keyboards ⌥ types `~ @ [ ] { } |`. Arrows, Backspace and Enter are Meta with either.
+    public static let leftOptionIsMetaKey = "terminal.leftOptionIsMeta"
     /// Font size of the terminal panel in points.
     public static let fontSizeKey = "terminal.fontSize"
     public static let defaultFontSize: Double = 13

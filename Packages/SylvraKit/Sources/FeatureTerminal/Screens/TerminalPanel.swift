@@ -86,6 +86,7 @@ private struct TerminalHostView: NSViewRepresentable {
     let view: LocalProcessTerminalView
     @Environment(\.colorScheme) private var colorScheme
     @AppStorage(TerminalPreferences.fontSizeKey) private var fontSize = TerminalPreferences.defaultFontSize
+    @AppStorage(TerminalPreferences.leftOptionIsMetaKey) private var leftOptionIsMeta = false
 
     func makeNSView(context: Context) -> LocalProcessTerminalView {
         let size = CGFloat(TerminalPreferences.fontSize(fontSize))
@@ -101,6 +102,9 @@ private struct TerminalHostView: NSViewRepresentable {
     func updateNSView(_ nsView: LocalProcessTerminalView, context: Context) {
         let size = CGFloat(TerminalPreferences.fontSize(fontSize))
         if nsView.font.pointSize != size { nsView.font = TerminalFonts.preferred(size: size) }
+        if nsView.optionAsMetaKey != leftOptionIsMeta {
+            TerminalViewStore.applyOption(leftOptionIsMeta: leftOptionIsMeta, to: nsView)
+        }
         let appearance = NSAppearance(named: colorScheme == .dark ? .darkAqua : .aqua)
         appearance?.performAsCurrentDrawingAppearance {
             nsView.nativeBackgroundColor = NSColor(SylvraColor.terminalBackground)

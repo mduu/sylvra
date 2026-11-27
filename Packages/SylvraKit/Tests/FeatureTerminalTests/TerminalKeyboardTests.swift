@@ -26,11 +26,11 @@ struct TerminalKeyboardTests {
     private static let leftOption: UInt = 0x20
     private static let rightOption: UInt = 0x40
 
-    private func view() -> (TerminalView, Recorder) {
+    private func view(leftOptionIsMeta: Bool = false) -> (TerminalView, Recorder) {
         let view = TerminalView(frame: NSRect(x: 0, y: 0, width: 640, height: 240))
         let recorder = Recorder()
         view.terminalDelegate = recorder
-        TerminalViewStore.configure(view)
+        TerminalViewStore.configure(view, leftOptionIsMeta: leftOptionIsMeta)
         return (view, recorder)
     }
 
@@ -54,14 +54,31 @@ struct TerminalKeyboardTests {
         #expect(String(decoding: recorder.sent, as: UTF8.self) == "\u{1b}[13;2u")
     }
 
-    @Test func leftOptionIsMeta() throws {
+    /// Swiss layout: ⌥N is the tilde (a dead key), ⌥G the @ — with the left Option key too, by default.
+    @Test func leftOptionTypesTheLayoutsCharacterByDefault() throws {
         let (view, recorder) = view()
+        view.keyDown(with: try key("@", ignoringModifiers: "g", code: 5, flags: .option, device: Self.leftOption))
+        #expect(String(decoding: recorder.sent, as: UTF8.self) == "@")
+    }
+
+    @Test func leftOptionIsMetaWhenTheUserWantsIt() throws {
+        let (view, recorder) = view(leftOptionIsMeta: true)
         view.keyDown(with: try key("∫", ignoringModifiers: "b", code: 11, flags: .option, device: Self.leftOption))
         #expect(recorder.sent == [0x1b, UInt8(ascii: "b")])
     }
 
-    @Test func rightOptionTypesTheLayoutsCharacter() throws {
+    @Test func optionArrowJumpsAWordEitherWay() throws {
         let (view, recorder) = view()
+        let left = String(UnicodeScalar(NSLeftArrowFunctionKey)!)
+        view.keyDown(
+            with: try key(
+                left, ignoringModifiers: left, code: 123, flags: [.option, .numericPad, .function],
+                device: Self.leftOption))
+        #expect(recorder.sent.first == 0x1b)
+    }
+
+    @Test func rightOptionTypesTheLayoutsCharacter() throws {
+        let (view, recorder) = view(leftOptionIsMeta: true)
         // Right ⌥5 on the Swiss layout is "[".
         view.keyDown(with: try key("[", ignoringModifiers: "5", code: 23, flags: .option, device: Self.rightOption))
         #expect(String(decoding: recorder.sent, as: UTF8.self) == "[")

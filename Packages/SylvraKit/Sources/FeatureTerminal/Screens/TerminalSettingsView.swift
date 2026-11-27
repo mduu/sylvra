@@ -5,6 +5,7 @@ public struct TerminalSettingsView: View {
     @AppStorage(TerminalPreferences.shellKey) private var shell = ""
     @AppStorage(TerminalPreferences.externalTerminalKey) private var externalApp = ""
     @AppStorage(TerminalPreferences.fontSizeKey) private var fontSize = TerminalPreferences.defaultFontSize
+    @AppStorage(TerminalPreferences.leftOptionIsMetaKey) private var leftOptionIsMeta = false
     @State private var usesCustomApp = false
 
     public init() {}
@@ -16,6 +17,11 @@ public struct TerminalSettingsView: View {
             Stepper(value: $fontSize, in: TerminalPreferences.fontSizes, step: 1) {
                 Text("Font size: \(Int(TerminalPreferences.fontSize(fontSize))) pt")
             }
+            Toggle("Use left Option key as Meta", isOn: $leftOptionIsMeta)
+                .help(
+                    "On: left ⌥B sends ESC b, as some shells and editors expect, and the right ⌥ types characters. "
+                        + "Off: both ⌥ keys type what the keyboard layout puts on them, such as ~ @ [ ] on Swiss "
+                        + "keyboards. With arrows, Backspace and Enter, ⌥ jumps words either way.")
             Picker("External terminal", selection: appSelection) {
                 ForEach(ExternalTerminal.presets) { Text($0.name).tag($0.bundleIdentifier) }
                 Text("Other…").tag(Self.other)
