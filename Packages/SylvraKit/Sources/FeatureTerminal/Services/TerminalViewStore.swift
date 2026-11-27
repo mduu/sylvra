@@ -20,6 +20,7 @@ final class TerminalViewStore: TerminalProcessHosting {
         let view = LocalProcessTerminalView(frame: NSRect(x: 0, y: 0, width: 640, height: 240))
         view.font = TerminalFonts.preferred(
             size: TerminalPreferences.fontSize(UserDefaults.standard.double(forKey: TerminalPreferences.fontSizeKey)))
+        view.getTerminal().changeHistorySize(ShellLaunch.scrollback)
         let delegate = SessionDelegate(id: session.id, model: model)
         view.processDelegate = delegate
         views[session.id] = view

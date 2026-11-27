@@ -32,7 +32,8 @@ public enum ExecutableLocator {
         return environment
     }
 
-    static func isCallerSessionVariable(_ name: String) -> Bool {
+    /// Whether `name` belongs to the Claude Code session that started Sylvra (`CLAUDECODE`, `CLAUDE_CODE_*` …).
+    public static func isCallerSessionVariable(_ name: String) -> Bool {
         name == "CLAUDECODE" || name == "CLAUDE_PID" || name == "CLAUDE_EFFORT" || name.hasPrefix("CLAUDE_CODE_")
     }
 

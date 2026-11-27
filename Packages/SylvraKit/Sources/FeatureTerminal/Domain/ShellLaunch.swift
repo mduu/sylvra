@@ -1,5 +1,6 @@
 import Darwin
 import Foundation
+import Platform
 
 /// How a terminal session's process is launched (pure, unit-tested).
 public struct ShellLaunch: Equatable, Sendable {
@@ -33,9 +34,11 @@ public struct ShellLaunch: Equatable, Sendable {
             execName: (runner as NSString).lastPathComponent, environment: environment)
     }
 
-    /// The app's environment plus terminal capabilities, as sorted `KEY=value` pairs.
+    /// The app's environment plus terminal capabilities, as sorted `KEY=value` pairs. Without the variables of a
+    /// Claude Code or tmux session Sylvra may have been started from: a `claude` in the panel would think it runs
+    /// nested, tmux tools would talk to the wrong server.
     static func environment(base: [String: String], shell: String) -> [String] {
-        var values = base
+        var values = base.filter { !isInheritedSessionVariable($0.key) }
         values["TERM"] = "xterm-256color"
         values["COLORTERM"] = "truecolor"
         values["TERM_PROGRAM"] = "Sylvra"
@@ -43,6 +46,13 @@ public struct ShellLaunch: Equatable, Sendable {
         if values["LANG"] == nil { values["LANG"] = "en_US.UTF-8" }
         return values.sorted { $0.key < $1.key }.map { "\($0.key)=\($0.value)" }
     }
+
+    static func isInheritedSessionVariable(_ name: String) -> Bool {
+        ExecutableLocator.isCallerSessionVariable(name) || name == "TMUX" || name == "TMUX_PANE"
+    }
+
+    /// Lines kept above the screen; SwiftTerm's default of 500 loses long test or Claude Code output.
+    public static let scrollback = 10_000
 
     /// The user's login shell from the user database (falls back to `$SHELL`, then zsh).
     public static func loginShell(environment: [String: String] = ProcessInfo.processInfo.environment) -> String {

@@ -1,5 +1,6 @@
 import FeatureAIReview
 import FeatureDelivery
+import FeatureTerminal
 import Foundation
 import SylvraCore
 
@@ -54,12 +55,20 @@ extension RootScreen {
         guard let id = selection?.id else { return }
         Task {
             do {
+                // Files of sessions that never started (Sylvra quit in between) go on the way.
+                await ClaudeSessionCommand.removeLeftovers()
                 // The prompt goes through a file Sylvra names: nothing from GitHub ends up in the command line.
                 let file = FileManager.default.temporaryDirectory.appending(
                     path: "sylvra-session-\(UUID().uuidString).txt")
                 try prompt.write(to: file, atomically: true, encoding: .utf8)
-                let directory = try await TerminalWiring.checkout(for: id, environment: environment)
-                let command = "claude \"$(cat '\(file.path)')\""
+                let command = ClaudeSessionCommand.command(promptFile: file)
+                let directory: URL
+                do {
+                    directory = try await TerminalWiring.checkout(for: id, environment: environment)
+                } catch {
+                    try? FileManager.default.removeItem(at: file)
+                    throw error
+                }
                 guard external else {
                     environment.terminal.openTab(
                         title: String(localized: "Claude · #\(id.number)"), directory: directory, command: command)
@@ -67,7 +76,7 @@ extension RootScreen {
                 }
                 // External terminals take no command, but they run a `.command` script.
                 let script = file.deletingPathExtension().appendingPathExtension("command")
-                try "#!/bin/zsh -l\ncd '\(directory.path)' && \(command)\n".write(
+                try ClaudeSessionCommand.script(command: command, directory: directory).write(
                     to: script, atomically: true, encoding: .utf8)
                 try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: script.path)
                 await environment.terminal.openInExternalTerminal(script)
