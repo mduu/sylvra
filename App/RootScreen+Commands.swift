@@ -1,4 +1,5 @@
 import FeatureDiff
+import FeatureTerminal
 import SwiftUI
 
 // MARK: - Keyboard and command palette
@@ -30,7 +31,7 @@ extension RootScreen {
             previousChange: { environment.diff.selectChange(offset: -1) },
             showPalette: { overlay = .palette },
             showShortcuts: { overlay = .shortcuts },
-            find: { environment.diff.isSearchPresented = true },
+            find: { if !TerminalFind.showIfFocused() { environment.diff.isSearchPresented = true } },
             nextCommit: { Task { await environment.diff.selectCommit(offset: 1) } },
             previousCommit: { Task { await environment.diff.selectCommit(offset: -1) } }
         )

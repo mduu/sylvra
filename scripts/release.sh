@@ -19,7 +19,7 @@ mkdir -p "$OUT"
 
 echo "▸ Archiving (Release)…"
 xcodebuild -project Sylvra.xcodeproj -scheme Sylvra -configuration Release \
-  -destination 'generic/platform=macOS' -archivePath "$ARCHIVE" archive -quiet
+  -destination 'generic/platform=macOS' -archivePath "$ARCHIVE" -skipPackagePluginValidation archive -quiet
 
 cat > "$OUT/ExportOptions.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>

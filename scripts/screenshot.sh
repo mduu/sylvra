@@ -14,7 +14,7 @@ APP="$DERIVED/Build/Products/Debug/Sylvra.app"
 # SYLVRA_SKIP_BUILD=1: reuse the last build (several captures in a row build once).
 if [ "${SYLVRA_SKIP_BUILD:-0}" != "1" ]; then
   xcodebuild -project Sylvra.xcodeproj -scheme Sylvra -destination 'platform=macOS' \
-    -derivedDataPath "$DERIVED" build CODE_SIGNING_ALLOWED=NO -quiet 2>&1 | grep -v appintents || true
+    -derivedDataPath "$DERIVED" -skipPackagePluginValidation build CODE_SIGNING_ALLOWED=NO -quiet 2>&1 | grep -v appintents || true
 fi
 
 # Compile the window lookup once (running `swift script.swift` in a loop is slow and CPU heavy).
