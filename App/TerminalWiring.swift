@@ -71,7 +71,9 @@ struct TerminalSplit<Content: View>: View {
     let selection: PullRequestSummary?
     @ViewBuilder let content: Content
 
-    @State private var terminalHeight: CGFloat = 260
+    /// Tall enough by default for Claude Code's status lines (a running subagent adds two or three, which it drops
+    /// when the terminal is short); the height the user drags to is kept.
+    @AppStorage("terminal.panelHeight") private var terminalHeight: Double = 400
 
     private var isPanelPresented: Bool {
         environment.terminal.isPresented || environment.bottomPanel.showsCommands
@@ -84,7 +86,8 @@ struct TerminalSplit<Content: View>: View {
             content
                 .frame(maxHeight: .infinity)
             if isPanelPresented {
-                PanelResizeHandle(height: $terminalHeight)
+                PanelResizeHandle(
+                    height: Binding(get: { CGFloat(terminalHeight) }, set: { terminalHeight = Double($0) }))
                 Group {
                     if environment.bottomPanel.showsCommands {
                         CommandLogPanel {
@@ -109,7 +112,7 @@ struct TerminalSplit<Content: View>: View {
                         }
                     }
                 }
-                .frame(height: terminalHeight)
+                .frame(height: CGFloat(terminalHeight))
                 // A slide-in from the bottom made Metal API validation fail (draw with zero instances).
                 .transition(.opacity)
             }
