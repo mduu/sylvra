@@ -22,6 +22,8 @@ final class TerminalViewStore: TerminalProcessHosting {
             size: TerminalPreferences.fontSize(UserDefaults.standard.double(forKey: TerminalPreferences.fontSizeKey)))
         let delegate = SessionDelegate(id: session.id, model: model)
         view.processDelegate = delegate
+        // SwiftTerm keeps only 500 lines by default: too few for test runs and Claude Code sessions.
+        view.getTerminal().changeHistorySize(TerminalPreferences.scrollbackLines)
         views[session.id] = view
         delegates[session.id] = delegate
 

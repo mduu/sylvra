@@ -1,5 +1,6 @@
 import Darwin
 import Foundation
+import Platform
 
 /// How a terminal session's process is launched (pure, unit-tested).
 public struct ShellLaunch: Equatable, Sendable {
@@ -33,9 +34,15 @@ public struct ShellLaunch: Equatable, Sendable {
             execName: (runner as NSString).lastPathComponent, environment: environment)
     }
 
+    /// Variables of a session Sylvra may have been started from: a shell in the panel is not part of it
+    /// (`claude` would think it runs nested, tmux would talk to the wrong server).
+    static func isInheritedSessionVariable(_ name: String) -> Bool {
+        ExecutableLocator.isCallerSessionVariable(name) || name == "TMUX" || name == "TMUX_PANE"
+    }
+
     /// The app's environment plus terminal capabilities, as sorted `KEY=value` pairs.
     static func environment(base: [String: String], shell: String) -> [String] {
-        var values = base
+        var values = base.filter { !isInheritedSessionVariable($0.key) }
         values["TERM"] = "xterm-256color"
         values["COLORTERM"] = "truecolor"
         values["TERM_PROGRAM"] = "Sylvra"
