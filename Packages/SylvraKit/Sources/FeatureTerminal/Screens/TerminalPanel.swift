@@ -55,13 +55,25 @@ public struct TerminalPanel<Accessory: View>: View {
     private var headerActions: some View {
         HStack(spacing: 10) {
             accessory
-            Button {
-                Task { await model.openInExternalTerminal() }
+            Menu {
+                Section("Open in") {
+                    ForEach(model.installedExternalTerminals) { app in
+                        Toggle(
+                            app.name,
+                            isOn: Binding(
+                                get: { model.externalTerminal == app },
+                                set: { if $0 { model.externalTerminal = app } }))
+                    }
+                }
+                SettingsLink { Text("Other Terminal App…") }
             } label: {
                 Image(systemName: "arrow.up.forward.app")
+            } primaryAction: {
+                Task { await model.openInExternalTerminal() }
             }
-            .buttonStyle(.borderless)
-            .help("Open in \(model.externalTerminal.name)")
+            .menuStyle(.borderlessButton)
+            .fixedSize()
+            .help("Open in \(model.externalTerminal.name) — choose another terminal app with the arrow")
             .accessibilityLabel("Open in external terminal")
             Button {
                 model.isPresented = false

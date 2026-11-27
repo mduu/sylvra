@@ -1,3 +1,4 @@
+import AppKit
 import Foundation
 import Observation
 
@@ -70,8 +71,26 @@ public final class TerminalModel {
     }
 
     public var externalTerminal: ExternalTerminal {
-        let configured = defaults.string(forKey: TerminalPreferences.externalTerminalKey) ?? ""
-        return configured.isEmpty ? .terminal : .named(configured)
+        get {
+            access(keyPath: \.externalTerminal)
+            let configured = defaults.string(forKey: TerminalPreferences.externalTerminalKey) ?? ""
+            return configured.isEmpty ? .terminal : .named(configured)
+        }
+        set {
+            withMutation(keyPath: \.externalTerminal) {
+                defaults.set(newValue.bundleIdentifier, forKey: TerminalPreferences.externalTerminalKey)
+            }
+        }
+    }
+
+    /// The known terminal apps that are installed, plus the configured one (to choose from in the panel).
+    public var installedExternalTerminals: [ExternalTerminal] {
+        let installed = ExternalTerminal.presets.filter { isInstalled($0.bundleIdentifier) }
+        return installed.contains(externalTerminal) ? installed : installed + [externalTerminal]
+    }
+
+    @ObservationIgnored var isInstalled: (String) -> Bool = { bundleIdentifier in
+        NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleIdentifier) != nil
     }
 
     // MARK: Tabs
