@@ -300,10 +300,11 @@ struct CommentLanguageTests {
         model.startComment(at: location, lineText: "x")
         model.draft?.body = "Round once."
         model.draftLanguage = "German"
-        try await Task.sleep(for: .milliseconds(50))
+        // Wait for the translations instead of fixed delays (CI runners are slow).
+        for _ in 0..<300 where model.rewritingStyle != .translate { try await Task.sleep(for: .milliseconds(10)) }
         #expect(model.rewritingStyle == .translate)
         model.draftLanguage = "English"
-        try await Task.sleep(for: .milliseconds(100))
+        for _ in 0..<300 where model.rewritingStyle != nil { try await Task.sleep(for: .milliseconds(10)) }
         #expect(model.draft?.body == "[English translate] Round once.")
         #expect(model.rewritingStyle == nil)
     }
