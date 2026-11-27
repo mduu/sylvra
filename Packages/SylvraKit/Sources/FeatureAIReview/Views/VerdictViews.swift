@@ -101,15 +101,7 @@ struct KnowledgeBadge: View {
     let level: KnowledgeLevel
 
     var body: some View {
-        HStack(spacing: 4) {
-            Image(systemName: level.symbol)
-            Text(level.title)
-        }
-        .aiFont(.caption2, weight: .bold)
-        .foregroundStyle(level.tint)
-        .padding(.horizontal, 7)
-        .padding(.vertical, 2)
-        .background(level.tint.opacity(0.15), in: Capsule())
+        VerdictChip(symbol: level.symbol, title: level.title, tint: level.tint)
     }
 }
 
@@ -137,20 +129,34 @@ struct KnowledgeTakeawaysView: View {
     }
 }
 
+/// One rating of the AI summary as a capsule as wide as it is given (pure): symbol and title, the title cut
+/// only when there is really no room.
+struct VerdictChip: View {
+    let symbol: String
+    let title: String
+    let tint: Color
+
+    var body: some View {
+        HStack(spacing: 5) {
+            Image(systemName: symbol)
+            Text(title).lineLimit(1).truncationMode(.tail)
+        }
+        .aiFont(.caption2, weight: .bold)
+        .foregroundStyle(tint)
+        .padding(.horizontal, 8)
+        .padding(.vertical, 3)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(tint.opacity(0.15), in: Capsule())
+        .contentShape(Capsule())
+    }
+}
+
 /// "Good" capsule with the merge verdict for the AI summary (pure).
 struct MergeabilityBadge: View {
     let level: Mergeability
 
     var body: some View {
-        HStack(spacing: 4) {
-            Image(systemName: level.symbol)
-            Text(level.title)
-        }
-        .aiFont(.caption2, weight: .bold)
-        .foregroundStyle(level.tint)
-        .padding(.horizontal, 7)
-        .padding(.vertical, 2)
-        .background(level.tint.opacity(0.15), in: Capsule())
+        VerdictChip(symbol: level.symbol, title: String(localized: "Overall: \(level.title)"), tint: level.tint)
     }
 }
 
@@ -159,15 +165,7 @@ struct SlopBadge: View {
     let level: SlopLevel
 
     var body: some View {
-        HStack(spacing: 4) {
-            Image(systemName: "scribble.variable")
-            Text("Slop: \(level.title)")
-        }
-        .aiFont(.caption2, weight: .bold)
-        .foregroundStyle(level.tint)
-        .padding(.horizontal, 7)
-        .padding(.vertical, 2)
-        .background(level.tint.opacity(0.15), in: Capsule())
+        VerdictChip(symbol: "scribble.variable", title: String(localized: "Slop: \(level.title)"), tint: level.tint)
     }
 }
 

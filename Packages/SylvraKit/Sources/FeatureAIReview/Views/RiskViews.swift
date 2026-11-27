@@ -24,16 +24,9 @@ struct RiskBadge: View {
     let level: RiskLevel
 
     var body: some View {
-        HStack(spacing: 4) {
-            Image(systemName: "gauge.with.dots.needle.33percent")
-            Text("Risk: \(level.title)")
-        }
-        .aiFont(.caption2, weight: .bold)
-        .foregroundStyle(level.tint)
-        .padding(.horizontal, 7)
-        .padding(.vertical, 2)
-        .background(level.tint.opacity(0.15), in: Capsule())
-        .help("How risky merging this pull request is, as rated by the AI review")
+        VerdictChip(
+            symbol: "gauge.with.dots.needle.33percent", title: String(localized: "Risk: \(level.title)"),
+            tint: level.tint)
     }
 }
 

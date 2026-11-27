@@ -124,9 +124,10 @@ struct AISummaryCardView: View {
         .copyMenu(text: copyText)
     }
 
-    /// Merge verdict, risk and slop; the reasons in the tooltips (and below when expanded).
+    /// Merge verdict, risk, slop and what to remember, two per row across the card; the reasons in the tooltips
+    /// (and below when expanded).
     private var badges: some View {
-        HStack(spacing: 6) {
+        LazyVGrid(columns: [GridItem(.flexible(), spacing: 6), GridItem(.flexible(), spacing: 6)], spacing: 6) {
             if let mergeability {
                 MergeabilityBadge(level: mergeability.level)
                     .help(tooltip("Whether it can be merged as it is", mergeability.reasons))
