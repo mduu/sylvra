@@ -122,6 +122,20 @@ struct ShellLaunchTests {
         #expect(launch.environment.contains("LANG=en_US.UTF-8"))
     }
 
+    @Test func dropsTheClaudeCodeAndTmuxSessionSylvraWasStartedFrom() {
+        let launch = ShellLaunch.make(
+            shell: "/bin/zsh", command: nil,
+            baseEnvironment: [
+                "CLAUDECODE": "1", "CLAUDE_CODE_ENTRYPOINT": "cli", "TMUX": "/tmp/tmux-501/default,1,0",
+                "TMUX_PANE": "%1", "CLAUDE_CONFIG_DIR": "/Users/me/.claude", "HOME": "/Users/me",
+            ])
+        #expect(!launch.environment.contains { $0.hasPrefix("CLAUDECODE=") || $0.hasPrefix("CLAUDE_CODE_") })
+        #expect(!launch.environment.contains { $0.hasPrefix("TMUX=") || $0.hasPrefix("TMUX_PANE=") })
+        // The user's own setup stays.
+        #expect(launch.environment.contains("CLAUDE_CONFIG_DIR=/Users/me/.claude"))
+        #expect(launch.environment.contains("HOME=/Users/me"))
+    }
+
     @Test func commandIsPassedAsArgumentNotSpliced() {
         let launch = ShellLaunch.make(shell: "/bin/bash", command: "swift test '{x}'", baseEnvironment: [:])
         #expect(launch.executable == "/bin/bash")
