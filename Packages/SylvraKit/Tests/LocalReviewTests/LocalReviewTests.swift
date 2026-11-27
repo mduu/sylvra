@@ -144,7 +144,10 @@ struct LocalReviewRunnerTests {
             ReviewSettings(models: ["opus", "fable"], effort: "high", maxParallelAgents: 1)
         }
         var lines: [String] = []
-        let report = try await runner.run(LocalReviewOptions(directory: repository.root)) { lines.append($0) }
+        // The base is explicit: finding it is tested above, this test is about the run.
+        var options = LocalReviewOptions(directory: repository.root)
+        options.base = "main"
+        let report = try await runner.run(options) { lines.append($0) }
         #expect(report.fileCount == 2)
         #expect(report.settings.models == ["opus", "fable"])
         #expect(report.result != nil)
