@@ -30,6 +30,31 @@ struct KnowledgeTests {
                     takeaways: ["Invoices now round VAT per invoice, not per line.", "Default page size is 50."]))
     }
 
+    @Test func takeawaysSayWhetherTheyAreDomainOrTechnical() throws {
+        let rated = try output(
+            #"{"level":"notable","takeaways":[{"kind":"domain","text":"VAT is rounded per invoice."},"#
+                + #"{"kind":"technical","text":"Exports run in a queue."}]}"#)
+        let result = ReviewMerger.merge([(rated, opus)], files: [file])
+        #expect(
+            result.knowledge?.takeaways == [
+                Takeaway("VAT is rounded per invoice.", kind: .domain),
+                Takeaway("Exports run in a queue.", kind: .technical),
+            ])
+        #expect(
+            result.knowledge?.takeaways.map(\.line) == [
+                "[domain] VAT is rounded per invoice.", "[technical] Exports run in a queue.",
+            ])
+        #expect(ReviewRequest.outputSchema.contains(#""technical""#))
+    }
+
+    @Test func olderReviewsWithPlainTakeawaysStillLoad() throws {
+        let older = #"{"level":"minor","takeaways":["Default page size is 50."]}"#
+        let knowledge = try JSONDecoder().decode(KnowledgeAssessment.self, from: Data(older.utf8))
+        #expect(knowledge.takeaways == [Takeaway("Default page size is 50.")])
+        let tagged = KnowledgeAssessment(level: .minor, takeaways: [Takeaway("Limit is 10.", kind: .technical)])
+        #expect(try JSONDecoder().decode(KnowledgeAssessment.self, from: JSONEncoder().encode(tagged)) == tagged)
+    }
+
     @Test func routineChangesHaveNothingToRemember() throws {
         let result = ReviewMerger.merge(
             [(try output(#"{"level":"routine","takeaways":["Formatting"]}"#), opus)], files: [file])
@@ -56,7 +81,9 @@ struct KnowledgeTests {
             knowledge: KnowledgeAssessment(level: .notable, takeaways: ["Invoices round VAT per invoice."]),
             readingOrder: [])
         #expect(
-            text.hasSuffix("Worth remembering: notable — changes behaviour or usage\n- Invoices round VAT per invoice.")
+            text.hasSuffix(
+                "Worth remembering: notable — domain knowledge or a fundamental technical change\n- Invoices round VAT per invoice."
+            )
         )
     }
 }

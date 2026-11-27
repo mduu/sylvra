@@ -64,9 +64,9 @@ extension SlopLevel {
 extension KnowledgeLevel {
     var title: String {
         switch self {
-        case .notable: String(localized: "Worth knowing")
-        case .minor: String(localized: "Minor detail")
-        case .routine: String(localized: "Routine")
+        case .notable: String(localized: "Notable")
+        case .minor: String(localized: "Minor")
+        case .routine: String(localized: "None")
         }
     }
 
@@ -89,9 +89,9 @@ extension KnowledgeLevel {
     /// What it means for the reader.
     var advice: String {
         switch self {
-        case .notable: String(localized: "Changes how the system behaves or is used: worth remembering.")
-        case .minor: String(localized: "A small detail worth knowing.")
-        case .routine: String(localized: "Nothing to remember: cleanup, formatting or upkeep.")
+        case .notable: String(localized: "Worth remembering: domain knowledge or a fundamental technical change.")
+        case .minor: String(localized: "A small detail of the domain or the technical foundation.")
+        case .routine: String(localized: "Nothing to remember: no new domain knowledge, no fundamental change.")
         }
     }
 }
@@ -101,7 +101,39 @@ struct KnowledgeBadge: View {
     let level: KnowledgeLevel
 
     var body: some View {
-        VerdictChip(symbol: level.symbol, title: level.title, tint: level.tint)
+        VerdictChip(symbol: level.symbol, title: String(localized: "Knowledge: \(level.title)"), tint: level.tint)
+    }
+}
+
+extension TakeawayKind {
+    var title: String {
+        switch self {
+        case .domain: String(localized: "Domain")
+        case .technical: String(localized: "Technical")
+        }
+    }
+
+    var symbol: String {
+        switch self {
+        case .domain: "building.columns"
+        case .technical: "gearshape.2"
+        }
+    }
+}
+
+/// "Domain" or "Technical" before a takeaway (pure).
+struct TakeawayKindTag: View {
+    let kind: TakeawayKind
+
+    var body: some View {
+        Label(kind.title, systemImage: kind.symbol)
+            .labelStyle(.titleAndIcon)
+            .aiFont(.caption2, weight: .semibold)
+            .foregroundStyle(.secondary)
+            .padding(.horizontal, 5)
+            .padding(.vertical, 1)
+            .background(Color.secondary.opacity(0.12), in: Capsule())
+            .fixedSize()
     }
 }
 
@@ -116,14 +148,17 @@ struct KnowledgeTakeawaysView: View {
                     .aiFont(.caption, weight: .semibold)
                     .foregroundStyle(knowledge.level.tint)
                 CopyButton("Copy what to remember") {
-                    knowledge.takeaways.map { "- \($0)" }.joined(separator: "\n")
+                    knowledge.takeaways.map { "- \($0.line)" }.joined(separator: "\n")
                 }
             }
             ForEach(knowledge.takeaways, id: \.self) { takeaway in
-                Text(verbatim: "· \(takeaway)")
-                    .aiFont(.caption)
-                    .textSelection(.enabled)
-                    .fixedSize(horizontal: false, vertical: true)
+                HStack(alignment: .firstTextBaseline, spacing: 6) {
+                    if let kind = takeaway.kind { TakeawayKindTag(kind: kind) } else { Text(verbatim: "·") }
+                    Text(takeaway.text)
+                        .aiFont(.caption)
+                        .textSelection(.enabled)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
             }
         }
     }
@@ -234,6 +269,16 @@ struct SlopSignsView: View {
                     SlopSign(title: "Tests assert nothing", rationale: "Mocks return what the test expects."),
                 ]),
             copyFindings: { "" })
+        HStack {
+            ForEach(KnowledgeLevel.allCases, id: \.self) { KnowledgeBadge(level: $0) }
+        }
+        KnowledgeTakeawaysView(
+            knowledge: KnowledgeAssessment(
+                level: .notable,
+                takeaways: [
+                    Takeaway("Invoices now round VAT per invoice, not per line.", kind: .domain),
+                    Takeaway("Exports run in a background queue instead of the request.", kind: .technical),
+                ]))
     }
     .padding()
     .frame(width: 380)

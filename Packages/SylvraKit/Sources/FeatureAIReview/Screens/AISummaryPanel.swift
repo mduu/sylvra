@@ -142,7 +142,7 @@ struct AISummaryCardView: View {
             }
             if let knowledge {
                 KnowledgeBadge(level: knowledge.level)
-                    .help(tooltip(knowledge.level.advice, knowledge.takeaways))
+                    .help(tooltip(knowledge.level.advice, knowledge.takeaways.map(\.tooltipLine)))
             }
         }
     }
@@ -185,4 +185,11 @@ struct AISummaryCardView: View {
     )
     .padding()
     .frame(width: 360)
+}
+
+extension Takeaway {
+    /// "Domain: Invoices now round VAT per invoice." in the badge's tooltip.
+    fileprivate var tooltipLine: String {
+        kind.map { "\($0.title): \(text)" } ?? text
+    }
 }

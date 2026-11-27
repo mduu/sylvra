@@ -31,7 +31,7 @@ public enum AIReviewClipboard {
         if let slop { parts.append(slopBody(slop)) }
         if let knowledge {
             parts.append(
-                (["Worth remembering: \(knowledge.level.label)"] + knowledge.takeaways.map { "- \($0)" })
+                (["Worth remembering: \(knowledge.level.label)"] + knowledge.takeaways.map { "- \($0.line)" })
                     .joined(separator: "\n"))
         }
         if !readingOrder.isEmpty {
@@ -202,10 +202,17 @@ extension KnowledgeLevel {
     /// English label for copied text and the command line tool.
     public var label: String {
         switch self {
-        case .notable: "notable — changes behaviour or usage"
+        case .notable: "notable — domain knowledge or a fundamental technical change"
         case .minor: "minor detail"
         case .routine: "routine — nothing to remember"
         }
+    }
+}
+
+extension Takeaway {
+    /// "[domain] Invoices now round VAT per invoice." for copied text (English, like the rest of it).
+    public var line: String {
+        kind.map { "[\($0.rawValue)] \(text)" } ?? text
     }
 }
 

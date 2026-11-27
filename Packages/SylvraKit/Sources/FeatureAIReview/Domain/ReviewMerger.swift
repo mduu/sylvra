@@ -142,10 +142,12 @@ public enum ReviewMerger {
     /// notable); takeaways said in other words by another agent once, at most four.
     static func overallKnowledge(_ ratings: [AgentReviewOutput.Knowledge]) -> KnowledgeAssessment? {
         guard let level = ratings.map(\.level).max() else { return nil }
-        var takeaways: [String] = []
+        var takeaways: [Takeaway] = []
         for rating in ratings.sorted(by: { $0.level > $1.level }) where rating.level != .routine {
             for takeaway in rating.takeaways ?? []
-            where !takeaway.isEmpty && !takeaways.contains(where: { overlap(stems($0), stems(takeaway)) >= 0.6 }) {
+            where !takeaway.text.isEmpty
+                && !takeaways.contains(where: { overlap(stems($0.text), stems(takeaway.text)) >= 0.6 })
+            {
                 takeaways.append(takeaway)
             }
         }

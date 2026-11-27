@@ -87,12 +87,15 @@ public struct ReviewRequest: Sendable {
             of the diff as `evidence`. An empty list with none is fine.
 
             Judge whether this change is worth remembering for the people who work on the system (`knowledge`), \
-            independent of its risk: `level` notable (changes how the system behaves or is used — logic, business \
-            rules, contracts and APIs, data and schemas, configuration, permissions, operations), minor (a small \
-            detail worth knowing, such as a changed default, limit or message) or routine (nothing to remember: \
-            cleanups, formatting, renames without effect, dependency bumps, tests only). For notable and minor give \
-            one to three `takeaways`: what someone who did not review it should know afterwards, one plain sentence \
-            each ("Invoices now round VAT per invoice, not per line."); none for routine.
+            independent of its risk. Only two kinds of knowledge count: domain knowledge (new or changed business \
+            rules, domain logic, calculations, processes or terms — what the system does for the business) and \
+            fundamental technical changes (architecture, new patterns or building blocks, the data model and \
+            migrations, interfaces to other systems, the security model, operations and deployment). `level` \
+            notable (such a change), minor (a small detail of either kind, such as a changed default, limit or \
+            edge case) or routine (anything else, however risky: cleanups, formatting, renames, bug fixes that add \
+            no new rule, dependency bumps, tests only). For notable and minor give one to three `takeaways`, each \
+            with its `kind` (domain or technical) and a `text`: what someone who did not review it should know \
+            afterwards, one plain sentence ("Invoices now round VAT per invoice, not per line."); none for routine.
 
             Keep the `summary` short and to the point: two or three sentences on what the change does and why, \
             and what matters most for merging it (the main risk or the biggest problem). Leave out file lists, \
@@ -150,7 +153,8 @@ public struct ReviewRequest: Sendable {
         "reasons":{"type":"array","items":{"type":"string"}}}},\
         "knowledge":{"type":"object","required":["level","takeaways"],"properties":{\
         "level":{"type":"string","enum":["notable","minor","routine"]},\
-        "takeaways":{"type":"array","items":{"type":"string"}}}},\
+        "takeaways":{"type":"array","items":{"type":"object","required":["kind","text"],"properties":{\
+        "kind":{"type":"string","enum":["domain","technical"]},"text":{"type":"string"}}}}}},\
         "slop":{"type":"object","required":["level","signs"],"properties":{\
         "level":{"type":"string","enum":["none","some","many"]},\
         "signs":{"type":"array","items":{"type":"object","required":["title","rationale","evidence"],"properties":{\
@@ -224,7 +228,7 @@ public struct AgentReviewOutput: Decodable, Sendable {
 
     public struct Knowledge: Decodable, Sendable {
         let level: KnowledgeLevel
-        let takeaways: [String]?
+        let takeaways: [Takeaway]?
     }
 
     public struct Slop: Decodable, Sendable {
