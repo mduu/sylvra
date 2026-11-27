@@ -102,15 +102,19 @@ struct RootModelBridges: View {
                 Task { await environment.delivery.preload(closed) }
             }
             // Initial too: an inbox restored from the cache is there before this view observes it.
-            .onChange(of: environment.inbox.snapshot, initial: true) {
-                guard selectedID == nil, let wanted = environment.initialSelection else { return }
-                selectedID =
-                    environment.inbox.snapshot.sections.values.joined().first { $0.id.description == wanted }?.id
-            }
+            .onChange(of: environment.inbox.snapshot, initial: true) { selectInitialPullRequest() }
     }
 }
 
 extension RootModelBridges {
+    /// Selects the pull request Sylvra was opened for (`initialSelection`) once the inbox knows it. A function of its
+    /// own: inline in the modifier chain, the expression took too long to type-check on CI.
+    fileprivate func selectInitialPullRequest() {
+        guard selectedID == nil, let wanted = environment.initialSelection else { return }
+        let pullRequests: [PullRequestSummary] = Array(environment.inbox.snapshot.sections.values.joined())
+        selectedID = pullRequests.first { $0.id.description == wanted }?.id
+    }
+
     /// One job per followed delivery: "Delivery · billing #881" with its headline; opens that pull request.
     fileprivate var deliveryJobs: [ActivityJob] {
         environment.delivery.followed.map { id in
