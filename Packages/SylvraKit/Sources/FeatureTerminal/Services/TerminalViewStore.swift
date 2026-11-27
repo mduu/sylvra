@@ -15,7 +15,7 @@ final class TerminalViewStore: TerminalProcessHosting {
     /// The session's terminal view; the shell is started on first access.
     func view(for session: TerminalSession, in model: TerminalModel) -> LocalProcessTerminalView {
         if let view = views[session.id] { return view }
-        let view = LocalProcessTerminalView(frame: NSRect(x: 0, y: 0, width: 640, height: 240))
+        let view = SylvraTerminalView(frame: NSRect(x: 0, y: 0, width: 640, height: 240))
         view.font = TerminalFonts.preferred(
             size: TerminalPreferences.fontSize(UserDefaults.standard.double(forKey: TerminalPreferences.fontSizeKey)))
         Self.configure(view)
