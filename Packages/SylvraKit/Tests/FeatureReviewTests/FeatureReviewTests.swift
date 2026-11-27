@@ -304,8 +304,11 @@ struct CommentLanguageTests {
         for _ in 0..<300 where model.rewritingStyle != .translate { try await Task.sleep(for: .milliseconds(10)) }
         #expect(model.rewritingStyle == .translate)
         model.draftLanguage = "English"
-        for _ in 0..<300 where model.rewritingStyle != nil { try await Task.sleep(for: .milliseconds(10)) }
-        #expect(model.draft?.body == "[English translate] Round once.")
+        let english = "[English translate] Round once."
+        for _ in 0..<300 where model.draft?.body != english || model.rewritingStyle != nil {
+            try await Task.sleep(for: .milliseconds(10))
+        }
+        #expect(model.draft?.body == english)
         #expect(model.rewritingStyle == nil)
     }
 
