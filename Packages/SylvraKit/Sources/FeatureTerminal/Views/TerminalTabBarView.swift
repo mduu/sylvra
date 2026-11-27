@@ -6,6 +6,7 @@ struct TerminalTab: Identifiable, Equatable {
     let id: UUID
     let title: String
     let hasExited: Bool
+    var needsAttention = false
 }
 
 /// Tab strip of the terminal panel with trailing actions (pure: data in, closures out).
@@ -53,6 +54,12 @@ private struct TerminalTabRow: View {
         HStack(spacing: 4) {
             Image(systemName: tab.hasExited ? "stop.circle" : "terminal")
                 .foregroundStyle(.secondary)
+                .overlay(alignment: .topTrailing) {
+                    if tab.needsAttention {
+                        Circle().fill(SylvraColor.accentGold).frame(width: 7, height: 7).offset(x: 3, y: -2)
+                            .accessibilityLabel("Waiting for you")
+                    }
+                }
             Text(tab.title)
                 .lineLimit(1)
                 .truncationMode(.middle)
@@ -83,6 +90,7 @@ private struct TerminalTabRow: View {
     TerminalTabBarView(
         tabs: [
             .init(id: UUID(), title: "acme/billing #1234", hasExited: false),
+            .init(id: UUID(), title: "Claude · #812", hasExited: false, needsAttention: true),
             .init(id: UUID(), title: "Run tests", hasExited: true),
         ],
         selection: nil, select: { _ in }, close: { _ in }, newTab: {},

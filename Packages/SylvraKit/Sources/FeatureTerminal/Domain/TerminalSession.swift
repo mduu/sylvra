@@ -10,6 +10,8 @@ public struct TerminalSession: Identifiable, Hashable, Sendable {
     /// Exit code once the shell process has exited.
     public var exitCode: Int32?
     public var hasExited: Bool
+    /// The program rang the bell while the tab was not in view (Claude Code waiting for input, say).
+    public var needsAttention = false
 
     public init(id: UUID = UUID(), title: String, directory: URL, command: String? = nil) {
         self.id = id

@@ -71,6 +71,11 @@ private final class SessionDelegate: LocalProcessTerminalViewDelegate {
 
     nonisolated func hostCurrentDirectoryUpdate(source: TerminalView, directory: String?) {}
 
+    nonisolated func bellRang(source: LocalProcessTerminalView, style: BellStyle) {
+        if style.playsSound { source.playDefaultBell() }
+        Task { @MainActor in self.model?.ringBell(self.id, appIsActive: NSApp.isActive) }
+    }
+
     nonisolated func processTerminated(source: TerminalView, exitCode: Int32?) {
         Task { @MainActor in self.model?.markExited(self.id, code: exitCode) }
     }

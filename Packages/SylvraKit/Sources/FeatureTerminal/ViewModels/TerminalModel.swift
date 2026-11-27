@@ -19,9 +19,16 @@ public protocol ExternalTerminalOpening {
 @MainActor
 @Observable
 public final class TerminalModel {
-    public var isPresented = false
+    public var isPresented = false {
+        didSet { clearAttention() }
+    }
     public private(set) var sessions: [TerminalSession] = []
-    public var selectedID: TerminalSession.ID?
+    public var selectedID: TerminalSession.ID? {
+        didSet { clearAttention() }
+    }
+    /// A tab that is not in view rang the bell; `appIsActive` says whether Sylvra is the active app (wired by the
+    /// app: a notification when it is not).
+    @ObservationIgnored public var onAttention: ((TerminalSession, _ appIsActive: Bool) -> Void)?
     /// Working directory of new tabs without an explicit directory (the PR worktree or home).
     public var defaultDirectory: URL
     /// Title of new tabs without an explicit title.
@@ -107,6 +114,23 @@ public final class TerminalModel {
         let trimmed = title.trimmingCharacters(in: .whitespaces)
         guard !trimmed.isEmpty, let index = sessions.firstIndex(where: { $0.id == id }) else { return }
         sessions[index].title = trimmed
+    }
+
+    /// The bell of a session: a dot on its tab unless the user looks at it, and the app is told.
+    func ringBell(_ id: TerminalSession.ID, appIsActive: Bool) {
+        guard let index = sessions.firstIndex(where: { $0.id == id }) else { return }
+        let inView = isPresented && selectedID == id && appIsActive
+        guard !inView else { return }
+        sessions[index].needsAttention = true
+        onAttention?(sessions[index], appIsActive)
+    }
+
+    /// The tab in view needs no dot.
+    private func clearAttention() {
+        guard isPresented, let index = sessions.firstIndex(where: { $0.id == selectedID }),
+            sessions[index].needsAttention
+        else { return }
+        sessions[index].needsAttention = false
     }
 
     func markExited(_ id: TerminalSession.ID, code: Int32?) {

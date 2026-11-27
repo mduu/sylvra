@@ -12,6 +12,8 @@ public struct ActivityJob: Identifiable, Hashable, Sendable {
         case ownFeedback, ownChecks
         /// A merged pull request on its way to production.
         case delivery
+        /// A terminal tab rang the bell while Sylvra was in the background (Claude Code waiting for input).
+        case terminal
 
         public var title: String {
             switch self {
@@ -22,6 +24,7 @@ public struct ActivityJob: Identifiable, Hashable, Sendable {
             case .ownFeedback: String(localized: "Reviews and comments on your pull requests")
             case .ownChecks: String(localized: "Checks finished on your pull requests")
             case .delivery: String(localized: "Deployments of merged pull requests")
+            case .terminal: String(localized: "Terminal tabs waiting for you")
             }
         }
     }
@@ -126,6 +129,15 @@ public final class ActivityCenter {
             await Self.post(
                 title: "\(id.repository) #\(id.number): \(message)", body: title,
                 identifier: "\(kind.rawValue)-\(id)-\(message)", pullRequest: id.description)
+        }
+    }
+
+    /// A terminal tab wants attention (its bell rang while Sylvra was in the background).
+    public func notifyTerminal(title: String) {
+        guard notificationsEnabled(for: .terminal) else { return }
+        Task {
+            await Self.post(
+                title: String(localized: "Waiting in the terminal"), body: title, identifier: "terminal-\(title)")
         }
     }
 

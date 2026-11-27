@@ -127,6 +127,14 @@ struct TerminalSplit<Content: View>: View {
         } message: {
             Text(environment.terminal.errorMessage ?? "")
         }
+        .onAppear {
+            // A tab out of view rang its bell (Claude Code waiting): a dot on the tab; in the background also a
+            // notification.
+            let activity = environment.activity
+            environment.terminal.onAttention = { session, appIsActive in
+                if !appIsActive { activity.notifyTerminal(title: session.title) }
+            }
+        }
         .onChange(of: selection?.id, initial: true) { _, id in
             environment.terminal.defaultDirectory = TerminalWiring.directory(for: id)
             environment.terminal.defaultTitle = TerminalWiring.title(for: id)

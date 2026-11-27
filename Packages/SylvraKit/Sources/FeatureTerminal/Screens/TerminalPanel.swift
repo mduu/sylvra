@@ -17,7 +17,10 @@ public struct TerminalPanel<Accessory: View>: View {
     public var body: some View {
         VStack(spacing: 0) {
             TerminalTabBarView(
-                tabs: model.sessions.map { TerminalTab(id: $0.id, title: $0.title, hasExited: $0.hasExited) },
+                tabs: model.sessions.map {
+                    TerminalTab(
+                        id: $0.id, title: $0.title, hasExited: $0.hasExited, needsAttention: $0.needsAttention)
+                },
                 selection: model.selectedID,
                 select: { model.selectedID = $0 },
                 close: { model.closeTab($0) },
