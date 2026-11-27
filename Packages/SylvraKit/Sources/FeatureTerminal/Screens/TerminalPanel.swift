@@ -29,7 +29,11 @@ public struct TerminalPanel<Accessory: View>: View {
             )
             .background(.bar)
             Divider()
-            if let session = model.selectedSession, let store = model.host as? TerminalViewStore {
+            if let session = model.selectedSession, session.isRestored {
+                RestoredSessionView(
+                    title: session.title, directory: (session.directory.path as NSString).abbreviatingWithTildeInPath,
+                    resume: { model.resume(session.id) }, close: { model.closeTab(session.id) })
+            } else if let session = model.selectedSession, let store = model.host as? TerminalViewStore {
                 TerminalHostView(view: store.view(for: session, in: model))
                     .id(session.id)
                     .padding(.leading, 6)

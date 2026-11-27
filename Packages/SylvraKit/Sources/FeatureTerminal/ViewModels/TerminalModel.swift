@@ -22,7 +22,9 @@ public final class TerminalModel {
     public var isPresented = false {
         didSet { clearAttention() }
     }
-    public private(set) var sessions: [TerminalSession] = []
+    public private(set) var sessions: [TerminalSession] = [] {
+        didSet { saveClaudeSessions() }
+    }
     public var selectedID: TerminalSession.ID? {
         didSet { clearAttention() }
     }
@@ -51,6 +53,8 @@ public final class TerminalModel {
         self.host = host ?? TerminalViewStore()
         self.opener = opener
         self.defaults = defaults
+        sessions = restoredClaudeSessions()
+        selectedID = sessions.first?.id
     }
 
     public var selectedSession: TerminalSession? {
@@ -74,9 +78,12 @@ public final class TerminalModel {
 
     /// Opens and selects a new tab (and shows the panel). `command` runs first, then an interactive shell.
     @discardableResult
-    public func openTab(title: String? = nil, directory: URL? = nil, command: String? = nil) -> TerminalSession.ID {
+    public func openTab(
+        title: String? = nil, directory: URL? = nil, command: String? = nil, isClaude: Bool = false
+    ) -> TerminalSession.ID {
         let session = TerminalSession(
-            title: title ?? defaultTitle, directory: directory ?? defaultDirectory, command: command)
+            title: title ?? defaultTitle, directory: directory ?? defaultDirectory, command: command,
+            isClaude: isClaude)
         sessions.append(session)
         selectedID = session.id
         isPresented = true
@@ -114,6 +121,8 @@ public final class TerminalModel {
         let trimmed = title.trimmingCharacters(in: .whitespaces)
         guard !trimmed.isEmpty, let index = sessions.firstIndex(where: { $0.id == id }) else { return }
         sessions[index].title = trimmed
+        // Claude Code names its tab; a `claude` started by hand is remembered too.
+        if trimmed.localizedCaseInsensitiveContains("claude") { sessions[index].isClaude = true }
     }
 
     /// The bell of a session: a dot on its tab unless the user looks at it, and the app is told.
@@ -137,6 +146,42 @@ public final class TerminalModel {
         guard let index = sessions.firstIndex(where: { $0.id == id }) else { return }
         sessions[index].hasExited = true
         sessions[index].exitCode = code
+    }
+
+    // MARK: Claude sessions across restarts
+
+    static let claudeSessionsKey = "terminal.claudeSessions"
+
+    /// Continues a Claude session from before the restart in its directory (`claude --continue`), in its tab's place.
+    public func resume(_ id: TerminalSession.ID) {
+        guard let index = sessions.firstIndex(where: { $0.id == id }), sessions[index].isRestored else { return }
+        let old = sessions[index]
+        guard FileManager.default.fileExists(atPath: old.directory.path) else {
+            errorMessage = String(localized: "The folder of this session is gone: \(old.directory.path)")
+            return
+        }
+        let session = TerminalSession(
+            title: old.title, directory: old.directory, command: "claude --continue", isClaude: true)
+        sessions[index] = session
+        selectedID = session.id
+        isPresented = true
+    }
+
+    private func saveClaudeSessions() {
+        let saved = sessions.filter(\.isClaude).map { SavedClaudeSession(title: $0.title, directory: $0.directory) }
+        defaults.set(try? JSONEncoder().encode(saved), forKey: Self.claudeSessionsKey)
+    }
+
+    private func restoredClaudeSessions() -> [TerminalSession] {
+        guard let data = defaults.data(forKey: Self.claudeSessionsKey),
+            let saved = try? JSONDecoder().decode([SavedClaudeSession].self, from: data)
+        else { return [] }
+        return saved.map { saved in
+            var session = TerminalSession(title: saved.title, directory: saved.directory, isClaude: true)
+            session.isRestored = true
+            session.hasExited = true
+            return session
+        }
     }
 
     // MARK: External terminal

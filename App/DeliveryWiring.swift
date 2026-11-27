@@ -71,7 +71,8 @@ extension RootScreen {
                 }
                 guard external else {
                     environment.terminal.openTab(
-                        title: String(localized: "Claude · #\(id.number)"), directory: directory, command: command)
+                        title: String(localized: "Claude · #\(id.number)"), directory: directory, command: command,
+                        isClaude: true)
                     return
                 }
                 // External terminals take no command, but they run a `.command` script.
